@@ -41,7 +41,7 @@ function WalletSync() {
     const urlParams = new URLSearchParams(window.location.search);
     const urlRef = urlParams.get("ref");
     if (urlRef) {
-      sessionStorage.setItem("nexai_ref_code", urlRef);
+      sessionStorage.setItem("coinmax_ref_code", urlRef);
       urlParams.delete("ref");
       const newUrl = urlParams.toString()
         ? `${window.location.pathname}?${urlParams.toString()}`
@@ -53,9 +53,9 @@ function WalletSync() {
   // Auth wallet with ref code when wallet connects
   useEffect(() => {
     if (account?.address) {
-      const refCode = sessionStorage.getItem("nexai_ref_code");
+      const refCode = sessionStorage.getItem("coinmax_ref_code");
       authWallet(account.address, refCode || undefined)
-        .then(() => { if (refCode) sessionStorage.removeItem("nexai_ref_code"); })
+        .then(() => { if (refCode) sessionStorage.removeItem("coinmax_ref_code"); })
         .catch(console.error);
     }
   }, [account?.address]);
@@ -70,11 +70,12 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-background/90 backdrop-blur-xl">
       <Link href="/" className="flex items-center gap-2.5 cursor-pointer" data-testid="link-logo-home">
-        <div className="h-8 w-8 rounded-md bg-primary/15 flex items-center justify-center neon-glow-sm border border-primary/30">
-          <span className="font-display text-sm font-bold text-primary drop-shadow-[0_0_8px_rgba(0,188,165,0.6)]">A</span>
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center neon-glow-sm border border-primary/30 relative overflow-hidden">
+          <span className="font-display text-sm font-black text-primary drop-shadow-[0_0_8px_rgba(0,188,165,0.6)]">C</span>
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/5" />
         </div>
         <span className="font-display text-sm font-bold tracking-widest text-foreground">
-          Axio<span className="text-primary drop-shadow-[0_0_6px_rgba(0,188,165,0.5)]">m</span>
+          Coin<span className="text-primary drop-shadow-[0_0_6px_rgba(0,188,165,0.5)]">Max</span>
         </span>
       </Link>
       {isLoading || !client ? (

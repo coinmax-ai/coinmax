@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Coins } from "lucide-react";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import type { NodePoolInfo } from "@shared/types";
 import { useTranslation } from "react-i18next";
 
@@ -10,7 +10,7 @@ interface DividendPoolCardProps {
 
 export function DividendPoolCard({ pool }: DividendPoolCardProps) {
   const { t } = useTranslation();
-  const { formatCompactAR } = useArPrice();
+  const { formatCompactMA } = useMaPrice();
   const balance = Number(pool.balance || 0);
 
   return (
@@ -29,7 +29,7 @@ export function DividendPoolCard({ pool }: DividendPoolCardProps) {
         </div>
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-muted-foreground">{t("profile.poolBalance")}</span>
-          <span className="text-sm font-bold text-neon-value">{formatCompactAR(balance)}</span>
+          <span className="text-sm font-bold text-neon-value">{formatCompactMA(balance)}</span>
         </div>
         {pool.updatedAt && (
           <div className="text-[11px] text-muted-foreground text-right">

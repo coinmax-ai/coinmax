@@ -8,7 +8,14 @@
       <stop offset="0%" stop-color="#2dd4bf"/>
       <stop offset="100%" stop-color="#14b8a6"/>
     </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
   <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <text x="32" y="44" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="30" fill="url(#fg)">Ax</text>
+  <text x="32" y="44" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="28" fill="url(#fg)" filter="url(#glow)">CM</text>
 </svg>

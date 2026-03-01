@@ -13,20 +13,20 @@ function toCamel(obj: any): any {
   return out;
 }
 
-// Fetch AR token price from system_config
+// Fetch MA token price from system_config
 // TODO: When LP pool is live, add Uniswap V3 TWAP / Chainlink oracle integration
 // Current sources (priority order):
 //   1. Uniswap V3 pool TWAP (not yet enabled)
 //   2. DEX aggregator API (not yet enabled)
-//   3. system_config.AR_TOKEN_PRICE (current default: 0.1 USD)
-export async function getArPrice(): Promise<{ price: number; source: string }> {
+//   3. system_config.MA_TOKEN_PRICE (current default: 0.1 USD)
+export async function getMaPrice(): Promise<{ price: number; source: string }> {
   const { data, error } = await supabase
     .from("system_config")
     .select("key, value")
-    .in("key", ["AR_TOKEN_PRICE", "AR_PRICE_SOURCE"]);
+    .in("key", ["MA_TOKEN_PRICE", "MA_PRICE_SOURCE"]);
   if (error) throw error;
-  const priceRow = (data ?? []).find((r: any) => r.key === "AR_TOKEN_PRICE");
-  const sourceRow = (data ?? []).find((r: any) => r.key === "AR_PRICE_SOURCE");
+  const priceRow = (data ?? []).find((r: any) => r.key === "MA_TOKEN_PRICE");
+  const sourceRow = (data ?? []).find((r: any) => r.key === "MA_PRICE_SOURCE");
   return {
     price: Number(priceRow?.value) || 0.1,
     source: sourceRow?.value || "DEFAULT",

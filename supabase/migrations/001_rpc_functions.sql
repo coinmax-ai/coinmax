@@ -1,5 +1,5 @@
 -- =============================================
--- AxomX RPC Functions for Supabase
+-- CoinMax RPC Functions for Supabase
 -- =============================================
 
 -- auth_wallet: upsert profile, handle referral code

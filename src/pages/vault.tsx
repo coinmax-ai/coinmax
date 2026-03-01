@@ -20,13 +20,13 @@ import { usePayment, getPaymentStatusLabel } from "@/hooks/use-payment";
 import { VAULT_PLANS } from "@/lib/data";
 import { VAULT_CONTRACT_ADDRESS } from "@/lib/contracts";
 import { formatUSD, shortenAddress } from "@/lib/constants";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import type { VaultPosition, Transaction, VaultReward } from "@shared/types";
 import { useTranslation } from "react-i18next";
 
 function TransactionTable({ walletAddress, type }: { walletAddress: string; type: string }) {
   const { t } = useTranslation();
-  const { usdcToAR } = useArPrice();
+  const { usdcToMA } = useMaPrice();
   const { data: txs, isLoading } = useQuery<Transaction[]>({
     queryKey: ["transactions", walletAddress, type],
     queryFn: () => getTransactions(walletAddress, type),
@@ -72,7 +72,7 @@ function TransactionTable({ walletAddress, type }: { walletAddress: string; type
               data-testid={`row-tx-${tx.id}`}
             >
               <span className="font-medium">{tx.token}</span>
-              <span className="text-neon-value">{type === "YIELD" ? `${usdcToAR(Number(tx.amount)).toFixed(2)} AR` : `$${Number(tx.amount).toFixed(2)}`}</span>
+              <span className="text-neon-value">{type === "YIELD" ? `${usdcToMA(Number(tx.amount)).toFixed(2)} MA` : `$${Number(tx.amount).toFixed(2)}`}</span>
               <span className="text-blue-400 text-[11px]">Base</span>
               <span className="text-muted-foreground truncate">
                 {tx.txHash ? (
@@ -112,7 +112,7 @@ export default function Vault() {
   const account = useActiveAccount();
   const walletAddress = account?.address || "";
   const { toast } = useToast();
-  const { formatAR, usdcToAR } = useArPrice();
+  const { formatMA, usdcToMA } = useMaPrice();
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -257,7 +257,7 @@ export default function Vault() {
               <div>
                 <div className="text-[12px] text-muted-foreground">{t("vault.accumulatedYield")}</div>
                 <div className="text-2xl font-bold text-neon-value" data-testid="text-my-yield">
-                  {walletAddress ? formatAR(totalYield) : "0.00 AR"}
+                  {walletAddress ? formatMA(totalYield) : "0.00 AR"}
                 </div>
               </div>
             </div>
@@ -396,7 +396,7 @@ export default function Vault() {
                         <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2 mb-3">
                           <span className="text-xs font-medium">{t("vault.totalDailyYield")}</span>
                           <span className="text-sm font-bold text-neon-value">
-                            {formatAR(activePositions.reduce((sum, p) => sum + Number(p.principal) * Number(p.dailyRate || 0), 0))}
+                            {formatMA(activePositions.reduce((sum, p) => sum + Number(p.principal) * Number(p.dailyRate || 0), 0))}
                           </span>
                         </div>
                         {/* Per-position cards */}
@@ -434,11 +434,11 @@ export default function Vault() {
                                 </div>
                                 <div className="flex justify-between gap-2">
                                   <span className="text-muted-foreground">{t("vault.dailyEarnings")}</span>
-                                  <span className="text-neon-value">{formatAR(dailyYield)}</span>
+                                  <span className="text-neon-value">{formatMA(dailyYield)}</span>
                                 </div>
                                 <div className="flex justify-between gap-2 pt-1 border-t border-border/30">
                                   <span className="text-muted-foreground">{t("vault.accumulatedYield")}</span>
-                                  <span className="text-neon-value font-medium">{formatAR(accumulatedYield)}</span>
+                                  <span className="text-neon-value font-medium">{formatMA(accumulatedYield)}</span>
                                 </div>
                                 <Button
                                   variant="outline"
@@ -541,7 +541,7 @@ export default function Vault() {
                   <div className="flex justify-between gap-2 pt-1 border-t border-border/30">
                     <span className="text-muted-foreground">{t("vault.estTotalYield")}</span>
                     <span className="text-neon-value font-medium">
-                      {usdcToAR(parseFloat(depositAmount) * VAULT_PLANS[selectedPlan as keyof typeof VAULT_PLANS]?.dailyRate * VAULT_PLANS[selectedPlan as keyof typeof VAULT_PLANS]?.days).toFixed(2)} AR
+                      {usdcToMA(parseFloat(depositAmount) * VAULT_PLANS[selectedPlan as keyof typeof VAULT_PLANS]?.dailyRate * VAULT_PLANS[selectedPlan as keyof typeof VAULT_PLANS]?.days).toFixed(2)} MA
                     </span>
                   </div>
                 )}
@@ -621,7 +621,7 @@ export default function Vault() {
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground">{t("vault.yieldDays", { days })}</span>
-                        <span className="text-neon-value">{formatAR(yieldAmt)}</span>
+                        <span className="text-neon-value">{formatMA(yieldAmt)}</span>
                       </div>
                       {isEarly && (
                         <>
@@ -636,7 +636,7 @@ export default function Vault() {
                       )}
                       <div className="flex justify-between gap-2 pt-1 border-t border-border/30">
                         <span className="text-muted-foreground">{t("vault.total")}</span>
-                        <span className="font-medium">${netPrincipal.toFixed(2)} + {formatAR(yieldAmt)}</span>
+                        <span className="font-medium">${netPrincipal.toFixed(2)} + {formatMA(yieldAmt)}</span>
                       </div>
                     </div>
                   );
@@ -686,8 +686,8 @@ export default function Vault() {
                 );
               }
               return posRewards.map((r, idx) => {
-                const arAmt = r.arAmount ? Number(r.arAmount) : usdcToAR(Number(r.amount));
-                const usedPrice = r.arPrice ? Number(r.arPrice) : null;
+                const arAmt = r.maAmount ? Number(r.maAmount) : usdcToMA(Number(r.amount));
+                const usedPrice = r.maPrice ? Number(r.maPrice) : null;
                 return (
                   <div
                     key={r.id}
@@ -702,7 +702,7 @@ export default function Vault() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-neon-value">+{arAmt.toFixed(2)} AR</div>
+                      <div className="text-sm font-bold text-neon-value">+{arAmt.toFixed(2)} MA</div>
                       <div className="text-[10px] text-muted-foreground">{formatUSD(Number(r.amount))}</div>
                     </div>
                   </div>

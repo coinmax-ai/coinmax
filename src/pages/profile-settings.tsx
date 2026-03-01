@@ -32,31 +32,31 @@ export default function ProfileSettingsPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem("nexai-lang");
+    const saved = localStorage.getItem("coinmax-lang");
     if (saved) setCurrentLang(saved);
-    const notifSaved = localStorage.getItem("nexai-notifications");
+    const notifSaved = localStorage.getItem("coinmax-notifications");
     if (notifSaved !== null) setNotificationsEnabled(notifSaved === "true");
-    const soundSaved = localStorage.getItem("nexai-sound");
+    const soundSaved = localStorage.getItem("coinmax-sound");
     if (soundSaved !== null) setSoundEnabled(soundSaved === "true");
   }, []);
 
   const selectLanguage = (code: string) => {
     setCurrentLang(code);
     i18n.changeLanguage(code);
-    localStorage.setItem("nexai-lang", code);
+    localStorage.setItem("coinmax-lang", code);
     setLangDialogOpen(false);
   };
 
   const toggleNotifications = () => {
     const next = !notificationsEnabled;
     setNotificationsEnabled(next);
-    localStorage.setItem("nexai-notifications", String(next));
+    localStorage.setItem("coinmax-notifications", String(next));
   };
 
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
-    localStorage.setItem("nexai-sound", String(next));
+    localStorage.setItem("coinmax-sound", String(next));
   };
 
   const currentLangObj = LANGUAGES.find((l) => l.code === currentLang) || LANGUAGES[0];

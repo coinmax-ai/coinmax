@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title AxomX Vault Payment
+/// @title CoinMax Vault Payment
 /// @notice Accepts USDC deposits for vault plans. Reward logic is off-chain (Supabase DB).
-contract AxomXVaultPayment is Ownable, ReentrancyGuard {
+contract CoinMaxVaultPayment is Ownable, ReentrancyGuard {
     IERC20 public immutable usdc;
 
     uint256 public minDeposit = 50 * 1e6; // 50 USDC

@@ -30,22 +30,22 @@ export function formatCompact(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-export const AR_PRICE = 0.1;
+export const MA_PRICE = 0.1;
 
-export function usdcToAR(usdc: number): number {
-  return usdc / AR_PRICE;
+export function usdcToMA(usdc: number): number {
+  return usdc / MA_PRICE;
 }
 
-export function formatAR(usdc: number): string {
-  const ar = usdcToAR(usdc);
-  return `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(ar)} AR`;
+export function formatMA(usdc: number): string {
+  const ma = usdcToMA(usdc);
+  return `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(ma)} MA`;
 }
 
-export function formatCompactAR(usdc: number): string {
-  const ar = usdcToAR(usdc);
-  if (ar >= 1_000_000) return `${(ar / 1_000_000).toFixed(2)}M AR`;
-  if (ar >= 1_000) return `${(ar / 1_000).toFixed(1)}K AR`;
-  return `${ar.toFixed(2)} AR`;
+export function formatCompactMA(usdc: number): string {
+  const ma = usdcToMA(usdc);
+  if (ma >= 1_000_000) return `${(ma / 1_000_000).toFixed(2)}M MA`;
+  if (ma >= 1_000) return `${(ma / 1_000).toFixed(1)}K MA`;
+  return `${ma.toFixed(2)} MA`;
 }
 
 export function shortenAddress(address: string): string {

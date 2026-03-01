@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
 import { shortenAddress, formatCompact } from "@/lib/constants";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import { Copy, Crown, WalletCards, Wallet, ArrowDownToLine, ArrowUpFromLine, Users, ChevronRight, Bell, Settings, History, GitBranch, Loader2, Server, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo } from "react";
@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const { t } = useTranslation();
   const account = useActiveAccount();
   const { toast } = useToast();
-  const { formatAR, formatCompactAR } = useArPrice();
+  const { formatMA, formatCompactMA } = useMaPrice();
   const [, navigate] = useLocation();
   const walletAddr = account?.address || "";
   const isConnected = !!walletAddr;
@@ -165,7 +165,7 @@ export default function ProfilePage() {
               ) : profileLoading ? (
                 <Skeleton className="h-5 w-16" />
               ) : (
-                <div className="text-sm font-bold text-neon-value" data-testid="text-referral-earnings">{formatCompactAR(referralEarnings)}</div>
+                <div className="text-sm font-bold text-neon-value" data-testid="text-referral-earnings">{formatCompactMA(referralEarnings)}</div>
               )}
             </CardContent>
           </Card>
@@ -187,7 +187,7 @@ export default function ProfilePage() {
                       <Skeleton className="h-6 w-20" />
                     ) : (
                       <div className="text-lg font-bold text-neon-value" data-testid="text-total-earnings">
-                        {formatAR(totalEarnings)}
+                        {formatMA(totalEarnings)}
                       </div>
                     )}
                   </div>
@@ -206,15 +206,15 @@ export default function ProfilePage() {
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-md bg-card/80 border border-border/50 p-2">
                   <div className="text-[11px] text-muted-foreground">{t("profile.nodeEarningsLabel")}</div>
-                  <div className="text-xs font-bold text-neon-value">{formatCompactAR(nodeEarnings)}</div>
+                  <div className="text-xs font-bold text-neon-value">{formatCompactMA(nodeEarnings)}</div>
                 </div>
                 <div className="rounded-md bg-card/80 border border-border/50 p-2">
                   <div className="text-[11px] text-muted-foreground">{t("profile.vaultEarningsLabel")}</div>
-                  <div className="text-xs font-bold text-neon-value">{formatCompactAR(vaultYield)}</div>
+                  <div className="text-xs font-bold text-neon-value">{formatCompactMA(vaultYield)}</div>
                 </div>
                 <div className="rounded-md bg-card/80 border border-border/50 p-2">
                   <div className="text-[11px] text-muted-foreground">{t("profile.brokerEarningsLabel")}</div>
-                  <div className="text-xs font-bold text-neon-value">{formatCompactAR(referralEarnings)}</div>
+                  <div className="text-xs font-bold text-neon-value">{formatCompactMA(referralEarnings)}</div>
                 </div>
               </div>
             </CardContent>

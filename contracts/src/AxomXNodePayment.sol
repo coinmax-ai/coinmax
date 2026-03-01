@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title AxomX Node Payment
+/// @title CoinMax Node Payment
 /// @notice Accepts USDC payments for node memberships (MINI / MAX). Reward logic is off-chain.
-contract AxomXNodePayment is Ownable, ReentrancyGuard {
+contract CoinMaxNodePayment is Ownable, ReentrancyGuard {
     IERC20 public immutable usdc;
 
     struct NodePlan {

@@ -290,7 +290,7 @@
     "failedPlaceBet": "下注失败",
     "bindTelegram": "绑定 Telegram",
     "bindTelegramDesc": "通过 Telegram 接收交易通知",
-    "tgStep1": "打开 Telegram 搜索 <strong>@NexAIBot</strong>",
+    "tgStep1": "打开 Telegram 搜索 <strong>@CoinMaxBot</strong>",
     "tgStep2": "向机器人发送 <strong>/start</strong>",
     "tgStep3": "在下方输入您的 Telegram 用户名",
     "telegramUsername": "Telegram 用户名",
@@ -468,7 +468,7 @@
     "title": "通知",
     "markAllRead": "全部已读",
     "noNotifications": "暂无通知",
-    "welcomeTitle": "欢迎来到 NexAI",
+    "welcomeTitle": "欢迎来到 Coinmax",
     "welcomeMsg": "您的账户已创建。连接钱包开始使用。",
     "justNow": "刚刚",
     "securityTitle": "安全提醒",
@@ -494,6 +494,6 @@
     "selectLanguageDesc": "选择您偏好的界面语言",
     "soundEffects": "音效",
     "soundEffectsDesc": "启用或关闭应用音效",
-    "version": "NexAI v1.0.0"
+    "version": "CoinMax v1.0.0"
   }
 }

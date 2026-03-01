@@ -38,7 +38,7 @@ serve(async (req) => {
     const response = await fetch(url, {
       headers: {
         "Accept": "application/json",
-        "User-Agent": "AxomX/1.0",
+        "User-Agent": "CoinMax/1.0",
       },
     });
 

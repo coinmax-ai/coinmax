@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title AxomX VIP Payment
+/// @title CoinMax VIP Payment
 /// @notice Accepts USDC payments for VIP subscriptions (monthly / yearly). Status tracking is off-chain.
-contract AxomXVIPPayment is Ownable, ReentrancyGuard {
+contract CoinMaxVIPPayment is Ownable, ReentrancyGuard {
     IERC20 public immutable usdc;
 
     struct VIPPlan {

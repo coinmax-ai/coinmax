@@ -290,7 +290,7 @@
     "failedPlaceBet": "Failed to place bet",
     "bindTelegram": "Bind Telegram",
     "bindTelegramDesc": "Receive trade notifications via Telegram",
-    "tgStep1": "Open Telegram and search for <strong>@NexAIBot</strong>",
+    "tgStep1": "Open Telegram and search for <strong>@CoinMaxBot</strong>",
     "tgStep2": "Send <strong>/start</strong> to the bot",
     "tgStep3": "Enter your Telegram username below",
     "telegramUsername": "Telegram Username",
@@ -468,7 +468,7 @@
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "noNotifications": "No notifications",
-    "welcomeTitle": "Welcome to NexAI",
+    "welcomeTitle": "Welcome to Coinmax",
     "welcomeMsg": "Your account has been created. Connect your wallet to get started.",
     "justNow": "Just now",
     "securityTitle": "Security Alert",
@@ -494,6 +494,6 @@
     "selectLanguageDesc": "Choose your preferred interface language",
     "soundEffects": "Sound Effects",
     "soundEffectsDesc": "Enable or disable app sound effects",
-    "version": "NexAI v1.0.0"
+    "version": "CoinMax v1.0.0"
   }
 }

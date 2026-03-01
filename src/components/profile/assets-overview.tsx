@@ -4,7 +4,7 @@ import { Wallet, ArrowDownToLine, ArrowUpFromLine, Users } from "lucide-react";
 import { useActiveAccount } from "thirdweb/react";
 import { useQuery } from "@tanstack/react-query";
 import { formatCompact } from "@/lib/constants";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import type { Profile } from "@shared/types";
 import { getProfile } from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 export function AssetsOverview() {
   const { t } = useTranslation();
   const account = useActiveAccount();
-  const { formatCompactAR } = useArPrice();
+  const { formatCompactMA } = useMaPrice();
   const walletAddr = account?.address || "";
 
   const { data: profile, isLoading } = useQuery<Profile>({
@@ -79,7 +79,7 @@ export function AssetsOverview() {
             {isLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : (
-              <div className="text-sm font-bold" data-testid="text-referral-earnings">{formatCompactAR(referralEarnings)}</div>
+              <div className="text-sm font-bold" data-testid="text-referral-earnings">{formatCompactMA(referralEarnings)}</div>
             )}
           </CardContent>
         </Card>

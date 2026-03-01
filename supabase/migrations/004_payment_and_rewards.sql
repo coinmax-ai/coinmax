@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS vault_rewards (
   position_id VARCHAR REFERENCES vault_positions(id) NOT NULL,
   reward_type TEXT NOT NULL,  -- 'DAILY_YIELD', 'PLATFORM_FEE'
   amount NUMERIC NOT NULL,
-  ar_price NUMERIC,           -- AR token price at settlement time (USD)
-  ar_amount NUMERIC,          -- Reward amount in AR tokens (= amount / ar_price)
+  ar_price NUMERIC,           -- MA token price at settlement time (USD)
+  ar_amount NUMERIC,          -- Reward amount in MA tokens (= amount / ar_price)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -557,8 +557,8 @@ END;
 $$;
 
 -- settle_vault_daily: daily yield settlement for vault positions
--- Reads AR_TOKEN_PRICE from system_config to convert USDC yields into AR token amounts.
--- TODO: When LP pool is live, replace AR_TOKEN_PRICE with Uniswap V3 TWAP or Chainlink oracle feed.
+-- Reads MA_TOKEN_PRICE from system_config to convert USDC yields into MA token amounts.
+-- TODO: When LP pool is live, replace MA_TOKEN_PRICE with Uniswap V3 TWAP or Chainlink oracle feed.
 CREATE OR REPLACE FUNCTION settle_vault_daily()
 RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER
@@ -578,8 +578,8 @@ BEGIN
   -- Get platform fee rate from config
   SELECT COALESCE(value::NUMERIC, 0.10) INTO platform_fee_rate FROM system_config WHERE key = 'VAULT_PLATFORM_FEE';
 
-  -- Get AR token price (default 0.1 USD if LP pool not yet live)
-  SELECT COALESCE(value::NUMERIC, 0.10) INTO ar_token_price FROM system_config WHERE key = 'AR_TOKEN_PRICE';
+  -- Get MA token price (default 0.1 USD if LP pool not yet live)
+  SELECT COALESCE(value::NUMERIC, 0.10) INTO ar_token_price FROM system_config WHERE key = 'MA_TOKEN_PRICE';
 
   FOR pos IN
     SELECT vp.*, p.id AS profile_id
@@ -593,7 +593,7 @@ BEGIN
     user_profit := gross_profit - platform_fee;
     user_ar_amount := user_profit / ar_token_price;
 
-    -- Record user yield with AR price snapshot
+    -- Record user yield with MA price snapshot
     INSERT INTO vault_rewards (user_id, position_id, reward_type, amount, ar_price, ar_amount)
     VALUES (pos.user_id, pos.id, 'DAILY_YIELD', user_profit, ar_token_price, user_ar_amount);
 

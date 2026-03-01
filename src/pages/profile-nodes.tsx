@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import { ArrowLeft, Server, WalletCards } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 export default function ProfileNodesPage() {
   const { t } = useTranslation();
   const account = useActiveAccount();
-  const { formatCompactAR } = useArPrice();
+  const { formatCompactMA } = useMaPrice();
   const [, navigate] = useLocation();
   const walletAddr = account?.address || "";
   const isConnected = !!walletAddr;
@@ -60,7 +60,7 @@ export default function ProfileNodesPage() {
                 {isLoading ? (
                   <Skeleton className="h-5 w-12" />
                 ) : (
-                  <div className="text-sm font-bold text-neon-value">{formatCompactAR(totalEarnings)}</div>
+                  <div className="text-sm font-bold text-neon-value">{formatCompactMA(totalEarnings)}</div>
                 )}
               </CardContent>
             </Card>
@@ -70,7 +70,7 @@ export default function ProfileNodesPage() {
                 {isLoading ? (
                   <Skeleton className="h-5 w-12" />
                 ) : (
-                  <div className="text-sm font-bold text-neon-value">{formatCompactAR(poolBalance)}</div>
+                  <div className="text-sm font-bold text-neon-value">{formatCompactMA(poolBalance)}</div>
                 )}
               </CardContent>
             </Card>

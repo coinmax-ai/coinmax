@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
 import { shortenAddress } from "@/lib/constants";
-import { useArPrice } from "@/hooks/use-ar-price";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import { ArrowLeft, TrendingUp, Users, UserPlus, ArrowUpFromLine, WalletCards, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ export default function ProfileCommissionPage() {
   const { t } = useTranslation();
   const account = useActiveAccount();
   const { toast } = useToast();
-  const { formatCompactAR, usdcToAR } = useArPrice();
+  const { formatCompactMA, usdcToMA } = useMaPrice();
   const [, navigate] = useLocation();
   const walletAddr = account?.address || "";
   const isConnected = !!walletAddr;
@@ -68,7 +68,7 @@ export default function ProfileCommissionPage() {
                       <Skeleton className="h-8 w-24" />
                     ) : (
                       <div className="text-2xl font-bold text-neon-value" data-testid="text-total-commission">
-                        {formatCompactAR(availableToWithdraw)}
+                        {formatCompactMA(availableToWithdraw)}
                       </div>
                     )}
                   </div>
@@ -94,7 +94,7 @@ export default function ProfileCommissionPage() {
                     <Skeleton className="h-5 w-16 mx-auto" />
                   ) : (
                     <div className="text-sm font-bold text-neon-value" data-testid="text-direct-total">
-                      {formatCompactAR(directTotal)}
+                      {formatCompactMA(directTotal)}
                     </div>
                   )}
                   <div className="text-[12px] text-muted-foreground">{t("profile.directReferralBonus")}</div>
@@ -107,7 +107,7 @@ export default function ProfileCommissionPage() {
                     <Skeleton className="h-5 w-16 mx-auto" />
                   ) : (
                     <div className="text-sm font-bold text-neon-value" data-testid="text-diff-total">
-                      {formatCompactAR(diffTotal)}
+                      {formatCompactMA(diffTotal)}
                     </div>
                   )}
                   <div className="text-[12px] text-muted-foreground">{t("profile.differentialCommission")}</div>
@@ -196,7 +196,7 @@ export default function ProfileCommissionPage() {
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-sm font-bold text-neon-value">
-                          +{usdcToAR(amount).toFixed(2)} AR
+                          +{usdcToMA(amount).toFixed(2)} MA
                         </div>
                         <div className="text-[10px] text-muted-foreground">{createdAt}</div>
                       </div>
