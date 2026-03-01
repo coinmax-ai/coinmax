@@ -520,7 +520,11 @@ export function PriceChart({
             </div>
           )}
 
-          <div ref={chartContainerRef} className="w-full" style={{ height: 280 }} />
+          <div ref={chartContainerRef} className="w-full tv-hide-logo" style={{ height: 280 }} />
+          {/* Custom branding replacing TV logo */}
+          <div className="absolute bottom-1.5 left-2 text-[9px] font-bold tracking-widest text-white/[0.06] pointer-events-none select-none">
+            NEXA AI
+          </div>
         </div>
       )}
 

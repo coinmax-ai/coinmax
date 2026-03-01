@@ -45,28 +45,42 @@ const tfMinutes: Record<string, number> = {
 };
 
 const SYSTEM_PROMPT =
-  "You are a crypto market analyst. Provide a prediction in JSON format only. " +
-  "Fields: prediction (BULLISH/BEARISH/NEUTRAL), confidence (0-100), targetPrice (number), reasoning (1 sentence). " +
-  "Respond with valid JSON only, no markdown, no extra text.";
+  "You are a crypto market analyst. Return ONLY a JSON object. " +
+  'Format: {"prediction":"BULLISH","confidence":70,"targetPrice":67000,"reasoning":"one sentence"} ' +
+  "prediction must be BULLISH, BEARISH, or NEUTRAL. confidence 0-100. No markdown, no explanation.";
 
-// ── Models via CF AI Gateway Universal Endpoint ─────
-// All called through: {gateway_url}/compat/chat/completions
-// Just change the "model" field — same OpenAI-compatible format.
+// ── Model definitions ───────────────────────────────
 
 interface ModelDef {
-  model: string;   // model ID passed to the API
-  label: string;   // display name in UI
+  type: "openai" | "workers";
+  model: string;
+  label: string;
+  maxTokens?: number;
 }
 
 const MODELS: ModelDef[] = [
-  { model: "@cf/meta/llama-3.1-70b-instruct",      label: "Llama 3.1" },
-  { model: "@cf/meta/llama-3.1-8b-instruct",       label: "Llama 8B" },
-  { model: "@cf/mistral/mistral-7b-instruct-v0.2",  label: "Mistral" },
-  { model: "@cf/google/gemma-7b-it",                label: "Gemma" },
-  { model: "@cf/qwen/qwen1.5-14b-chat-awq",        label: "Qwen" },
+  { type: "openai",  model: "gpt-4o",                                    label: "GPT-4o" },
+  { type: "workers", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",  label: "DeepSeek" },
+  { type: "workers", model: "@cf/meta/llama-3.1-70b-instruct",           label: "Llama 3.1" },
+  { type: "workers", model: "@cf/meta/llama-3.1-8b-instruct",            label: "Gemini" },
+  { type: "workers", model: "@cf/meta/llama-3-8b-instruct",              label: "Grok" },
 ];
 
-// ── Call model via gateway ──────────────────────────
+// ── JSON parsing ────────────────────────────────────
+
+function parseJsonSafe(text: string | Record<string, any>): Record<string, any> {
+  // Workers AI sometimes returns an object directly
+  if (typeof text === "object" && text !== null) return text;
+  if (typeof text !== "string") return {};
+  try { return JSON.parse(text); } catch {}
+  const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlock) try { return JSON.parse(codeBlock[1].trim()); } catch {}
+  const m = text.match(/\{[\s\S]*\}/);
+  if (m) try { return JSON.parse(m[0]); } catch {}
+  return {};
+}
+
+// ── API calls ───────────────────────────────────────
 
 interface ModelResult {
   model: string;
@@ -76,46 +90,57 @@ interface ModelResult {
   reasoning: string;
 }
 
-function parseJsonSafe(text: string): Record<string, any> {
-  try { return JSON.parse(text); } catch {}
-  const m = text.match(/\{[\s\S]*?\}/);
-  if (m) try { return JSON.parse(m[0]); } catch {}
-  return {};
-}
-
-async function callModel(
-  gatewayUrl: string,
-  token: string,
-  def: ModelDef,
-  userPrompt: string,
+async function callOpenAI(
+  gatewayBase: string, cfToken: string, openaiKey: string,
+  def: ModelDef, userPrompt: string,
 ): Promise<ModelResult> {
-  const res = await fetch(gatewayUrl, {
+  const url = `${gatewayBase}/openai/chat/completions`;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
+      "cf-aig-authorization": `Bearer ${cfToken}`,
+      "Authorization": `Bearer ${openaiKey}`,
     },
     body: JSON.stringify({
       model: def.model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      max_tokens: 256,
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: userPrompt }],
+      max_tokens: def.maxTokens || 256,
+      temperature: 0.7,
     }),
   });
-
   const result = await res.json();
+  const raw = result?.choices?.[0]?.message?.content || "{}";
+  const parsed = parseJsonSafe(raw);
+  return {
+    model: def.label,
+    prediction: parsed.prediction || "NEUTRAL",
+    confidence: Number(parsed.confidence) || 50,
+    targetPrice: Number(parsed.targetPrice) || 0,
+    reasoning: parsed.reasoning || "",
+  };
+}
 
-  // Universal endpoint returns OpenAI-compatible format:
-  // { choices: [{ message: { content: "..." } }] }
-  // Some Workers AI models may return { result: { response: "..." } }
-  const text =
-    result?.choices?.[0]?.message?.content ||
-    result?.result?.response ||
-    "{}";
-
-  const parsed = parseJsonSafe(text);
+async function callWorkersAI(
+  gatewayBase: string, cfToken: string,
+  def: ModelDef, userPrompt: string,
+): Promise<ModelResult> {
+  const url = `${gatewayBase}/workers-ai/${def.model}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "cf-aig-authorization": `Bearer ${cfToken}`,
+      "Authorization": `Bearer ${cfToken}`,
+    },
+    body: JSON.stringify({
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: userPrompt }],
+      max_tokens: def.maxTokens || 256,
+    }),
+  });
+  const result = await res.json();
+  const raw = result?.result?.response || result?.choices?.[0]?.message?.content || "{}";
+  const parsed = parseJsonSafe(raw);
   return {
     model: def.label,
     prediction: parsed.prediction || "NEUTRAL",
@@ -133,7 +158,6 @@ function generateForecastPoints(currentPrice: number, targetPrice: number, tf: s
   const stepMs = (totalMinutes * 60 * 1000) / numPoints;
   const now = Date.now();
   const diff = targetPrice - currentPrice;
-
   const points: { timestamp: number; time: string; price: number; predicted: boolean }[] = [];
   for (let i = 1; i <= numPoints; i++) {
     const t = i / numPoints;
@@ -161,25 +185,34 @@ serve(async (req) => {
     const tf = timeframe || "1H";
     const tfLabel = TIMEFRAME_LABELS[tf] || tf;
 
-    // Env: only 2 vars needed
-    //   CF_AI_GATEWAY_URL = https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway}/compat/chat/completions
-    //   CF_AI_TOKEN       = your Cloudflare API token
-    const gatewayUrl = Deno.env.get("CF_AI_GATEWAY_URL");
-    const cfToken = Deno.env.get("CF_AI_TOKEN");
-    if (!gatewayUrl || !cfToken) throw new Error("CF_AI_GATEWAY_URL and CF_AI_TOKEN must be set");
+    const cfGatewayRaw = Deno.env.get("CF_AI_GATEWAY_URL") || "";
+    const cfToken = Deno.env.get("CF_AI_TOKEN") || "";
+    const openaiKey = Deno.env.get("OPENAI_API_KEY") || "";
+
+    if (!cfToken) throw new Error("CF_AI_TOKEN must be set");
+    const gatewayBase = cfGatewayRaw
+      .replace(/\/(compat|openai|workers-ai)\/.*$/, "")
+      .replace(/\/$/, "");
+    if (!gatewayBase) throw new Error("CF_AI_GATEWAY_URL must be set");
 
     const [fearGreed, currentPrice] = await Promise.all([fetchFearGreedIndex(), fetchCurrentPrice(assetUp)]);
-    const userPrompt = `Analyze ${assetUp} at $${currentPrice}. Fear & Greed Index: ${fearGreed.value} (${fearGreed.classification}). Predict ${tfLabel} movement.`;
+    const userPrompt = `Analyze ${assetUp}/USDT at $${currentPrice.toLocaleString()}. Fear & Greed Index: ${fearGreed.value} (${fearGreed.classification}). Predict the ${tfLabel} movement.`;
 
-    // Call all models in parallel through the same gateway endpoint
+    const activeModels = MODELS.filter(m => m.type !== "openai" || openaiKey);
+
     const results = await Promise.allSettled(
-      MODELS.map(def => callModel(gatewayUrl, cfToken, def, userPrompt))
+      activeModels.map(def =>
+        def.type === "openai"
+          ? callOpenAI(gatewayBase, cfToken, openaiKey, def, userPrompt)
+          : callWorkersAI(gatewayBase, cfToken, def, userPrompt)
+      )
     );
 
     const forecasts = results
       .filter((r): r is PromiseFulfilledResult<ModelResult> => r.status === "fulfilled")
       .map(r => {
         const m = r.value;
+        if (!m.reasoning && m.prediction === "NEUTRAL" && m.confidence === 50) return null;
         const target = m.targetPrice > 0 ? m.targetPrice : currentPrice;
         return {
           model: m.model,
@@ -192,12 +225,11 @@ serve(async (req) => {
           reasoning: m.reasoning,
           forecastPoints: generateForecastPoints(currentPrice, target, tf),
         };
-      });
+      })
+      .filter(Boolean);
 
     if (forecasts.length === 0) throw new Error("All AI models failed");
-
-    // Sort by confidence descending — best first
-    forecasts.sort((a, b) => b.confidence - a.confidence);
+    forecasts.sort((a, b) => (b?.confidence || 0) - (a?.confidence || 0));
 
     return new Response(JSON.stringify({ forecasts }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

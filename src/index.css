@@ -308,6 +308,12 @@
       linear-gradient(180deg, hsl(170 28% 5%), hsl(170 30% 3%));
   }
 
+  /* Hide TradingView lightweight-charts attribution logo */
+  .tv-hide-logo [id*="tv-attr-logo"],
+  .tv-hide-logo a[href*="tradingview"] {
+    display: none !important;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
