@@ -20,3 +20,10 @@ attached_assets/
 attached_assets/
 .env
 .env.*
+
+# secrets / pasted assets
+attached_assets/
+.env
+.env.*
+*.pem
+*.key
