@@ -29,6 +29,14 @@ A cryptocurrency trading and portfolio management web application built with Rea
 - Compact model pills use subtle translucent glass style and auto-scroll via CSS marquee animation (`MarqueeRow` component duplicates children for seamless loop, pauses on hover/touch)
 - `prefers-reduced-motion` support disables all animations
 
+## Bottom Navigation
+
+- Frosted glass bar with `backdrop-filter: blur(24px)` and slight transparency
+- Green and red animated glow bars at the top edge that bounce left-right
+- Center diamond icon (Vault) elevated above the bar with a sway animation
+- Left tabs: Home, Trade | Right tabs: Strategy, Profile
+- `prefers-reduced-motion` disables all animations
+
 ## Configuration
 
 - Vite dev server runs on port 5000 (host: 0.0.0.0)
