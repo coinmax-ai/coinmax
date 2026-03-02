@@ -73,6 +73,7 @@ export default function Dashboard() {
     queryFn: () => getAiForecastMulti(selectedAsset, selectedTimeframe),
     staleTime: 3 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    retry: 1,
   });
 
   const allForecasts = multiResult?.forecasts || [];

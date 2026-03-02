@@ -1,7 +1,6 @@
-import { useRef, useState, useEffect, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Minus, Sparkles, Brain, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Sparkles, Brain, Zap, ChevronLeft, ChevronRight, Target, Activity } from "lucide-react";
 import { formatUSD } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
 
@@ -21,199 +20,239 @@ interface AiModelCarouselProps {
   onSelectModel: (model: string) => void;
 }
 
-const MODEL_META: Record<string, { color: string; accent: string; icon: string; gradient: string }> = {
-  "GPT-4o":     { color: "rgba(16,163,127,0.08)",  accent: "#10a37f", icon: "G",  gradient: "from-emerald-500/20 to-emerald-900/5" },
-  "Claude":     { color: "rgba(204,132,63,0.08)",   accent: "#cc843f", icon: "C",  gradient: "from-amber-500/20 to-amber-900/5" },
-  "Gemini":     { color: "rgba(66,133,244,0.08)",   accent: "#4285f4", icon: "Ge", gradient: "from-blue-500/20 to-blue-900/5" },
-  "DeepSeek":   { color: "rgba(99,102,241,0.08)",   accent: "#6366f1", icon: "D",  gradient: "from-indigo-500/20 to-indigo-900/5" },
-  "Grok":       { color: "rgba(239,68,68,0.08)",    accent: "#ef4444", icon: "Gr", gradient: "from-red-500/20 to-red-900/5" },
-  "Llama 3.1":  { color: "rgba(0,136,255,0.08)",    accent: "#0088ff", icon: "L",  gradient: "from-sky-500/20 to-sky-900/5" },
-  "Llama 3.3":  { color: "rgba(0,160,255,0.08)",    accent: "#00a0ff", icon: "L",  gradient: "from-sky-500/20 to-sky-900/5" },
-  "Llama 8B":   { color: "rgba(0,136,255,0.08)",    accent: "#0078dd", icon: "L",  gradient: "from-sky-500/20 to-sky-900/5" },
-  "Mistral":    { color: "rgba(255,116,0,0.08)",    accent: "#ff7400", icon: "M",  gradient: "from-orange-500/20 to-orange-900/5" },
-  "Gemma":      { color: "rgba(66,133,244,0.08)",   accent: "#4285f4", icon: "Gm", gradient: "from-blue-500/20 to-blue-900/5" },
-  "Qwen":       { color: "rgba(115,75,209,0.08)",   accent: "#734bd1", icon: "Q",  gradient: "from-violet-500/20 to-violet-900/5" },
+const MODEL_META: Record<string, { accent: string; icon: string; glow: string }> = {
+  "GPT-4o":     { accent: "#10a37f", icon: "G",  glow: "16,163,127" },
+  "Claude":     { accent: "#cc843f", icon: "C",  glow: "204,132,63" },
+  "Gemini":     { accent: "#4285f4", icon: "Ge", glow: "66,133,244" },
+  "DeepSeek":   { accent: "#6366f1", icon: "D",  glow: "99,102,241" },
+  "Grok":       { accent: "#ef4444", icon: "Gr", glow: "239,68,68" },
+  "Llama 3.1":  { accent: "#0088ff", icon: "L",  glow: "0,136,255" },
+  "Llama 3.3":  { accent: "#00a0ff", icon: "L",  glow: "0,160,255" },
+  "Llama 8B":   { accent: "#0078dd", icon: "L",  glow: "0,120,221" },
+  "Mistral":    { accent: "#ff7400", icon: "M",  glow: "255,116,0" },
+  "Gemma":      { accent: "#4285f4", icon: "Gm", glow: "66,133,244" },
+  "Qwen":       { accent: "#734bd1", icon: "Q",  glow: "115,75,209" },
 };
 
 function getModelMeta(model: string) {
-  return MODEL_META[model] || { color: "rgba(100,100,100,0.08)", accent: "#888", icon: model[0], gradient: "from-gray-500/20 to-gray-900/5" };
+  return MODEL_META[model] || { accent: "#888", icon: model[0], glow: "136,136,136" };
 }
 
-function ConfidenceRing({ value, accent, size = 40 }: { value: number; accent: string; size?: number }) {
+function AnimatedGauge({ value, accent, glow, size = 64 }: { value: number; accent: string; glow: string; size?: number }) {
   const [animValue, setAnimValue] = useState(0);
+  const [showValue, setShowValue] = useState(false);
+
   useEffect(() => {
-    const timer = setTimeout(() => setAnimValue(value), 150);
-    return () => clearTimeout(timer);
+    const t1 = setTimeout(() => setAnimValue(value), 300);
+    const t2 = setTimeout(() => setShowValue(true), 600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [value]);
 
-  const r = size * 0.38;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference - (animValue / 100) * circumference;
+  const sw = 3.5;
+  const r = (size - sw) / 2 - 3;
+  const c = 2 * Math.PI * r;
+  const offset = c - (animValue / 100) * c;
+  const gradId = `ag-${accent.replace('#', '')}-${size}`;
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="relative shrink-0 ai-gauge-container" style={{ width: size, height: size }}>
+      <div className="absolute inset-0 rounded-full ai-gauge-glow" style={{
+        boxShadow: `0 0 20px rgba(${glow},0.15), 0 0 40px rgba(${glow},0.05)`,
+      }} />
       <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" style={{ width: size, height: size }}>
-        <circle
-          cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="3"
+        <circle cx={size/2} cy={size/2} r={r}
+          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={sw} />
+        <circle cx={size/2} cy={size/2} r={r+0.5}
+          fill="none" stroke={`rgba(${glow},0.06)`} strokeWidth={sw+4} />
+        <circle cx={size/2} cy={size/2} r={r}
+          fill="none" stroke={`url(#${gradId})`}
+          strokeWidth={sw} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={offset}
+          className="ai-gauge-arc"
+          style={{ filter: `drop-shadow(0 0 8px rgba(${glow},0.6))` }}
         />
-        <circle
-          cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out"
-          style={{ filter: `drop-shadow(0 0 4px ${accent}60)` }}
-        />
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={accent} stopOpacity="1" />
+            <stop offset="100%" stopColor={accent} stopOpacity="0.3" />
+          </linearGradient>
+        </defs>
       </svg>
-      <span
-        className="absolute inset-0 flex items-center justify-center font-bold"
-        style={{ color: accent, fontSize: size * 0.25 }}
-      >
-        {value}
-      </span>
+      <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${showValue ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+        <span className="text-[18px] font-black tabular-nums leading-none" style={{ color: accent, textShadow: `0 0 12px rgba(${glow},0.4)` }}>{value}</span>
+        <span className="text-[7px] font-semibold text-muted-foreground/50 mt-0.5 tracking-wider">CONF</span>
+      </div>
     </div>
   );
 }
 
-function ModelCard({
+function MiniGauge({ value, accent, glow }: { value: number; accent: string; glow: string }) {
+  const [animValue, setAnimValue] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setAnimValue(value), 200);
+    return () => clearTimeout(t);
+  }, [value]);
+  const size = 32; const sw = 2.5; const r = (size-sw)/2-1;
+  const c = 2*Math.PI*r; const offset = c-(animValue/100)*c;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" style={{ width: size, height: size }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={sw} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={accent}
+          strokeWidth={sw} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={offset}
+          className="ai-gauge-arc"
+          style={{ filter: `drop-shadow(0 0 4px rgba(${glow},0.5))` }}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold tabular-nums" style={{ color: accent }}>{value}</span>
+    </div>
+  );
+}
+
+function FeaturedCard({
   forecast,
-  meta,
   isActive,
-  isBest,
-  isExpanded,
   onSelect,
-  onToggleExpand,
-  index,
 }: {
   forecast: ForecastItem;
-  meta: ReturnType<typeof getModelMeta>;
   isActive: boolean;
-  isBest: boolean;
-  isExpanded: boolean;
   onSelect: () => void;
-  onToggleExpand: () => void;
-  index: number;
 }) {
   const { t } = useTranslation();
+  const [reasonExpanded, setReasonExpanded] = useState(false);
+  const meta = getModelMeta(forecast.model);
   const isBullish = forecast.direction === "BULLISH";
   const isBearish = forecast.direction === "BEARISH";
   const priceDiff = forecast.currentPrice ? ((forecast.targetPrice - forecast.currentPrice) / forecast.currentPrice * 100) : 0;
+  const dirColor = isBullish ? "#00e7a0" : isBearish ? "#ff4976" : "#facc15";
+  const dirGlow = isBullish ? "0,231,160" : isBearish ? "255,73,118" : "250,204,21";
 
   return (
     <div
-      className={`glass-card group relative overflow-hidden rounded-2xl transition-all duration-500 ${
-        isActive
-          ? "scale-[1.01]"
-          : "hover:scale-[1.005]"
-      }`}
+      onClick={onSelect}
+      className="ai-featured-card w-full text-left relative overflow-hidden rounded-2xl active:scale-[0.985] transition-transform duration-200 cursor-pointer"
       style={{
-        animation: `fadeSlideIn 0.5s ease-out ${index * 80}ms both`,
-        ...(isActive ? {
-          boxShadow: `0 0 20px ${meta.accent}20, 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)`,
-        } : {}),
+        background: `linear-gradient(165deg, rgba(${meta.glow},0.12) 0%, rgba(12,20,16,0.97) 35%, rgba(8,14,11,0.99) 100%)`,
+        border: `1px solid rgba(${meta.glow},${isActive ? '0.35' : '0.12'})`,
+        boxShadow: isActive
+          ? `0 0 40px rgba(${meta.glow},0.12), 0 8px 32px rgba(0,0,0,0.5)`
+          : `0 4px 20px rgba(0,0,0,0.4)`,
       }}
     >
-      <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse 80% 60% at 20% 0%, ${meta.accent}15 0%, transparent 70%)`,
-        }}
+      <div className="ai-shimmer-sweep" style={{ '--shimmer-color': `rgba(${meta.glow},0.06)` } as React.CSSProperties} />
+
+      <div className="absolute top-0 left-0 right-0 h-[1px] ai-top-glow"
+        style={{ background: `linear-gradient(90deg, transparent 5%, rgba(${meta.glow},0.5) 50%, transparent 95%)` }}
       />
 
-      <div className="absolute inset-0 pointer-events-none rounded-2xl"
-        style={{
-          border: isActive ? `1px solid ${meta.accent}40` : '1px solid rgba(255,255,255,0.06)',
-        }}
+      <div className="absolute -top-12 -right-12 w-40 h-40 pointer-events-none ai-corner-orb"
+        style={{ background: `radial-gradient(circle, rgba(${meta.glow},0.15) 0%, transparent 60%)` }}
+      />
+      <div className="absolute -bottom-8 -left-8 w-32 h-32 pointer-events-none opacity-50"
+        style={{ background: `radial-gradient(circle, rgba(${dirGlow},0.08) 0%, transparent 60%)` }}
       />
 
-      <button
-        className="relative w-full text-left p-3.5"
-        onClick={onSelect}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="relative h-9 w-9 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
-            style={{
-              backgroundColor: `${meta.accent}20`,
-              color: meta.accent,
-              boxShadow: `0 0 12px ${meta.accent}15`,
-            }}
-          >
-            {meta.icon}
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: `linear-gradient(135deg, ${meta.accent}30 0%, transparent 60%)`,
-              }}
-            />
-          </div>
-
+      <div className="relative p-4">
+        <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold text-foreground/90 truncate">{forecast.model}</span>
-              {isBest && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[8px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                  <Zap className="h-1.5 w-1.5" />
-                  TOP
-                </span>
-              )}
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="relative">
+                <div
+                  className="h-8 w-8 rounded-lg flex items-center justify-center text-[11px] font-black ai-model-icon"
+                  style={{
+                    background: `linear-gradient(135deg, ${meta.accent}, rgba(${meta.glow},0.5))`,
+                    color: "#fff",
+                    boxShadow: `0 3px 12px rgba(${meta.glow},0.35)`,
+                  }}
+                >
+                  {meta.icon}
+                </div>
+                <div className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 border-2 ai-best-dot"
+                  style={{ borderColor: 'rgba(8,14,11,0.9)' }}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-foreground tracking-tight">{forecast.model}</span>
+                  <span className="ai-best-badge inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-widest"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05))',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(251,191,36,0.2)',
+                      boxShadow: '0 0 8px rgba(251,191,36,0.1)',
+                    }}
+                  >
+                    <Zap className="h-2 w-2" />
+                    Best
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {isBullish ? (
-                <TrendingUp className="h-3 w-3 text-[#00e7a0]" />
-              ) : isBearish ? (
-                <TrendingDown className="h-3 w-3 text-[#ff4976]" />
-              ) : (
-                <Minus className="h-3 w-3 text-yellow-400" />
-              )}
-              <span className={`text-[11px] font-bold ${isBullish ? "text-[#00e7a0]" : isBearish ? "text-[#ff4976]" : "text-yellow-400"}`}>
-                {forecast.direction}
-              </span>
-              <span className={`text-[11px] font-mono font-bold ${priceDiff >= 0 ? "text-[#00e7a0]" : "text-[#ff4976]"}`}>
+
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="ai-direction-badge flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                style={{
+                  background: `rgba(${dirGlow},0.1)`,
+                  border: `1px solid rgba(${dirGlow},0.2)`,
+                  boxShadow: `0 0 12px rgba(${dirGlow},0.06)`,
+                }}
+              >
+                {isBullish ? (
+                  <TrendingUp className="h-3.5 w-3.5" style={{ color: dirColor }} />
+                ) : isBearish ? (
+                  <TrendingDown className="h-3.5 w-3.5" style={{ color: dirColor }} />
+                ) : (
+                  <Minus className="h-3.5 w-3.5" style={{ color: dirColor }} />
+                )}
+                <span className="text-[12px] font-extrabold tracking-wide" style={{ color: dirColor }}>
+                  {forecast.direction}
+                </span>
+              </div>
+              <span className={`text-[14px] font-mono font-bold ai-pct-value ${priceDiff >= 0 ? "text-[#00e7a0]" : "text-[#ff4976]"}`}
+                style={{ textShadow: `0 0 8px rgba(${priceDiff >= 0 ? '0,231,160' : '255,73,118'},0.3)` }}
+              >
                 {priceDiff >= 0 ? "+" : ""}{priceDiff.toFixed(2)}%
               </span>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Target className="h-3 w-3 text-muted-foreground/40" />
+              <span className="text-[10px] text-muted-foreground/50 font-medium">{t("dashboard.target")}</span>
+              <span className="font-mono font-bold text-foreground/90 text-[16px] tracking-tight"
+                style={{ textShadow: '0 0 12px rgba(255,255,255,0.06)' }}
+              >
+                {formatUSD(forecast.targetPrice)}
+              </span>
+            </div>
           </div>
 
-          <ConfidenceRing value={forecast.confidence} accent={meta.accent} size={42} />
+          <AnimatedGauge value={forecast.confidence} accent={meta.accent} glow={meta.glow} size={68} />
         </div>
 
-        <div className="flex items-center justify-between mt-2.5 pt-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-          <span className="text-[10px] text-muted-foreground">{t("dashboard.target")}</span>
-          <span className="text-[13px] font-mono font-bold text-foreground/85">
-            {formatUSD(forecast.targetPrice)}
-          </span>
-        </div>
-      </button>
-
-      <div
-        className={`overflow-hidden transition-all duration-400 ease-out ${isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}
-      >
-        <div className="px-3.5 pb-3.5 pt-0">
-          <div className="glass-inner rounded-xl p-2.5">
-            <p className="text-[10px] text-muted-foreground/90 leading-relaxed max-h-24 overflow-y-auto scrollbar-hide">
-              <Sparkles className="inline h-2.5 w-2.5 mr-1 text-amber-400/80" />
-              {forecast.reasoning}
-            </p>
+        {forecast.reasoning && (
+          <div className="mt-3 pt-3 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            <div
+              className="cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setReasonExpanded(prev => !prev); }}
+            >
+              <p className={`text-[10px] text-muted-foreground/60 leading-relaxed ai-reasoning-text ${reasonExpanded ? '' : 'line-clamp-2'}`}>
+                <Sparkles className="inline h-2.5 w-2.5 mr-1 text-amber-400/50 ai-sparkle-icon" />
+                {forecast.reasoning}
+              </p>
+              <span className="text-[8px] text-muted-foreground/35 mt-1 inline-block font-medium tracking-wide">
+                {reasonExpanded ? 'SHOW LESS' : 'READ MORE'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-        className="w-full flex items-center justify-center py-1.5 text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}
-      >
-        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
-
       {isActive && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[2px]"
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] ai-active-bar"
           style={{
-            background: `linear-gradient(90deg, transparent, ${meta.accent}, transparent)`,
-            boxShadow: `0 0 12px ${meta.accent}50`,
+            background: `linear-gradient(90deg, transparent, rgba(${meta.glow},0.8), transparent)`,
+            boxShadow: `0 0 20px rgba(${meta.glow},0.5)`,
           }}
         />
       )}
@@ -221,115 +260,272 @@ function ModelCard({
   );
 }
 
+function CompactModelPill({
+  forecast,
+  isActive,
+  onSelect,
+  delay,
+}: {
+  forecast: ForecastItem;
+  isActive: boolean;
+  onSelect: () => void;
+  delay: number;
+}) {
+  const meta = getModelMeta(forecast.model);
+  const isBullish = forecast.direction === "BULLISH";
+  const isBearish = forecast.direction === "BEARISH";
+  const priceDiff = forecast.currentPrice ? ((forecast.targetPrice - forecast.currentPrice) / forecast.currentPrice * 100) : 0;
+  const dirColor = isBullish ? "#00e7a0" : isBearish ? "#ff4976" : "#facc15";
+
+  return (
+    <button
+      onClick={onSelect}
+      className="ai-compact-pill shrink-0 snap-start relative overflow-hidden rounded-xl transition-all duration-300 active:scale-[0.96]"
+      style={{
+        width: 150,
+        animationDelay: `${delay}ms`,
+        background: isActive
+          ? `linear-gradient(150deg, rgba(${meta.glow},0.12) 0%, rgba(12,20,16,0.95) 100%)`
+          : 'linear-gradient(150deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.15) 100%)',
+        border: isActive ? `1px solid rgba(${meta.glow},0.3)` : '1px solid rgba(255,255,255,0.05)',
+        boxShadow: isActive
+          ? `0 0 20px rgba(${meta.glow},0.1), 0 4px 16px rgba(0,0,0,0.3)`
+          : '0 2px 8px rgba(0,0,0,0.2)',
+      }}
+    >
+      {isActive && (
+        <div className="absolute top-0 left-0 right-0 h-[1px]"
+          style={{ background: `linear-gradient(90deg, transparent, rgba(${meta.glow},0.5), transparent)` }}
+        />
+      )}
+
+      <div className="p-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-black shrink-0"
+              style={{
+                background: isActive
+                  ? `linear-gradient(135deg, ${meta.accent}, rgba(${meta.glow},0.5))`
+                  : `rgba(${meta.glow},0.12)`,
+                color: isActive ? "#fff" : meta.accent,
+                boxShadow: isActive ? `0 2px 10px rgba(${meta.glow},0.3)` : 'none',
+              }}
+            >
+              {meta.icon}
+            </div>
+            <span className={`text-[11px] font-bold truncate ${isActive ? 'text-foreground/95' : 'text-foreground/55'}`}>
+              {forecast.model}
+            </span>
+          </div>
+          <MiniGauge value={forecast.confidence} accent={meta.accent} glow={meta.glow} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {isBullish ? (
+              <TrendingUp className="h-2.5 w-2.5" style={{ color: dirColor }} />
+            ) : isBearish ? (
+              <TrendingDown className="h-2.5 w-2.5" style={{ color: dirColor }} />
+            ) : (
+              <Minus className="h-2.5 w-2.5" style={{ color: dirColor }} />
+            )}
+            <span className="text-[9px] font-bold" style={{ color: dirColor }}>
+              {forecast.direction}
+            </span>
+          </div>
+          <span className={`text-[10px] font-mono font-bold ${priceDiff >= 0 ? "text-[#00e7a0]" : "text-[#ff4976]"}`}>
+            {priceDiff >= 0 ? "+" : ""}{priceDiff.toFixed(2)}%
+          </span>
+        </div>
+      </div>
+
+      {isActive && (
+        <div className="absolute bottom-0 left-0 right-0 h-[1.5px]"
+          style={{
+            background: `linear-gradient(90deg, transparent, rgba(${meta.glow},0.6), transparent)`,
+            boxShadow: `0 0 8px rgba(${meta.glow},0.3)`,
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
 export function AiModelCarousel({ forecasts, isLoading, activeModel, onSelectModel }: AiModelCarouselProps) {
   const { t } = useTranslation();
-  const [expandedModel, setExpandedModel] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const toggleExpand = useCallback((model: string) => {
-    setExpandedModel(prev => prev === model ? null : model);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(t);
   }, []);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 5);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 5);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', updateScrollState, { passive: true });
+      return () => el.removeEventListener('scroll', updateScrollState);
+    }
+  }, [updateScrollState, forecasts]);
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir === "left" ? -160 : 160, behavior: "smooth" });
+  };
+
+  const sorted = useMemo(() => {
+    if (!forecasts) return [];
+    return [...forecasts].sort((a, b) => b.confidence - a.confidence);
+  }, [forecasts]);
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-4 rounded" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-        <div className="space-y-2.5">
+      <div className="space-y-3 ai-section-loading">
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-[160px] w-full rounded-2xl" />
+        <div className="flex gap-2 overflow-hidden">
           {[0, 1, 2].map(i => (
-            <Skeleton key={i} className="h-[100px] w-full rounded-2xl" />
+            <Skeleton key={i} className="h-[80px] w-[150px] rounded-xl shrink-0" />
           ))}
         </div>
       </div>
     );
   }
 
-  if (!forecasts || forecasts.length === 0) return null;
+  if (!sorted || sorted.length === 0) return null;
 
-  const bullCount = forecasts.filter(f => f.direction === "BULLISH").length;
-  const bearCount = forecasts.filter(f => f.direction === "BEARISH").length;
+  const bullCount = sorted.filter(f => f.direction === "BULLISH").length;
+  const bearCount = sorted.filter(f => f.direction === "BEARISH").length;
   const consensus = bullCount > bearCount ? "BULLISH" : bearCount > bullCount ? "BEARISH" : "MIXED";
   const consensusColor = consensus === "BULLISH" ? "#00e7a0" : consensus === "BEARISH" ? "#ff4976" : "#facc15";
+  const consensusGlow = consensus === "BULLISH" ? "0,231,160" : consensus === "BEARISH" ? "255,73,118" : "250,204,21";
 
-  const visibleForecasts = showAll ? forecasts : forecasts.slice(0, 3);
+  const bestForecast = sorted[0];
+  const otherForecasts = sorted.slice(1);
 
   return (
-    <div className="space-y-3">
-      <div className="glass-card rounded-2xl p-3.5 overflow-hidden relative">
-        <div
-          className="absolute inset-0 pointer-events-none opacity-30"
-          style={{
-            background: `radial-gradient(ellipse 100% 80% at 50% 0%, ${consensusColor}10 0%, transparent 60%)`,
-          }}
+    <div className={`ai-analysis-section space-y-3 ${mounted ? 'ai-mounted' : ''}`}>
+      <div className="ai-header-card relative overflow-hidden rounded-2xl p-3.5"
+        style={{
+          background: `linear-gradient(140deg, rgba(${consensusGlow},0.08) 0%, rgba(12,20,16,0.95) 50%, rgba(8,14,11,0.98) 100%)`,
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.3)`,
+        }}
+      >
+        <div className="ai-header-scanline" style={{ '--scan-color': `rgba(${consensusGlow},0.4)` } as React.CSSProperties} />
+
+        <div className="absolute top-0 left-0 right-0 h-[1px]"
+          style={{ background: `linear-gradient(90deg, transparent 15%, rgba(${consensusGlow},0.25) 50%, transparent 85%)` }}
         />
-        <div className="absolute inset-0 pointer-events-none rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />
 
         <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-violet-500/10 flex items-center justify-center">
-              <Brain className="h-4 w-4 text-violet-400" />
+          <div className="flex items-center gap-3">
+            <div className="relative h-9 w-9 rounded-xl flex items-center justify-center overflow-hidden ai-brain-icon"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))',
+                border: '1px solid rgba(139,92,246,0.2)',
+                boxShadow: '0 0 16px rgba(139,92,246,0.1)',
+              }}
+            >
+              <Brain className="h-4.5 w-4.5 text-violet-400" />
             </div>
             <div>
-              <span className="text-[13px] font-bold text-foreground/90 tracking-wide">AI Analysis</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-bold text-foreground/95 tracking-tight">AI Analysis</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40" style={{ backgroundColor: consensusColor }} />
+                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: consensusColor, boxShadow: `0 0 6px ${consensusColor}` }} />
+                </span>
+              </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] text-muted-foreground">{forecasts.length} models</span>
+                <Activity className="h-2.5 w-2.5 text-muted-foreground/40" />
+                <span className="text-[9px] text-muted-foreground/45 font-medium tracking-wide">{sorted.length} models analyzed</span>
               </div>
             </div>
           </div>
-          <Badge
-            variant="outline"
-            className="text-[10px] font-bold border-0 px-2 py-0.5"
+
+          <div className="ai-consensus-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
             style={{
-              backgroundColor: `${consensusColor}12`,
-              color: consensusColor,
-              boxShadow: `0 0 12px ${consensusColor}10`,
+              background: `linear-gradient(135deg, rgba(${consensusGlow},0.12), rgba(${consensusGlow},0.04))`,
+              border: `1px solid rgba(${consensusGlow},0.2)`,
+              boxShadow: `0 0 16px rgba(${consensusGlow},0.08)`,
             }}
           >
-            {consensus === "BULLISH" ? <TrendingUp className="h-3 w-3 mr-1" /> : consensus === "BEARISH" ? <TrendingDown className="h-3 w-3 mr-1" /> : <Minus className="h-3 w-3 mr-1" />}
-            {consensus} {bullCount}/{forecasts.length}
-          </Badge>
+            {consensus === "BULLISH" ? <TrendingUp className="h-3.5 w-3.5" style={{ color: consensusColor }} /> : consensus === "BEARISH" ? <TrendingDown className="h-3.5 w-3.5" style={{ color: consensusColor }} /> : <Minus className="h-3.5 w-3.5" style={{ color: consensusColor }} />}
+            <span className="text-[11px] font-extrabold tracking-wide" style={{ color: consensusColor, textShadow: `0 0 8px rgba(${consensusGlow},0.3)` }}>
+              {consensus}
+            </span>
+            <span className="text-[9px] font-bold text-muted-foreground/40 ml-0.5">{bullCount}/{sorted.length}</span>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        {visibleForecasts.map((f, idx) => {
-          const meta = getModelMeta(f.model);
-          return (
-            <ModelCard
-              key={f.model}
-              forecast={f}
-              meta={meta}
-              isActive={activeModel === f.model}
-              isBest={idx === 0}
-              isExpanded={expandedModel === f.model}
-              onSelect={() => onSelectModel(f.model)}
-              onToggleExpand={() => toggleExpand(f.model)}
-              index={idx}
-            />
-          );
-        })}
+      <div className="ai-featured-wrapper">
+        <FeaturedCard
+          forecast={bestForecast}
+          isActive={activeModel === bestForecast.model || !activeModel}
+          onSelect={() => onSelectModel(bestForecast.model)}
+        />
       </div>
 
-      {forecasts.length > 3 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="glass-card w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground/80 transition-all duration-300 relative overflow-hidden"
-          style={{ border: '1px solid rgba(255,255,255,0.05)' }}
-        >
-          {showAll ? (
-            <>
-              <ChevronUp className="h-3 w-3" />
-              Show Less
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-3 w-3" />
-              Show {forecasts.length - 3} More Models
-            </>
+      {otherForecasts.length > 0 && (
+        <div className="relative ai-pills-section">
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll("left")}
+              className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90"
+              style={{
+                background: 'rgba(8,14,11,0.95)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <ChevronLeft className="h-3.5 w-3.5 text-foreground/70" />
+            </button>
           )}
-        </button>
+          {canScrollRight && (
+            <button
+              onClick={() => scroll("right")}
+              className="absolute -right-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90"
+              style={{
+                background: 'rgba(8,14,11,0.95)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <ChevronRight className="h-3.5 w-3.5 text-foreground/70" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1"
+          >
+            {otherForecasts.map((f, idx) => (
+              <CompactModelPill
+                key={f.model}
+                forecast={f}
+                isActive={activeModel === f.model}
+                onSelect={() => onSelectModel(f.model)}
+                delay={idx * 60}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

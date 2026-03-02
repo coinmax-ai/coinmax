@@ -483,3 +483,279 @@
   0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px var(--gauge-color)); }
   50% { opacity: 1; filter: drop-shadow(0 0 8px var(--gauge-color)); }
 }
+
+/* ═══════ AI Analysis Section Animations ═══════ */
+
+.ai-analysis-section {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ai-analysis-section.ai-mounted {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ai-header-card {
+  animation: aiSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ai-header-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ai-header-scanline::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--scan-color), transparent);
+  animation: aiScanDown 4s linear infinite;
+}
+
+.ai-brain-icon {
+  animation: aiBrainPulse 3s ease-in-out infinite;
+}
+
+.ai-consensus-badge {
+  animation: aiSlideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.ai-featured-card {
+  animation: aiFeaturedIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.ai-shimmer-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ai-shimmer-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    var(--shimmer-color, rgba(255,255,255,0.03)) 50%,
+    transparent 60%
+  );
+  animation: aiShimmerSweep 4s ease-in-out infinite;
+}
+
+.ai-corner-orb {
+  animation: aiOrbFloat 6s ease-in-out infinite;
+}
+
+.ai-gauge-container {
+  animation: aiGaugeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+.ai-gauge-glow {
+  animation: aiGaugeGlow 3s ease-in-out infinite;
+}
+
+.ai-gauge-arc {
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-model-icon {
+  animation: aiIconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+.ai-best-dot {
+  animation: aiBestDotPulse 2s ease-in-out infinite;
+}
+
+.ai-best-badge {
+  animation: aiBestGlow 2.5s ease-in-out infinite;
+}
+
+.ai-direction-badge {
+  animation: aiDirectionIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.ai-pct-value {
+  animation: aiValueIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+.ai-sparkle-icon {
+  animation: aiSparkle 2s ease-in-out infinite;
+}
+
+.ai-active-bar {
+  animation: aiActiveBarPulse 2s ease-in-out infinite;
+}
+
+.ai-reasoning-text {
+  animation: aiReasoningIn 0.6s ease-out 0.4s both;
+}
+
+.ai-compact-pill {
+  animation: aiPillSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ai-top-glow {
+  animation: aiTopGlowPulse 3s ease-in-out infinite;
+}
+
+.ai-featured-wrapper {
+  animation: aiSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.ai-pills-section {
+  animation: aiSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+@keyframes aiSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aiSlideLeft {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aiFeaturedIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes aiScanDown {
+  0% { top: -2px; opacity: 0; }
+  5% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes aiBrainPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(139,92,246,0.1); transform: scale(1); }
+  50% { box-shadow: 0 0 20px rgba(139,92,246,0.25); transform: scale(1.04); }
+}
+
+@keyframes aiShimmerSweep {
+  0% { left: -100%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 150%; opacity: 0; }
+}
+
+@keyframes aiOrbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+  33% { transform: translate(-4px, 3px) scale(1.05); opacity: 0.25; }
+  66% { transform: translate(3px, -2px) scale(0.97); opacity: 0.18; }
+}
+
+@keyframes aiGaugeIn {
+  from { opacity: 0; transform: scale(0.6) rotate(-90deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes aiGaugeGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes aiIconPop {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes aiBestDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(251,191,36,0); }
+}
+
+@keyframes aiBestGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(251,191,36,0.1); }
+  50% { box-shadow: 0 0 16px rgba(251,191,36,0.2); }
+}
+
+@keyframes aiDirectionIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aiValueIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aiSparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+  25% { transform: scale(1.2) rotate(10deg); opacity: 0.8; }
+  50% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+  75% { transform: scale(1.1) rotate(-5deg); opacity: 0.7; }
+}
+
+@keyframes aiActiveBarPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes aiReasoningIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aiPillSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes aiTopGlowPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-analysis-section,
+  .ai-header-card,
+  .ai-consensus-badge,
+  .ai-featured-card,
+  .ai-gauge-container,
+  .ai-model-icon,
+  .ai-direction-badge,
+  .ai-pct-value,
+  .ai-reasoning-text,
+  .ai-compact-pill,
+  .ai-featured-wrapper,
+  .ai-pills-section {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ai-analysis-section {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ai-shimmer-sweep::after,
+  .ai-header-scanline::before {
+    animation: none !important;
+  }
+  .ai-brain-icon,
+  .ai-gauge-glow,
+  .ai-best-dot,
+  .ai-best-badge,
+  .ai-sparkle-icon,
+  .ai-active-bar,
+  .ai-corner-orb,
+  .ai-top-glow {
+    animation: none !important;
+  }
+  .ai-gauge-arc {
+    transition-duration: 0.3s !important;
+  }
+}
