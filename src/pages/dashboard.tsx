@@ -107,15 +107,18 @@ export default function Dashboard() {
       >
         <div className="flex items-start justify-between gap-2">
           <PriceHeader coin={selectedCoin} isLoading={pricesLoading} />
-          <Button
-            size="icon"
-            variant="ghost"
+          <button
             onClick={() => navigate(`/market?coin=${selectedAsset}`)}
-            className="mt-0.5 shrink-0 h-7 w-7"
+            className="mt-0.5 shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 active:translate-y-[1px] active:shadow-none"
+            style={{
+              background: "linear-gradient(145deg, rgba(0,231,160,0.2) 0%, rgba(0,180,130,0.12) 100%)",
+              border: "1px solid rgba(0,231,160,0.25)",
+              boxShadow: "0 2px 8px rgba(0,231,160,0.15), inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.3)",
+            }}
             data-testid="button-market-analysis"
           >
-            <BarChart3 className="h-4 w-4" />
-          </Button>
+            <BarChart3 className="h-4 w-4 text-[#00e7a0]" />
+          </button>
         </div>
         <PriceChart
           ohlcData={klineData}

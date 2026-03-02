@@ -239,10 +239,15 @@ function FearGreedChart({ data, coinSymbol }: { data: { date: string; fgi: numbe
   );
 }
 
-/* ───────── Price Calendar (6-tier, hover glow, monthly summary) ───────── */
+/* ───────── Price Calendar ───────── */
+const WEEKDAYS_ZH = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
 function PriceCalendar({ data }: { data: CalendarData | undefined }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [monthOffset, setMonthOffset] = useState(0);
+  const isZh = i18n.language?.startsWith("zh");
+  const weekdays = isZh ? WEEKDAYS_ZH : WEEKDAYS;
+
   const calendarData = useMemo(() => {
     if (!data?.dailyChanges?.length) return null;
     const now = new Date();
@@ -252,16 +257,21 @@ function PriceCalendar({ data }: { data: CalendarData | undefined }) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const changeMap = new Map<number, number>();
     for (const dc of data.dailyChanges) { const d = new Date(dc.date); if (d.getFullYear() === year && d.getMonth() === month) changeMap.set(dc.day, dc.change); }
-    return { firstDayOfWeek, daysInMonth, changeMap, monthName: targetMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" }) };
-  }, [data, monthOffset]);
+    const monthLabel = isZh
+      ? `${targetMonth.toLocaleDateString("zh-CN", { month: "long" })} ${year}`
+      : targetMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const today = new Date();
+    const todayDay = (today.getFullYear() === year && today.getMonth() === month) ? today.getDate() : (monthOffset < 0 ? daysInMonth + 1 : 0);
+    return { firstDayOfWeek, daysInMonth, changeMap, monthName: monthLabel, todayDay, isCurrentMonth: monthOffset === 0 };
+  }, [data, monthOffset, isZh]);
 
   if (!calendarData) return <Skeleton className="h-64 w-full rounded-md" />;
-  const { firstDayOfWeek, daysInMonth, changeMap, monthName } = calendarData;
+  const { firstDayOfWeek, daysInMonth, changeMap, monthName, todayDay } = calendarData;
   const cells: (null | { day: number; change: number | undefined })[] = [];
   for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, change: changeMap.get(d) });
+  while (cells.length % 7 !== 0) cells.push(null);
 
-  // Monthly gain/loss summary
   const changes = Array.from(changeMap.values());
   const gainDays = changes.filter(c => c > 0).length;
   const lossDays = changes.filter(c => c < 0).length;
@@ -269,74 +279,100 @@ function PriceCalendar({ data }: { data: CalendarData | undefined }) {
 
   return (
     <div data-testid="price-calendar">
-      {/* Calendar header with icon */}
-      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-        <Button
-          size="icon" variant="ghost"
-          className="rounded-full border border-border/40 h-7 w-7"
+      <div className="flex items-center justify-end gap-3 mb-4">
+        <button
           onClick={() => setMonthOffset(o => o - 1)}
+          className="text-muted-foreground hover:text-foreground transition-colors"
           data-testid="button-prev-month"
         >
           <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="text-sm font-bold" data-testid="text-calendar-month">{monthName}</span>
-        </div>
-        <Button
-          size="icon" variant="ghost"
-          className="rounded-full border border-border/40 h-7 w-7"
+        </button>
+        <span className="text-sm font-semibold tracking-wide" data-testid="text-calendar-month">{monthName}</span>
+        <button
           onClick={() => setMonthOffset(o => Math.min(o + 1, 0))}
+          className={`transition-colors ${monthOffset >= 0 ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:text-foreground"}`}
           disabled={monthOffset >= 0}
           data-testid="button-next-month"
         >
           <ChevronRight className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
 
-      {/* Monthly summary row */}
-      {changes.length > 0 && (
-        <div className="flex items-center justify-between gap-2 mb-2 px-1 text-[11px]">
-          <span className="text-muted-foreground">{changes.length} days</span>
-          <div className="flex items-center gap-3">
-            <span className="text-emerald-400 font-medium">{gainDays} <TrendingUp className="inline h-3 w-3" /></span>
-            <span className="text-red-400 font-medium">{lossDays} <TrendingDown className="inline h-3 w-3" /></span>
-            <span className={`font-bold font-mono tabular-nums ${totalChange >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {totalChange >= 0 ? "+" : ""}{totalChange.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-7 gap-[2px] mb-1">
-        {WEEKDAYS.map((wd) => (<div key={wd} className="text-center text-[12px] text-muted-foreground font-medium py-1">{wd}</div>))}
+      <div className="grid grid-cols-7 mb-2">
+        {weekdays.map((wd) => (
+          <div key={wd} className="text-center text-[11px] text-muted-foreground/60 font-medium py-1.5">{wd}</div>
+        ))}
       </div>
-      <div className="grid grid-cols-7 gap-[2px]">
+
+      <div className="grid grid-cols-7">
         {cells.map((cell, i) => {
-          if (!cell) return <div key={`empty-${i}`} className="h-12" />;
-          const change = cell.change; const hasData = change !== undefined;
-          // 6-tier color intensity
-          let bgClass = "bg-card/30"; let textColor = "text-muted-foreground";
+          if (!cell) return <div key={`empty-${i}`} className="aspect-square" />;
+          const change = cell.change;
+          const hasData = change !== undefined;
+          const isFuture = cell.day > todayDay;
+          const isToday = cell.day === todayDay;
+
+          let cellBg = "rgba(255,255,255,0.02)";
+          let changeColor = "rgba(180,195,190,0.4)";
+          let cellShadow = "none";
           if (hasData) {
-            if (change > 5)       { bgClass = "bg-emerald-500/60"; textColor = "text-emerald-200"; }
-            else if (change > 3)  { bgClass = "bg-emerald-500/45"; textColor = "text-emerald-300"; }
-            else if (change > 0)  { bgClass = "bg-emerald-500/25"; textColor = "text-emerald-400"; }
-            else if (change > -3) { bgClass = "bg-red-500/25"; textColor = "text-red-400"; }
-            else if (change > -5) { bgClass = "bg-red-500/45"; textColor = "text-red-300"; }
-            else                  { bgClass = "bg-red-500/60"; textColor = "text-red-200"; }
+            if (change > 5)       { cellBg = "rgba(0,231,160,0.25)"; changeColor = "#00e7a0"; }
+            else if (change > 2)  { cellBg = "rgba(0,231,160,0.15)"; changeColor = "#00e7a0"; }
+            else if (change > 0)  { cellBg = "rgba(0,231,160,0.07)"; changeColor = "rgba(0,231,160,0.8)"; }
+            else if (change > -2) { cellBg = "rgba(255,73,118,0.07)"; changeColor = "rgba(255,73,118,0.8)"; }
+            else if (change > -5) { cellBg = "rgba(255,73,118,0.15)"; changeColor = "#ff4976"; }
+            else                  { cellBg = "rgba(255,73,118,0.25)"; changeColor = "#ff4976"; }
           }
+
+          if (isFuture) {
+            cellBg = "linear-gradient(145deg, rgba(30,42,36,0.9) 0%, rgba(20,30,25,0.95) 100%)";
+            changeColor = "rgba(180,195,190,0.2)";
+            cellShadow = "0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.2)";
+          }
+
+          const row = Math.floor(i / 7);
+          const col = i % 7;
+          const borderRight = col < 6 ? "1px solid rgba(255,255,255,0.04)" : "none";
+          const borderBottom = row < Math.ceil(cells.length / 7) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none";
+
           return (
             <div
               key={`day-${cell.day}`}
-              className={`h-12 rounded-[3px] flex flex-col items-center justify-center ${bgClass} transition-all duration-200 hover:ring-1 hover:ring-white/20 hover:shadow-[0_0_8px_rgba(255,255,255,0.08)]`}
+              className={`aspect-square flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${isFuture ? "rounded-md m-[1px]" : ""} ${isToday ? "ring-1 ring-[#00e7a0]/40" : ""}`}
+              style={{
+                background: isFuture ? cellBg : undefined,
+                backgroundColor: isFuture ? undefined : (hasData ? cellBg as string : cellBg as string),
+                borderRight: isFuture ? "none" : borderRight,
+                borderBottom: isFuture ? "none" : borderBottom,
+                boxShadow: cellShadow,
+                border: isFuture ? "1px solid rgba(255,255,255,0.05)" : undefined,
+              }}
               data-testid={`calendar-day-${cell.day}`}
             >
-              <span className="text-[12px] text-muted-foreground">{cell.day}</span>
-              {hasData && <span className={`text-[12px] font-bold font-mono tabular-nums ${textColor}`}>{change > 0 ? "+" : ""}{change.toFixed(2)}%</span>}
+              <span className={`text-[11px] leading-none ${isToday ? "text-[#00e7a0] font-bold" : "text-muted-foreground/50"}`}>{cell.day}</span>
+              <span
+                className="text-[10px] font-bold font-mono tabular-nums leading-none"
+                style={{ color: isFuture ? changeColor : (hasData ? changeColor : "rgba(180,195,190,0.25)") }}
+              >
+                {hasData ? `${change > 0 ? "+" : ""}${change.toFixed(2)}%` : "0.00%"}
+              </span>
             </div>
           );
         })}
       </div>
+
+      {changes.length > 0 && (
+        <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="text-muted-foreground/60">{changes.length} {isZh ? "天" : "days"}</span>
+            <span className="text-[#00e7a0] font-medium">{gainDays} <TrendingUp className="inline h-3 w-3" /></span>
+            <span className="text-[#ff4976] font-medium">{lossDays} <TrendingDown className="inline h-3 w-3" /></span>
+          </div>
+          <span className={`text-xs font-bold font-mono tabular-nums ${totalChange >= 0 ? "text-[#00e7a0]" : "text-[#ff4976]"}`}>
+            {totalChange >= 0 ? "+" : ""}{totalChange.toFixed(2)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -402,9 +438,17 @@ export default function MarketPage() {
             </div>
           </div>
         )}
-        <Card className="border-border bg-card/50 backdrop-blur-sm"><CardContent className="p-3">
-          {calLoading ? <Skeleton className="h-64 w-full" /> : <PriceCalendar data={calendarData} />}
-        </CardContent></Card>
+        <div
+          className="rounded-xl overflow-hidden backdrop-blur-sm"
+          style={{
+            background: "linear-gradient(180deg, rgba(15,25,20,0.6) 0%, rgba(10,18,14,0.8) 100%)",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div className="p-3">
+            {calLoading ? <Skeleton className="h-64 w-full" /> : <PriceCalendar data={calendarData} />}
+          </div>
+        </div>
       </div>
 
       {/* ═══ Section 2: Fear & Greed Index ═══ */}
