@@ -17,7 +17,9 @@ interface PredictionGridProps {
 }
 
 function generateCellData(bets: TradeBet[], gridType: "big" | "small", timeframe?: string): (CellData | null)[] {
-  const totalCells = gridType === "big" ? 56 : 120;
+  const cols = gridType === "big" ? 7 : 15;
+  const rows = gridType === "big" ? 8 : 8;
+  const totalCells = cols * rows;
   const seed = timeframe === "30M" ? 17 : timeframe === "4H" ? 31 : timeframe === "1M" ? 53 : 7;
 
   const filledCount = gridType === "big"
@@ -42,31 +44,42 @@ function generateCellData(bets: TradeBet[], gridType: "big" | "small", timeframe
     rawChanges.push(changeSeed < 12 ? 5 + (changeSeed % 10) * 0.5 : (changeSeed % 45) * 0.1);
   }
 
-  const cells: (CellData | null)[] = [];
+  const colData: (CellData | null)[] = [];
   let lastFilledIdx = -1;
 
-  for (let i = 0; i < totalCells; i++) {
-    if (i < rawDirs.length) {
-      const dir = rawDirs[i];
-      const change = rawChanges[i] ?? 0;
-      const isReversal = i > 0 && rawDirs[i] !== rawDirs[i - 1];
-      cells.push({
-        direction: dir,
-        change,
-        isOver5: change >= 5,
-        isReversal,
-        isLatest: false,
-      });
-      lastFilledIdx = i;
-    } else {
-      cells.push(null);
-    }
+  for (let i = 0; i < filledCount && i < rawDirs.length; i++) {
+    const dir = rawDirs[i];
+    const change = rawChanges[i] ?? 0;
+    const isReversal = i > 0 && rawDirs[i] !== rawDirs[i - 1];
+    colData.push({
+      direction: dir,
+      change,
+      isOver5: change >= 5,
+      isReversal,
+      isLatest: false,
+    });
+    lastFilledIdx = i;
+  }
+  for (let i = colData.length; i < totalCells; i++) {
+    colData.push(null);
   }
 
-  if (lastFilledIdx >= 0 && cells[lastFilledIdx]) {
-    cells[lastFilledIdx] = { ...cells[lastFilledIdx]!, isLatest: true };
+  if (lastFilledIdx >= 0 && colData[lastFilledIdx]) {
+    colData[lastFilledIdx] = { ...colData[lastFilledIdx]!, isLatest: true };
   }
-  return cells;
+
+  if (gridType === "big") {
+    const grid: (CellData | null)[] = new Array(totalCells).fill(null);
+    for (let seq = 0; seq < totalCells; seq++) {
+      const col = Math.floor(seq / rows);
+      const row = seq % rows;
+      const gridIdx = row * cols + col;
+      grid[gridIdx] = colData[seq];
+    }
+    return grid;
+  }
+
+  return colData;
 }
 
 function BigRoadGrid({ cells, visibleCount }: { cells: (CellData | null)[]; visibleCount: number }) {
@@ -103,7 +116,10 @@ function BigRoadGrid({ cells, visibleCount }: { cells: (CellData | null)[]; visi
 
             if (!cell) return <div key={i} style={gridBorder} />;
 
-            const isVisible = i < visibleCount;
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const seqIdx = col * rows + row;
+            const isVisible = seqIdx < visibleCount;
             const isUp = cell.direction === "up";
 
             const upBg = "rgba(100,160,40,0.35)";
