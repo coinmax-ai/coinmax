@@ -68,7 +68,15 @@
     "target": "目标",
     "aiForecast": "AI 预测",
     "sentimentIndex": "情绪指数",
-    "priceLabel": "{{symbol}} 价格"
+    "priceLabel": "{{symbol}} 价格",
+    "modelsCount": "{{count}} 个模型",
+    "best": "最佳",
+    "confLabel": "置信",
+    "readMore": "展开",
+    "showLess": "收起",
+    "bullish": "看涨",
+    "bearish": "看跌",
+    "mixed": "中立"
   },
   "trade": {
     "bigRoad": "大路",

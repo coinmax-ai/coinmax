@@ -68,7 +68,15 @@
     "target": "Target",
     "aiForecast": "AI Forecast",
     "sentimentIndex": "Sentiment Index",
-    "priceLabel": "{{symbol}} Price"
+    "priceLabel": "{{symbol}} Price",
+    "modelsCount": "{{count}} models",
+    "best": "Best",
+    "confLabel": "CONF",
+    "readMore": "READ MORE",
+    "showLess": "SHOW LESS",
+    "bullish": "BULLISH",
+    "bearish": "BEARISH",
+    "mixed": "MIXED"
   },
   "trade": {
     "bigRoad": "Big Road",

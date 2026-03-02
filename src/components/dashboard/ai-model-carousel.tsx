@@ -38,7 +38,7 @@ function getModelMeta(model: string) {
   return MODEL_META[model] || { accent: "#888", icon: model[0], glow: "136,136,136" };
 }
 
-function AnimatedGauge({ value, accent, glow, size = 64 }: { value: number; accent: string; glow: string; size?: number }) {
+function AnimatedGauge({ value, accent, glow, size = 64, confLabel = "CONF" }: { value: number; accent: string; glow: string; size?: number; confLabel?: string }) {
   const [animValue, setAnimValue] = useState(0);
   const [showValue, setShowValue] = useState(false);
 
@@ -80,7 +80,7 @@ function AnimatedGauge({ value, accent, glow, size = 64 }: { value: number; acce
       </svg>
       <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${showValue ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
         <span className="text-[18px] font-black tabular-nums leading-none" style={{ color: accent, textShadow: `0 0 12px rgba(${glow},0.4)` }}>{value}</span>
-        <span className="text-[7px] font-semibold text-muted-foreground/60 mt-0.5 tracking-wider">CONF</span>
+        <span className="text-[7px] font-semibold text-muted-foreground/60 mt-0.5 tracking-wider">{confLabel}</span>
       </div>
     </div>
   );
@@ -127,6 +127,7 @@ function FeaturedCard({
   const priceDiff = forecast.currentPrice ? ((forecast.targetPrice - forecast.currentPrice) / forecast.currentPrice * 100) : 0;
   const dirColor = isBullish ? "#00e7a0" : isBearish ? "#ff4976" : "#facc15";
   const dirGlow = isBullish ? "0,231,160" : isBearish ? "255,73,118" : "250,204,21";
+  const dirLabel = isBullish ? t("dashboard.bullish") : isBearish ? t("dashboard.bearish") : t("dashboard.mixed");
 
   return (
     <div
@@ -177,7 +178,7 @@ function FeaturedCard({
                     }}
                   >
                     <Zap className="h-1.5 w-1.5" />
-                    Best
+                    {t("dashboard.best")}
                   </span>
                 </div>
               </div>
@@ -198,7 +199,7 @@ function FeaturedCard({
                   <Minus className="h-3 w-3" style={{ color: dirColor }} />
                 )}
                 <span className="text-[11px] font-extrabold" style={{ color: dirColor }}>
-                  {forecast.direction}
+                  {dirLabel}
                 </span>
               </div>
               <span className={`text-[13px] font-mono font-bold ${priceDiff >= 0 ? "text-[#00e7a0]" : "text-[#ff4976]"}`}
@@ -217,7 +218,7 @@ function FeaturedCard({
             </div>
           </div>
 
-          <AnimatedGauge value={forecast.confidence} accent={meta.accent} glow={meta.glow} size={64} />
+          <AnimatedGauge value={forecast.confidence} accent={meta.accent} glow={meta.glow} size={64} confLabel={t("dashboard.confLabel")} />
         </div>
 
         {forecast.reasoning && (
@@ -231,7 +232,7 @@ function FeaturedCard({
                 {forecast.reasoning}
               </p>
               <span className="text-[9px] text-muted-foreground/45 mt-1 inline-block font-semibold tracking-wide uppercase">
-                {reasonExpanded ? 'SHOW LESS' : 'READ MORE'}
+                {reasonExpanded ? t("dashboard.showLess") : t("dashboard.readMore")}
               </span>
             </div>
           </div>
