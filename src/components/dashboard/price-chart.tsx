@@ -70,6 +70,20 @@ function toUTC(ts: number): UTCTimestamp {
   return Math.floor(ts / 1000) as UTCTimestamp;
 }
 
+function getVisibleBars(timeframe?: ChartTimeframe): number {
+  switch (timeframe) {
+    case "1m": return 40;
+    case "5m": return 40;
+    case "15m": return 36;
+    case "30m": return 32;
+    case "1H": return 30;
+    case "4H": return 28;
+    case "1D": return 30;
+    case "1W": return 26;
+    default: return 40;
+  }
+}
+
 export function PriceChart({
   data,
   ohlcData,
@@ -164,8 +178,8 @@ export function PriceChart({
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 5,
-        barSpacing: 8,
-        fixLeftEdge: true,
+        barSpacing: 12,
+        fixLeftEdge: false,
         fixRightEdge: false,
       },
       handleScroll: { vertTouchDrag: false },
@@ -379,7 +393,18 @@ export function PriceChart({
       });
     }
 
-    chart.timeScale().fitContent();
+    const baseBars = hasOhlc ? ohlcData!.length : (data?.length || 0);
+    const forecastBars = forecast?.forecastPoints?.length || 0;
+    const totalBars = baseBars + forecastBars;
+    const visibleBars = getVisibleBars(selectedTimeframe);
+    if (baseBars > visibleBars) {
+      chart.timeScale().setVisibleLogicalRange({
+        from: baseBars - visibleBars,
+        to: totalBars + 5,
+      });
+    } else {
+      chart.timeScale().fitContent();
+    }
 
     // Resize handler
     const handleResize = () => {
@@ -393,7 +418,7 @@ export function PriceChart({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [ohlcData, data, chartType, forecast, targetPrice, forecastLineColor, hasOhlc, t]);
+  }, [ohlcData, data, chartType, forecast, targetPrice, forecastLineColor, hasOhlc, selectedTimeframe, t]);
 
   useEffect(() => {
     const cleanup = buildChart();
