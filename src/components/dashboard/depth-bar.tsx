@@ -158,7 +158,7 @@ export function DepthBar({ buyPercent, sellPercent, isLoading, fearGreedIndex, f
       : "bg-muted text-muted-foreground";
 
   return (
-    <Card className="border-border bg-card overflow-hidden" data-testid="card-depth-bar">
+    <Card className="glass-card border-0 overflow-hidden rounded-2xl" data-testid="card-depth-bar">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">

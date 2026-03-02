@@ -17,7 +17,8 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95 backdrop-blur-md"
+      className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/[0.06]"
+      style={{ borderRadius: '20px 20px 0 0', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       data-testid="bottom-nav"
     >
       <div className="mx-auto flex max-w-lg items-center justify-around gap-1 px-2 py-1">

@@ -152,11 +152,15 @@ export default function Dashboard() {
       </div>
 
       <div className="px-4" style={{ animation: "fadeSlideIn 0.85s ease-out" }}>
-        <TrendingFeed prices={prices} isLoading={pricesLoading} />
+        <div className="glass-card rounded-2xl p-4 relative overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+          <TrendingFeed prices={prices} isLoading={pricesLoading} />
+        </div>
       </div>
 
       <div className="px-4" style={{ animation: "fadeSlideIn 0.9s ease-out" }}>
-        <ExchangeDepth symbol={selectedAsset} />
+        <div className="glass-card rounded-2xl p-4 relative overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+          <ExchangeDepth symbol={selectedAsset} />
+        </div>
       </div>
     </div>
   );
