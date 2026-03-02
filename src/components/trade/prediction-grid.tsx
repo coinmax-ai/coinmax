@@ -2,9 +2,11 @@ import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { TradeBet } from "@shared/types";
 
-interface GridCell {
+interface CellData {
   direction: "up" | "down";
-  confirmed: boolean;
+  change: number;
+  isOver5: boolean;
+  isReversal: boolean;
   isLatest: boolean;
 }
 
@@ -14,53 +16,61 @@ interface PredictionGridProps {
   timeframe?: string;
 }
 
-function generateCells(bets: TradeBet[], gridType: "big" | "small", timeframe?: string): GridCell[] {
-  const cols = gridType === "big" ? 9 : 12;
-  const rows = gridType === "big" ? 6 : 4;
-  const totalCells = cols * rows;
-  const cells: GridCell[] = [];
-
+function generateCellData(bets: TradeBet[], gridType: "big" | "small", timeframe?: string): CellData[] {
+  const totalCells = gridType === "big" ? 56 : 120;
+  const cells: CellData[] = [];
   const seed = timeframe === "30M" ? 17 : timeframe === "4H" ? 31 : timeframe === "1M" ? 53 : 7;
 
+  const rawDirs: ("up" | "down")[] = [];
+  const rawChanges: number[] = [];
+
   if (bets && bets.length > 0) {
-    for (let idx = 0; idx < bets.length && cells.length < totalCells; idx++) {
-      const bet = bets[idx];
-      cells.push({
-        direction: bet.direction === "up" || bet.direction === "bull" ? "up" : "down",
-        confirmed: bet.result !== null && bet.result !== undefined,
-        isLatest: false,
-      });
+    for (const bet of bets) {
+      rawDirs.push(bet.direction === "up" || bet.direction === "bull" ? "up" : "down");
+      rawChanges.push(Math.random() * 8);
     }
   }
 
-  const remaining = totalCells - cells.length;
+  const remaining = totalCells - rawDirs.length;
   for (let i = 0; i < remaining; i++) {
     const v = ((i + seed) * 13 + seed * 3) % 100;
-    const isUp = v > 46;
+    rawDirs.push(v > 46 ? "up" : "down");
+    const changeSeed = ((i + seed) * 7 + seed * 11) % 100;
+    rawChanges.push(changeSeed < 12 ? 5 + (changeSeed % 10) * 0.5 : (changeSeed % 45) * 0.1);
+  }
+
+  for (let i = 0; i < totalCells && i < rawDirs.length; i++) {
+    const dir = rawDirs[i];
+    const change = rawChanges[i] ?? 0;
+    const isReversal = i > 0 && rawDirs[i] !== rawDirs[i - 1];
     cells.push({
-      direction: isUp ? "up" : "down",
-      confirmed: i < remaining - 2,
+      direction: dir,
+      change,
+      isOver5: change >= 5,
+      isReversal,
       isLatest: false,
     });
   }
 
-  const result = cells.slice(0, totalCells);
-  if (result.length > 0) {
-    result[result.length - 1] = { ...result[result.length - 1], isLatest: true };
+  if (cells.length > 0) {
+    cells[cells.length - 1] = { ...cells[cells.length - 1], isLatest: true };
   }
-  return result;
+  return cells;
 }
 
-function BigRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[]; cols: number; rows: number; visibleCount: number }) {
+function BigRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCount: number }) {
+  const cols = 7;
+  const rows = 8;
+
   return (
-    <div className="rounded-md border border-border bg-card/50 p-1 overflow-hidden">
+    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.2)" }}>
       <div className="flex">
-        <div className="flex flex-col shrink-0">
+        <div className="flex flex-col shrink-0" style={{ width: 22 }}>
           {Array.from({ length: rows }, (_, r) => (
             <div
               key={r}
-              className="flex items-center justify-center text-[11px] text-muted-foreground font-mono"
-              style={{ height: 32, width: 16 }}
+              className="flex items-center justify-center text-[11px] text-muted-foreground/50 font-mono"
+              style={{ height: 48 }}
               data-testid={`row-label-${r + 1}`}
             >
               {r + 1}
@@ -72,63 +82,80 @@ function BigRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[]; c
           className="grid flex-1"
           style={{
             gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 32px)`,
-            gap: "2px",
+            gridTemplateRows: `repeat(${rows}, 48px)`,
           }}
         >
-          {cells.map((cell, i) => {
+          {Array.from({ length: cols * rows }, (_, i) => {
+            const cell = cells[i];
+            if (!cell) return <div key={i} className="border-r border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }} />;
+
             const isVisible = i < visibleCount;
             const isUp = cell.direction === "up";
 
-            let bgClass: string;
-            let borderClass: string;
-            if (isUp) {
-              bgClass = cell.confirmed ? "bg-emerald-500" : "bg-emerald-500/30";
-              borderClass = "border-emerald-400/60";
-            } else {
-              bgClass = cell.confirmed ? "bg-red-500" : "bg-red-500/30";
-              borderClass = "border-red-400/60";
-            }
+            const upBg = "rgba(80,140,50,0.65)";
+            const downBg = "rgba(160,30,70,0.7)";
+            const upBorder = "rgba(130,180,70,0.5)";
+            const downBorder = "rgba(200,50,90,0.5)";
 
             return (
               <div
                 key={i}
-                className={`
-                  flex items-center justify-center rounded-[3px] border text-xs font-bold
-                  transition-all duration-200
-                  ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"}
-                  ${bgClass} ${borderClass}
-                  ${cell.isLatest ? "ring-2 ring-yellow-400" : ""}
-                `}
+                className={`relative flex items-center justify-center transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"}`}
                 style={{
-                  ...(cell.confirmed && isVisible ? {
-                    boxShadow: isUp
-                      ? "0 0 6px rgba(16,185,129,0.4)"
-                      : "0 0 6px rgba(239,68,68,0.4)",
-                  } : {}),
-                  ...(cell.isLatest && isVisible ? {
-                    animation: "gridBlink 1s ease-in-out infinite",
-                    boxShadow: isUp
-                      ? "0 0 14px rgba(16,185,129,0.7), 0 0 4px rgba(250,204,21,0.4)"
-                      : "0 0 14px rgba(239,68,68,0.7), 0 0 4px rgba(250,204,21,0.4)",
-                  } : {}),
+                  background: isUp ? upBg : downBg,
+                  borderRight: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  boxShadow: isVisible
+                    ? `inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15)`
+                    : "none",
                 }}
                 data-testid={`grid-cell-${i}`}
               >
-                <span className={isUp ? "text-emerald-100 drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]" : "text-red-100 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)]"}>
-                  {isUp ? "\u2191" : "\u2193"}
+                <span className="text-white/90 text-sm font-bold select-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>
+                  {isUp ? "↑" : "↓"}
                 </span>
+
+                {cell.isOver5 && isVisible && (
+                  <span
+                    className="absolute top-[3px] right-[3px] h-[6px] w-[6px] rounded-full"
+                    style={{
+                      backgroundColor: "#f59e0b",
+                      boxShadow: "0 0 4px rgba(245,158,11,0.6)",
+                    }}
+                  />
+                )}
+
+                {cell.isReversal && isVisible && (
+                  <span
+                    className="absolute bottom-[3px] left-[3px] h-[6px] w-[6px] rounded-full"
+                    style={{
+                      backgroundColor: "#3b82f6",
+                      boxShadow: "0 0 4px rgba(59,130,246,0.6)",
+                      animation: cell.isLatest ? "reversalBounce 1.5s ease-in-out infinite" : "none",
+                    }}
+                  />
+                )}
+
+                {cell.isLatest && isVisible && (
+                  <div
+                    className="absolute inset-0 rounded-[1px]"
+                    style={{
+                      border: "2px solid rgba(250,204,21,0.7)",
+                      animation: "gridBlink 1.2s ease-in-out infinite",
+                    }}
+                  />
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="flex mt-1 ml-4">
+      <div className="flex ml-[22px]">
         {Array.from({ length: cols }, (_, c) => (
           <div
             key={c}
-            className="flex-1 text-center text-[11px] text-muted-foreground font-mono"
+            className="flex-1 text-center text-[11px] text-muted-foreground/50 font-mono py-1"
             data-testid={`col-label-${c + 1}`}
           >
             {c + 1}
@@ -139,16 +166,61 @@ function BigRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[]; c
   );
 }
 
-function SmallRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[]; cols: number; rows: number; visibleCount: number }) {
+interface SmallRoadColumn {
+  direction: "up" | "down";
+  circles: { isOver5: boolean }[];
+}
+
+function buildSmallRoadColumns(cells: CellData[]): SmallRoadColumn[] {
+  const columns: SmallRoadColumn[] = [];
+  let currentDir: "up" | "down" | null = null;
+  let currentCol: { isOver5: boolean }[] = [];
+
+  for (const cell of cells) {
+    if (currentDir === null || cell.direction !== currentDir) {
+      if (currentCol.length > 0 && currentDir !== null) {
+        columns.push({ direction: currentDir, circles: currentCol });
+      }
+      currentDir = cell.direction;
+      currentCol = [{ isOver5: cell.isOver5 }];
+    } else {
+      currentCol.push({ isOver5: cell.isOver5 });
+    }
+  }
+  if (currentCol.length > 0 && currentDir !== null) {
+    columns.push({ direction: currentDir, circles: currentCol });
+  }
+  return columns;
+}
+
+function SmallRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCount: number }) {
+  const columns = useMemo(() => buildSmallRoadColumns(cells), [cells]);
+  const maxRows = 9;
+  const startCol = Math.max(0, columns.length - 13);
+  const visibleCols = columns.slice(startCol);
+
+  const colOffsets = useMemo(() => {
+    let offset = 0;
+    for (let c = 0; c < startCol; c++) {
+      offset += Math.min(columns[c].circles.length, maxRows);
+    }
+    const offsets: number[] = [];
+    for (const col of visibleCols) {
+      offsets.push(offset);
+      offset += Math.min(col.circles.length, maxRows);
+    }
+    return offsets;
+  }, [columns, startCol, visibleCols, maxRows]);
+
   return (
-    <div className="rounded-md border border-border bg-card/50 p-1.5 overflow-hidden">
+    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.2)" }}>
       <div className="flex">
-        <div className="flex flex-col shrink-0">
-          {Array.from({ length: rows }, (_, r) => (
+        <div className="flex flex-col shrink-0" style={{ width: 22 }}>
+          {Array.from({ length: maxRows }, (_, r) => (
             <div
               key={r}
-              className="flex items-center justify-center text-[11px] text-muted-foreground font-mono"
-              style={{ height: 24, width: 16 }}
+              className="flex items-center justify-center text-[11px] text-muted-foreground/50 font-mono"
+              style={{ height: 32 }}
               data-testid={`row-label-${r + 1}`}
             >
               {r + 1}
@@ -156,68 +228,66 @@ function SmallRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[];
           ))}
         </div>
 
-        <div
-          className="grid flex-1"
-          style={{
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 24px)`,
-            gap: "3px",
-          }}
-        >
-          {cells.map((cell, i) => {
-            const isVisible = i < visibleCount;
-            const isUp = cell.direction === "up";
-
-            const fillColor = isUp
-              ? (cell.confirmed ? "bg-emerald-500" : "bg-emerald-500/35")
-              : (cell.confirmed ? "bg-red-500" : "bg-red-500/35");
-
-            const borderColor = isUp ? "border-emerald-400/70" : "border-red-400/70";
+        <div className="flex flex-1">
+          {visibleCols.map((col, ci) => {
+            const colCells = col.circles.slice(0, maxRows);
+            const isUp = col.direction === "up";
+            const strokeColor = isUp ? "#a3e635" : "#f43f5e";
+            const fillColor = isUp ? "#65a30d" : "#be123c";
+            const baseIdx = colOffsets[ci] ?? 0;
 
             return (
-              <div
-                key={i}
-                className="flex items-center justify-center"
-                data-testid={`grid-cell-${i}`}
-              >
-                <div
-                  className={`
-                    rounded-full border
-                    transition-all duration-200
-                    ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50"}
-                    ${fillColor} ${borderColor}
-                    ${cell.isLatest ? "ring-1 ring-yellow-400/60" : ""}
-                  `}
-                  style={{
-                    width: 16,
-                    height: 16,
-                    ...(cell.confirmed && isVisible ? {
-                      boxShadow: isUp
-                        ? "0 0 6px rgba(16,185,129,0.5)"
-                        : "0 0 6px rgba(239,68,68,0.5)",
-                    } : {}),
-                    ...(cell.isLatest && isVisible ? {
-                      animation: "gridBlink 1s ease-in-out infinite",
-                      boxShadow: isUp
-                        ? "0 0 12px rgba(16,185,129,0.8), 0 0 4px rgba(250,204,21,0.4)"
-                        : "0 0 12px rgba(239,68,68,0.8), 0 0 4px rgba(250,204,21,0.4)",
-                    } : {}),
-                  }}
-                />
+              <div key={ci + startCol} className="flex-1 flex flex-col">
+                {Array.from({ length: maxRows }, (_, ri) => {
+                  const circle = colCells[ri];
+                  const globalIdx = baseIdx + ri;
+                  const isVis = globalIdx < visibleCount;
+                  const isLast = ci === visibleCols.length - 1 && ri === colCells.length - 1;
+
+                  return (
+                    <div
+                      key={ri}
+                      className="flex items-center justify-center"
+                      style={{
+                        height: 32,
+                        borderRight: "1px solid rgba(255,255,255,0.04)",
+                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      {circle && isVis ? (
+                        <div
+                          className="rounded-full transition-all duration-200"
+                          style={{
+                            width: 20,
+                            height: 20,
+                            border: `2.5px solid ${strokeColor}`,
+                            backgroundColor: circle.isOver5 ? fillColor : "transparent",
+                            boxShadow: isLast
+                              ? `0 0 8px ${strokeColor}80`
+                              : circle.isOver5
+                                ? `0 0 4px ${strokeColor}40`
+                                : "none",
+                            animation: isLast ? "gridBlink 1.2s ease-in-out infinite" : "none",
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="flex mt-1 ml-4">
-        {Array.from({ length: cols }, (_, c) => (
+      <div className="flex ml-[22px]">
+        {visibleCols.map((_, ci) => (
           <div
-            key={c}
-            className="flex-1 text-center text-[11px] text-muted-foreground font-mono"
-            data-testid={`col-label-${c + 1}`}
+            key={ci}
+            className="flex-1 text-center text-[11px] text-muted-foreground/50 font-mono py-1"
+            data-testid={`col-label-${ci + startCol + 1}`}
           >
-            {c + 1}
+            {ci + startCol + 1}
           </div>
         ))}
       </div>
@@ -226,20 +296,18 @@ function SmallRoadGrid({ cells, cols, rows, visibleCount }: { cells: GridCell[];
 }
 
 export function PredictionGrid({ bets, gridType, timeframe }: PredictionGridProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isZh = i18n.language?.startsWith("zh");
   const [visibleCount, setVisibleCount] = useState(0);
   const cells = useMemo(
-    () => generateCells(bets || [], gridType, timeframe),
+    () => generateCellData(bets || [], gridType, timeframe),
     [bets, gridType, timeframe]
   );
-
-  const cols = gridType === "big" ? 9 : 12;
-  const rows = gridType === "big" ? 6 : 4;
 
   useEffect(() => {
     setVisibleCount(0);
     let frame = 0;
-    const batchSize = gridType === "big" ? 3 : 4;
+    const batchSize = gridType === "big" ? 3 : 5;
     const interval = setInterval(() => {
       frame += batchSize;
       if (frame >= cells.length) {
@@ -248,42 +316,49 @@ export function PredictionGrid({ bets, gridType, timeframe }: PredictionGridProp
       } else {
         setVisibleCount(frame);
       }
-    }, 20);
+    }, 18);
     return () => clearInterval(interval);
   }, [cells.length, gridType, timeframe]);
 
   const ups = cells.filter(c => c.direction === "up").length;
   const downs = cells.filter(c => c.direction === "down").length;
-  const total = ups + downs;
-  const pctDiff = total > 0 ? Math.abs(((ups - downs) / total) * 100).toFixed(0) : "0";
+  const over5Count = cells.filter(c => c.isOver5).length;
 
   return (
     <div data-testid={`prediction-grid-${gridType}`}>
-      <div className="flex items-center gap-3 mb-2 text-[13px] flex-wrap">
-        <span className="text-emerald-400 font-bold" data-testid="text-bull-count">{t("trade.bull")}: {ups}</span>
-        <span className="text-red-400 font-bold" data-testid="text-bear-count">{t("trade.bear")}: {downs}</span>
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
-          {t("trade.diff")} {pctDiff}%
+      <div className="flex items-center gap-3 mb-3 text-[12px] flex-wrap">
+        <span className="font-bold" style={{ color: "#00e7a0" }} data-testid="text-bull-count">
+          {isZh ? "多" : t("trade.bull")}: {ups}
         </span>
-        <span className="text-muted-foreground flex items-center gap-1">
-          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          {t("trade.reversal")}
+        <span className="font-bold" style={{ color: "#ff4976" }} data-testid="text-bear-count">
+          {isZh ? "空" : t("trade.bear")}: {downs}
         </span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#f59e0b", boxShadow: "0 0 4px rgba(245,158,11,0.5)" }} />
+          {isZh ? "超过5%" : ">5%"}
+        </span>
+        {gridType === "big" && (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "#3b82f6", boxShadow: "0 0 4px rgba(59,130,246,0.5)" }} />
+            {isZh ? "反转" : t("trade.reversal")}
+          </span>
+        )}
       </div>
 
       {gridType === "big" ? (
-        <BigRoadGrid cells={cells} cols={cols} rows={rows} visibleCount={visibleCount} />
+        <BigRoadGrid cells={cells} visibleCount={visibleCount} />
       ) : (
-        <SmallRoadGrid cells={cells} cols={cols} rows={rows} visibleCount={visibleCount} />
+        <SmallRoadGrid cells={cells} visibleCount={visibleCount} />
       )}
 
       <style>{`
         @keyframes gridBlink {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(1.1); }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes reversalBounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.6); }
         }
       `}</style>
     </div>
