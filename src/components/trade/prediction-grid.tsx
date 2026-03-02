@@ -63,14 +63,14 @@ function BigRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCount:
   const rows = 8;
 
   return (
-    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.2)" }}>
+    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
       <div className="flex">
-        <div className="flex flex-col shrink-0" style={{ width: 22 }}>
+        <div className="flex flex-col shrink-0" style={{ width: 24 }}>
           {Array.from({ length: rows }, (_, r) => (
             <div
               key={r}
-              className="flex items-center justify-center text-[11px] text-muted-foreground/50 font-mono"
-              style={{ height: 48 }}
+              className="flex items-center justify-center text-[11px] text-muted-foreground/40 font-mono"
+              style={{ height: 46, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               data-testid={`row-label-${r + 1}`}
             >
               {r + 1}
@@ -82,80 +82,80 @@ function BigRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCount:
           className="grid flex-1"
           style={{
             gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 48px)`,
+            gridTemplateRows: `repeat(${rows}, 46px)`,
           }}
         >
           {Array.from({ length: cols * rows }, (_, i) => {
             const cell = cells[i];
-            if (!cell) return <div key={i} className="border-r border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }} />;
+            const gridBorder = { borderRight: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" };
+
+            if (!cell) return <div key={i} style={gridBorder} />;
 
             const isVisible = i < visibleCount;
             const isUp = cell.direction === "up";
 
-            const upBg = "rgba(80,140,50,0.65)";
-            const downBg = "rgba(160,30,70,0.7)";
-            const upBorder = "rgba(130,180,70,0.5)";
-            const downBorder = "rgba(200,50,90,0.5)";
+            const upBg = "rgba(100,160,40,0.35)";
+            const downBg = "rgba(150,25,65,0.4)";
+            const upBorderColor = "rgba(140,200,60,0.6)";
+            const downBorderColor = "rgba(200,50,90,0.55)";
 
             return (
               <div
                 key={i}
-                className={`relative flex items-center justify-center transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"}`}
-                style={{
-                  background: isUp ? upBg : downBg,
-                  borderRight: "1px solid rgba(255,255,255,0.06)",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  boxShadow: isVisible
-                    ? `inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15)`
-                    : "none",
-                }}
+                className="flex items-center justify-center p-[3px]"
+                style={gridBorder}
                 data-testid={`grid-cell-${i}`}
               >
-                <span className="text-white/90 text-sm font-bold select-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>
-                  {isUp ? "↑" : "↓"}
-                </span>
+                <div
+                  className={`relative w-full h-full flex items-center justify-center rounded-[4px] transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"}`}
+                  style={{
+                    background: isUp ? upBg : downBg,
+                    border: `1.5px solid ${isUp ? upBorderColor : downBorderColor}`,
+                    boxShadow: isVisible
+                      ? `inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 3px rgba(0,0,0,0.2)`
+                      : "none",
+                  }}
+                >
+                  <span className="text-white/85 text-[13px] font-bold select-none" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                    {isUp ? "↑" : "↓"}
+                  </span>
 
-                {cell.isOver5 && isVisible && (
-                  <span
-                    className="absolute top-[3px] right-[3px] h-[6px] w-[6px] rounded-full"
-                    style={{
-                      backgroundColor: "#f59e0b",
-                      boxShadow: "0 0 4px rgba(245,158,11,0.6)",
-                    }}
-                  />
-                )}
+                  {cell.isOver5 && isVisible && (
+                    <span
+                      className="absolute top-[2px] right-[2px] h-[5px] w-[5px] rounded-full"
+                      style={{ backgroundColor: "#f59e0b", boxShadow: "0 0 4px rgba(245,158,11,0.7)" }}
+                    />
+                  )}
 
-                {cell.isReversal && isVisible && (
-                  <span
-                    className="absolute bottom-[3px] left-[3px] h-[6px] w-[6px] rounded-full"
-                    style={{
-                      backgroundColor: "#3b82f6",
-                      boxShadow: "0 0 4px rgba(59,130,246,0.6)",
-                      animation: cell.isLatest ? "reversalBounce 1.5s ease-in-out infinite" : "none",
-                    }}
-                  />
-                )}
+                  {cell.isReversal && isVisible && (
+                    <span
+                      className="absolute bottom-[2px] left-[2px] h-[5px] w-[5px] rounded-full"
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        boxShadow: "0 0 4px rgba(59,130,246,0.7)",
+                        animation: cell.isLatest ? "reversalBounce 1.5s ease-in-out infinite" : "none",
+                      }}
+                    />
+                  )}
 
-                {cell.isLatest && isVisible && (
-                  <div
-                    className="absolute inset-0 rounded-[1px]"
-                    style={{
-                      border: "2px solid rgba(250,204,21,0.7)",
-                      animation: "gridBlink 1.2s ease-in-out infinite",
-                    }}
-                  />
-                )}
+                  {cell.isLatest && isVisible && (
+                    <div
+                      className="absolute inset-[-1px] rounded-[4px]"
+                      style={{ border: "2px solid rgba(250,204,21,0.7)", animation: "gridBlink 1.2s ease-in-out infinite" }}
+                    />
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="flex ml-[22px]">
+      <div className="flex ml-[24px]" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         {Array.from({ length: cols }, (_, c) => (
           <div
             key={c}
-            className="flex-1 text-center text-[11px] text-muted-foreground/50 font-mono py-1"
+            className="flex-1 text-center text-[11px] text-muted-foreground/40 font-mono py-1.5"
             data-testid={`col-label-${c + 1}`}
           >
             {c + 1}
@@ -213,14 +213,14 @@ function SmallRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCoun
   }, [columns, startCol, visibleCols, maxRows]);
 
   return (
-    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.2)" }}>
+    <div className="relative overflow-hidden rounded-lg" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
       <div className="flex">
-        <div className="flex flex-col shrink-0" style={{ width: 22 }}>
+        <div className="flex flex-col shrink-0" style={{ width: 24 }}>
           {Array.from({ length: maxRows }, (_, r) => (
             <div
               key={r}
-              className="flex items-center justify-center text-[11px] text-muted-foreground/50 font-mono"
-              style={{ height: 32 }}
+              className="flex items-center justify-center text-[11px] text-muted-foreground/40 font-mono"
+              style={{ height: 34, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               data-testid={`row-label-${r + 1}`}
             >
               {r + 1}
@@ -232,8 +232,9 @@ function SmallRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCoun
           {visibleCols.map((col, ci) => {
             const colCells = col.circles.slice(0, maxRows);
             const isUp = col.direction === "up";
-            const strokeColor = isUp ? "#a3e635" : "#f43f5e";
-            const fillColor = isUp ? "#65a30d" : "#be123c";
+            const strokeColor = isUp ? "rgba(140,210,60,0.7)" : "rgba(220,60,100,0.65)";
+            const fillBg = isUp ? "rgba(100,170,30,0.25)" : "rgba(180,40,80,0.25)";
+            const fillSolid = isUp ? "rgba(120,190,40,0.5)" : "rgba(200,50,90,0.5)";
             const baseIdx = colOffsets[ci] ?? 0;
 
             return (
@@ -249,24 +250,23 @@ function SmallRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCoun
                       key={ri}
                       className="flex items-center justify-center"
                       style={{
-                        height: 32,
-                        borderRight: "1px solid rgba(255,255,255,0.04)",
-                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        height: 34,
+                        borderRight: "1px solid rgba(255,255,255,0.06)",
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
                       }}
                     >
                       {circle && isVis ? (
                         <div
                           className="rounded-full transition-all duration-200"
                           style={{
-                            width: 20,
-                            height: 20,
-                            border: `2.5px solid ${strokeColor}`,
-                            backgroundColor: circle.isOver5 ? fillColor : "transparent",
+                            width: 22,
+                            height: 22,
+                            border: `2px solid ${strokeColor}`,
+                            backgroundColor: circle.isOver5 ? fillSolid : fillBg,
+                            backdropFilter: "blur(4px)",
                             boxShadow: isLast
-                              ? `0 0 8px ${strokeColor}80`
-                              : circle.isOver5
-                                ? `0 0 4px ${strokeColor}40`
-                                : "none",
+                              ? `0 0 10px ${strokeColor}, inset 0 1px 0 rgba(255,255,255,0.12)`
+                              : `inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.15)`,
                             animation: isLast ? "gridBlink 1.2s ease-in-out infinite" : "none",
                           }}
                         />
@@ -280,11 +280,11 @@ function SmallRoadGrid({ cells, visibleCount }: { cells: CellData[]; visibleCoun
         </div>
       </div>
 
-      <div className="flex ml-[22px]">
+      <div className="flex ml-[24px]" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         {visibleCols.map((_, ci) => (
           <div
             key={ci}
-            className="flex-1 text-center text-[11px] text-muted-foreground/50 font-mono py-1"
+            className="flex-1 text-center text-[11px] text-muted-foreground/40 font-mono py-1.5"
             data-testid={`col-label-${ci + startCol + 1}`}
           >
             {ci + startCol + 1}

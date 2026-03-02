@@ -144,76 +144,77 @@ export default function Trade() {
         <PredictionGrid bets={bets} gridType={gridView} timeframe={timeframe} />
       </div>
 
-      <div className="px-4 space-y-2" style={{ animation: "fadeSlideIn 0.35s ease-out 0.1s both" }}>
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-1 flex-wrap">
-            <Button
-              size="sm"
-              variant={infoTab === "market" ? "default" : "ghost"}
-              className={infoTab === "market" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
-              onClick={() => setInfoTab("market")}
-              data-testid="button-market-tab"
-            >
-              {t("trade.market")}
-            </Button>
-            <Button
-              size="sm"
-              variant={infoTab === "leaderboard" ? "default" : "ghost"}
-              className={infoTab === "leaderboard" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
-              onClick={() => setInfoTab("leaderboard")}
-              data-testid="button-leaderboard-tab"
-            >
-              {t("trade.leaderboard")}
-            </Button>
-          </div>
-          <span className="text-[12px] text-muted-foreground">{t("trade.sourcePolymarket")}</span>
-        </div>
-
-        {infoTab === "market" ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              {currentPrice !== null && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xl font-bold text-neon-value" data-testid="text-current-price">
-                    {formatUSD(currentPrice)}
-                  </span>
-                  <span className="text-[12px] text-muted-foreground">{selectedAsset}/USD</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 text-[12px] text-primary/70">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                {t("trade.live1s")}
-              </div>
+      <div className="px-4" style={{ animation: "fadeSlideIn 0.35s ease-out 0.1s both" }}>
+        <div className="rounded-lg overflow-hidden" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center justify-between gap-2 flex-wrap px-4 pt-3 pb-2">
+            <div className="flex gap-1 flex-wrap">
+              <Button
+                size="sm"
+                variant={infoTab === "market" ? "default" : "ghost"}
+                className={infoTab === "market" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
+                onClick={() => setInfoTab("market")}
+                data-testid="button-market-tab"
+              >
+                {t("trade.market")}
+              </Button>
+              <Button
+                size="sm"
+                variant={infoTab === "leaderboard" ? "default" : "ghost"}
+                className={infoTab === "leaderboard" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
+                onClick={() => setInfoTab("leaderboard")}
+                data-testid="button-leaderboard-tab"
+              >
+                {t("trade.leaderboard")}
+              </Button>
             </div>
-            <PriceChart data={chartData} isLoading={chartLoading} color="hsl(174, 72%, 46%)" />
+            <span className="text-[12px] text-muted-foreground">{t("trade.sourcePolymarket")}</span>
           </div>
-        ) : (
-          <Card className="border-border bg-card">
-            <CardContent className="p-4 text-center text-sm text-muted-foreground">
+
+          {infoTab === "market" ? (
+            <div className="px-4 pb-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                {currentPrice !== null && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xl font-bold text-neon-value" data-testid="text-current-price">
+                      {formatUSD(currentPrice)}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">{selectedAsset}/USD</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 text-[12px] text-primary/70">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  {t("trade.live1s")}
+                </div>
+              </div>
+              <PriceChart data={chartData} isLoading={chartLoading} color="hsl(174, 72%, 46%)" />
+            </div>
+          ) : (
+            <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
               {t("trade.noLeaderboardData")}
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="px-4" style={{ animation: "fadeSlideIn 0.35s ease-out 0.15s both" }}>
-        <StatsPanel stats={stats} isLoading={statsLoading && !!walletAddress} />
+        <div className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <StatsPanel stats={stats} isLoading={statsLoading && !!walletAddress} />
+        </div>
       </div>
 
       <div className="px-4 space-y-2" style={{ animation: "fadeSlideIn 0.35s ease-out 0.2s both" }}>
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground">{t("trade.orders", { count: bets.length })}</span>
-          <Button variant="ghost" size="sm" className="text-primary" data-testid="button-batch-claim">
-            {t("trade.batchClaim")}
-          </Button>
-        </div>
+        <div className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+            <span className="text-sm font-bold text-foreground">{t("trade.orders", { count: bets.length })}</span>
+            <Button variant="ghost" size="sm" className="text-primary" data-testid="button-batch-claim">
+              {t("trade.batchClaim")}
+            </Button>
+          </div>
 
         {bets.length === 0 ? (
-          <Card className="border-border bg-card">
-            <CardContent className="p-6 text-center text-sm text-muted-foreground" data-testid="text-no-orders">
-              {t("trade.noOrdersYet")}
-            </CardContent>
-          </Card>
+          <div className="py-4 text-center text-sm text-muted-foreground" data-testid="text-no-orders">
+            {t("trade.noOrdersYet")}
+          </div>
         ) : (
           <div className="space-y-1.5">
             {bets.slice(0, 10).map((bet) => (
@@ -263,6 +264,7 @@ export default function Trade() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       <BetControls
