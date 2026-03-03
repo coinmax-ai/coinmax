@@ -134,18 +134,18 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* AI Model Carousel */}
       <div className="px-4" style={{ animation: "fadeSlideIn 0.55s ease-out" }}>
+        <AssetTabs selected={selectedAsset} onChange={setSelectedAsset} />
+      </div>
+
+      {/* AI Model Carousel */}
+      <div className="px-4" style={{ animation: "fadeSlideIn 0.6s ease-out" }}>
         <AiModelCarousel
           forecasts={allForecasts}
           isLoading={forecastLoading}
           activeModel={activeModelName || null}
           onSelectModel={setSelectedModel}
         />
-      </div>
-
-      <div className="px-4" style={{ animation: "fadeSlideIn 0.6s ease-out" }}>
-        <AssetTabs selected={selectedAsset} onChange={setSelectedAsset} />
       </div>
 
       <div className="px-4" style={{ animation: "fadeSlideIn 0.7s ease-out" }}>
