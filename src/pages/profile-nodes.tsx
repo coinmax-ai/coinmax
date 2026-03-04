@@ -205,7 +205,7 @@ export default function ProfileNodesPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {([
                 { key: "purchase" as TabKey, label: t("profile.purchaseRecords") },
                 { key: "earnings" as TabKey, label: t("profile.earningsDetailTab") },
@@ -213,7 +213,7 @@ export default function ProfileNodesPage() {
               ]).map((tab) => (
                 <button
                   key={tab.key}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-all"
+                  className="py-2 rounded-lg text-[13px] font-medium transition-all text-center"
                   style={{
                     border: activeTab === tab.key
                       ? "1px solid rgba(74, 222, 128, 0.5)"
