@@ -310,39 +310,37 @@ export default function ProfilePage() {
           <div
             className="rounded-2xl p-4"
             style={{
-              border: "1px solid rgba(74, 222, 128, 0.25)",
-              background: "linear-gradient(135deg, rgba(74, 222, 128, 0.06) 0%, rgba(10, 15, 10, 0.7) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              background: "#111",
             }}
           >
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-full flex items-center justify-center" style={{ background: "rgba(74, 222, 128, 0.15)" }}>
-                <Link2 className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <span className="text-[14px] font-bold text-white/90">{t("profile.inviteFriends")}</span>
+              <Link2 className="h-4 w-4 text-white/80" />
+              <span className="text-[14px] font-bold text-white">{t("profile.inviteFriends")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="flex-1 min-w-0 rounded-lg px-3 py-2.5 font-mono text-[12px] text-primary/70 truncate"
-                style={{ background: "rgba(74, 222, 128, 0.04)", border: "1px solid rgba(74, 222, 128, 0.15)" }}
+                className="flex-1 min-w-0 rounded-lg px-3 py-2.5 font-mono text-[11px] text-white/60 truncate"
+                style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)" }}
               >
                 {referralLink}
               </div>
               <button
                 onClick={() => copyToClipboard(referralLink)}
-                className="shrink-0 px-3 py-2.5 rounded-lg text-[12px] font-medium text-white/80 transition-all hover:bg-white/5 active:scale-95"
-                style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)" }}
+                className="shrink-0 px-3 py-2.5 rounded-lg text-[12px] font-medium text-white/90 transition-all hover:bg-white/10 active:scale-95"
+                style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.15)" }}
               >
                 <Copy className="h-4 w-4" />
               </button>
               <button
                 onClick={shareReferralLink}
-                className="shrink-0 px-3 py-2.5 rounded-lg text-[12px] font-medium text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ border: "1px solid rgba(74, 222, 128, 0.4)", background: "rgba(74, 222, 128, 0.15)" }}
+                className="shrink-0 px-3 py-2.5 rounded-lg text-[12px] font-medium text-black transition-all hover:brightness-110 active:scale-95"
+                style={{ background: "#4ade80" }}
               >
                 <Share2 className="h-4 w-4" />
               </button>
             </div>
-            <div className="mt-2.5 text-[11px] text-white/45">{t("profile.inviteFriendsDesc")}</div>
+            <div className="mt-2.5 text-[11px] text-white/40">{t("profile.inviteFriendsDesc")}</div>
           </div>
         </div>
       )}
