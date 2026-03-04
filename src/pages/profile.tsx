@@ -19,7 +19,6 @@ import { useTranslation } from "react-i18next";
 
 const MENU_ITEMS = [
   { labelKey: "profile.swap", icon: ArrowLeftRight, path: "/profile/swap", descKey: "profile.swapDesc" },
-  { labelKey: "profile.referralTeam", icon: GitBranch, path: "/profile/referral", descKey: "profile.referralTeamDesc" },
   { labelKey: "profile.transactionHistory", icon: History, path: "/profile/transactions", descKey: "profile.transactionHistoryDesc" },
   { labelKey: "profile.notifications", icon: Bell, path: "/profile/notifications", descKey: "profile.notificationsDesc" },
   { labelKey: "profile.settings", icon: Settings, path: "/profile/settings", descKey: "profile.settingsDesc" },
@@ -342,6 +341,25 @@ export default function ProfilePage() {
               </button>
             </div>
             <div className="mt-2 text-[10px] text-white/35">{t("profile.inviteFriendsDesc")}</div>
+
+            <button
+              className="w-full mt-3 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all hover:bg-white/[0.04] active:bg-white/[0.06]"
+              style={{ background: "#1c1c1c", border: "1px solid rgba(255,255,255,0.1)" }}
+              onClick={() => navigate("/profile/referral")}
+              data-testid="menu-referral"
+            >
+              <div
+                className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, rgba(74,222,128,0.2), rgba(74,222,128,0.05))", border: "1px solid rgba(74,222,128,0.15)" }}
+              >
+                <GitBranch className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-semibold text-white/90">{t("profile.referralTeam")}</div>
+                <div className="text-[10px] text-white/35">{t("profile.referralTeamDesc")}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/25 shrink-0" />
+            </button>
           </div>
         )}
 
