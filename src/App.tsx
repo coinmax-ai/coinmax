@@ -22,6 +22,7 @@ import ProfileNotificationsPage from "@/pages/profile-notifications";
 import ProfileSettingsPage from "@/pages/profile-settings";
 import ProfileNodesPage from "@/pages/profile-nodes";
 import ProfileNodeEarningsPage from "@/pages/profile-node-earnings";
+import ProfileSwapPage from "@/pages/profile-swap";
 import MarketPage from "@/pages/market";
 import NotFound from "@/pages/not-found";
 
@@ -131,6 +132,7 @@ function Router() {
       <Route path="/profile/notifications" component={ProfileNotificationsPage} />
       <Route path="/profile/settings" component={ProfileSettingsPage} />
       <Route path="/profile/nodes" component={ProfileNodesPage} />
+      <Route path="/profile/swap" component={ProfileSwapPage} />
       <Route path="/profile/nodes/earnings" component={ProfileNodeEarningsPage} />
       <Route path="/market" component={MarketPage} />
       <Route component={NotFound} />

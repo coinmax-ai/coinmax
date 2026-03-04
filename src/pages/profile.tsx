@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
 import { useMaPrice } from "@/hooks/use-ma-price";
-import { Copy, Crown, WalletCards, Wallet, ArrowUpFromLine, ChevronRight, Bell, Settings, History, GitBranch, Loader2, Server, TrendingUp, Share2, Link2 } from "lucide-react";
+import { Copy, Crown, WalletCards, Wallet, ArrowUpFromLine, ChevronRight, Bell, Settings, History, GitBranch, Loader2, Server, TrendingUp, Share2, Link2, ArrowLeftRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 
 const MENU_ITEMS = [
   { labelKey: "profile.nodeManagement", icon: Server, path: "/profile/nodes", descKey: "profile.nodeManagementDesc" },
+  { labelKey: "profile.swap", icon: ArrowLeftRight, path: "/profile/swap", descKey: "profile.swapDesc" },
   { labelKey: "profile.referralTeam", icon: GitBranch, path: "/profile/referral", descKey: "profile.referralTeamDesc" },
   { labelKey: "profile.transactionHistory", icon: History, path: "/profile/transactions", descKey: "profile.transactionHistoryDesc" },
   { labelKey: "profile.notifications", icon: Bell, path: "/profile/notifications", descKey: "profile.notificationsDesc" },
