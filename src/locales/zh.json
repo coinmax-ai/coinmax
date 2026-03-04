@@ -542,7 +542,11 @@
     "achieved": "已达成",
     "expired": "已过期",
     "unlockEarnings": "解锁收益",
-    "unlockAll": "解锁全部"
+    "unlockAll": "解锁全部",
+    "rankDescHolding": "{{amount}}U 持仓",
+    "rankDescHoldingRefs": "{{amount}}U 持仓 + {{refs}}个推荐",
+    "rankDescUnlockAll": "{{amount}}U 持仓，解锁全部",
+    "directRefs": "直推推荐"
   },
   "market": {
     "marketAnalysis": "市场分析",

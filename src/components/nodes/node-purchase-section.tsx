@@ -245,10 +245,16 @@ export function NodePurchaseDialog({ open, onOpenChange, nodeType, walletAddr }:
                     {ms.rank}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-bold text-white group-hover:text-white/90 transition-colors">{ms.desc}</div>
-                    <div className="flex items-center gap-1.5 mt-1">
+                    <div className="text-[11px] font-semibold text-white/80 group-hover:text-white/90 transition-colors">
+                      {ms.requiredReferrals > 0
+                        ? t("profile.rankDescHoldingRefs", { amount: ms.requiredHolding, refs: ms.requiredReferrals })
+                        : ms.rank === "V6"
+                          ? t("profile.rankDescUnlockAll", { amount: ms.requiredHolding })
+                          : t("profile.rankDescHolding", { amount: ms.requiredHolding })}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Clock className="h-2.5 w-2.5 text-white/35" />
-                      <span className="text-[10px] text-white/45 font-medium">{ms.days}d</span>
+                      <span className="text-[10px] text-white/40 font-medium">{ms.days}{t("profile.daysDeadline")}</span>
                     </div>
                   </div>
                   <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
@@ -280,7 +286,13 @@ export function NodePurchaseDialog({ open, onOpenChange, nodeType, walletAddr }:
                   >
                     {selectedRank}
                   </div>
-                  <div className="text-[12px] text-white/60 font-medium">{selectedMilestone.desc}</div>
+                  <div className="text-[11px] text-white/50 font-medium">
+                    {selectedMilestone.requiredReferrals > 0
+                      ? t("profile.rankDescHoldingRefs", { amount: selectedMilestone.requiredHolding, refs: selectedMilestone.requiredReferrals })
+                      : selectedMilestone.rank === "V6"
+                        ? t("profile.rankDescUnlockAll", { amount: selectedMilestone.requiredHolding })
+                        : t("profile.rankDescHolding", { amount: selectedMilestone.requiredHolding })}
+                  </div>
                   <div className="flex items-center justify-center gap-1 mt-1">
                     <Clock className="h-3 w-3 text-white/25" />
                     <span className="text-[10px] text-white/30">{selectedMilestone.days} {t("profile.daysDeadline")}</span>

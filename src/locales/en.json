@@ -542,7 +542,11 @@
     "achieved": "Achieved",
     "expired": "Expired",
     "unlockEarnings": "Unlock Earnings",
-    "unlockAll": "Unlock All"
+    "unlockAll": "Unlock All",
+    "rankDescHolding": "{{amount}}U holding",
+    "rankDescHoldingRefs": "{{amount}}U holding + {{refs}} referrals",
+    "rankDescUnlockAll": "{{amount}}U holding, unlock all",
+    "directRefs": "direct referrals"
   },
   "market": {
     "marketAnalysis": "Market Analysis",
