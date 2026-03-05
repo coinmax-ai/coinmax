@@ -550,7 +550,11 @@
     "milestoneV2Mini": "解锁每日0.5%收益",
     "milestoneV4Mini": "提取1000 USDC等值MA",
     "dayUnit": "天",
-    "dayZero": "第0天"
+    "dayZero": "第0天",
+    "nodeTotal": "节点总额",
+    "dailyRelease": "每日释放利息",
+    "releaseByMA": "按MA当天价格释放MA",
+    "largeNodeDesc": "大节点会员详情"
   },
   "market": {
     "marketAnalysis": "市场分析",

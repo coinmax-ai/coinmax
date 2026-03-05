@@ -550,7 +550,11 @@
     "milestoneV2Mini": "Unlock daily 0.5% earnings",
     "milestoneV4Mini": "Withdraw 1000 USDC equivalent MA",
     "dayUnit": " Days",
-    "dayZero": "Day 0"
+    "dayZero": "Day 0",
+    "nodeTotal": "Node Total",
+    "dailyRelease": "Daily Release",
+    "releaseByMA": "Released as MA at daily price",
+    "largeNodeDesc": "Large Node membership details"
   },
   "market": {
     "marketAnalysis": "Market Analysis",
