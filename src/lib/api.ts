@@ -8,7 +8,7 @@ function toCamel(obj: any): any {
   const out: any = {};
   for (const key of Object.keys(obj)) {
     const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    out[camelKey] = obj[key];
+    out[camelKey] = toCamel(obj[key]);
   }
   return out;
 }
