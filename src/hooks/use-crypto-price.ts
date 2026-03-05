@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 async function proxyFetch(url: string): Promise<any> {
@@ -132,8 +132,9 @@ export function useBinanceChart(symbol: string, timeframe: ChartTimeframe) {
         price: k.close,
       }));
     },
-    refetchInterval: timeframe === "1m" ? 10000 : timeframe === "5m" ? 15000 : 30000,
-    staleTime: timeframe === "1m" ? 5000 : 15000,
+    refetchInterval: timeframe === "1m" ? 30000 : timeframe === "5m" ? 30000 : 60000,
+    staleTime: timeframe === "1m" ? 20000 : 30000,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -141,8 +142,10 @@ export function useBinanceKlines(symbol: string, timeframe: ChartTimeframe) {
   return useQuery<OhlcDataPoint[]>({
     queryKey: ["binance-klines", symbol, timeframe],
     queryFn: () => fetchBinanceKlines(symbol, timeframe),
-    refetchInterval: timeframe === "1m" ? 10000 : timeframe === "5m" ? 15000 : 30000,
-    staleTime: timeframe === "1m" ? 5000 : 15000,
+    refetchInterval: timeframe === "1m" ? 30000 : timeframe === "5m" ? 30000 : 60000,
+    staleTime: timeframe === "1m" ? 20000 : 30000,
+    placeholderData: keepPreviousData,
+    structuralSharing: true,
   });
 }
 
