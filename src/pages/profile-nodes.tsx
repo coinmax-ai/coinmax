@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
-import { ArrowLeft, ArrowUpRight, Calendar, WalletCards, Coins } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, WalletCards, Zap, ShieldCheck, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { getNodeOverview, getNodeEarningsRecords, getNodeMemberships, getNodeMilestoneRequirements } from "@/lib/api";
@@ -122,102 +122,83 @@ export default function ProfileNodesPage() {
     ? (achievedCount / milestones.length) * 100
     : 0;
 
+  const progressPercent = totalDays > 0 ? Math.min(Math.max((daysActive / totalDays) * 100, 1), 100) : 0;
 
   return (
     <div className="min-h-screen pb-24" style={{ background: "#0a0a0a" }} data-testid="page-profile-nodes">
-      <div className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, #0f2818 0%, #0a1a10 50%, #0a0a0a 100%)" }}>
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(74,222,128,0.25) 0%, transparent 65%)" }} />
-        <div className="absolute top-0 left-1/4 w-40 h-40 opacity-15" style={{ background: "radial-gradient(circle, rgba(52,211,153,0.5), transparent 70%)", filter: "blur(30px)" }} />
-        <div className="absolute top-10 right-1/4 w-32 h-32 opacity-10" style={{ background: "radial-gradient(circle, rgba(34,197,94,0.6), transparent 70%)", filter: "blur(25px)" }} />
-        <div className="relative px-4 pt-3 pb-5">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #0d2818 0%, #0a1a10 35%, #0a0a0a 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% -20%, rgba(74,222,128,0.3) 0%, transparent 60%)" }} />
+        <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ background: "radial-gradient(circle at 20% 30%, rgba(34,197,94,0.4), transparent 50%), radial-gradient(circle at 80% 20%, rgba(163,230,53,0.3), transparent 45%)" }} />
+
+        <div className="relative px-4 pt-3 pb-6">
           <div className="flex items-center justify-center relative mb-5">
             <button
               onClick={() => navigate("/profile")}
               className="absolute left-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
             >
               <ArrowLeft className="h-5 w-5 text-white/90" />
             </button>
             <h1 className="text-[17px] font-bold tracking-wide text-white">{t("profile.nodeDetailsTitle")}</h1>
           </div>
 
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[14px] font-bold text-white">{t("profile.myNodesLabel")}</span>
-              <span
-                className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
-              >
-                {activeCount} {t("common.active")}
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-white/60">
-              {daysActive}/{totalDays || 0} {t("profile.dayUnit")}
-            </span>
-          </div>
+          <div
+            className="rounded-2xl p-4 relative overflow-hidden"
+            style={{
+              background: "linear-gradient(145deg, rgba(34,197,94,0.12), rgba(20,20,20,0.9))",
+              border: "1px solid rgba(74,222,128,0.2)",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 opacity-30" style={{ background: "radial-gradient(circle, rgba(74,222,128,0.4), transparent 70%)", filter: "blur(15px)" }} />
 
-          <div className="mb-2">
-            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
-                style={{
-                  width: `${totalDays > 0 ? Math.min(Math.max((daysActive / totalDays) * 100, 1), 100) : 0}%`,
-                  background: "linear-gradient(90deg, #22c55e, #4ade80)",
-                  boxShadow: "0 0 8px rgba(74,222,128,0.3)",
-                }}
-              >
+            <div className="relative flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] font-bold text-white">{t("profile.myNodesLabel")}</span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                  style={{ background: "rgba(74,222,128,0.2)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}
+                >
+                  {activeCount} {t("common.active")}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-[18px] font-black text-white">{daysActive}<span className="text-[11px] text-white/40 font-medium">/{totalDays || 0}</span></div>
+                <div className="text-[9px] text-white/35">{t("profile.dayUnit")}</div>
+              </div>
+            </div>
+
+            <div className="relative mb-1">
+              <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
                 <div
-                  className="absolute inset-0 opacity-40"
+                  className="h-full rounded-full transition-all duration-1000 relative overflow-hidden"
                   style={{
-                    background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
-                    animation: "shimmer 2s ease-in-out infinite",
+                    width: `${progressPercent}%`,
+                    background: "linear-gradient(90deg, #22c55e, #4ade80, #a3e635)",
+                    boxShadow: "0 0 12px rgba(74,222,128,0.4)",
                   }}
-                />
-              </div>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[9px] text-white/30">{t("profile.dayZero")}</span>
-              <span className="text-[9px] text-white/30">{totalDays || 0}{t("profile.dayUnit")}</span>
-            </div>
-          </div>
-
-          {activeNodes.length > 0 && milestones.length > 0 && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-white/55 font-medium">{t("profile.milestoneCountdown")}</span>
-                {currentMilestone && (
-                  <span
-                    className="text-[11px] font-bold px-2 py-0.5 rounded-md"
-                    style={{ background: "rgba(250,204,21,0.12)", color: "#facc15", border: "1px solid rgba(250,204,21,0.2)" }}
-                  >
-                    {currentMilestone.rank} — {currentMilestone.daysLeft}{t("profile.daysLeft")}
-                  </span>
-                )}
-              </div>
-
-              <div className="relative">
-                <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
+                >
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="absolute inset-0"
                     style={{
-                      width: `${Math.max(overallProgress, 2)}%`,
-                      background: "linear-gradient(90deg, #22c55e, #4ade80, #a3e635)",
-                      boxShadow: "0 0 10px rgba(74,222,128,0.3)",
+                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
+                      animation: "shimmer 2s ease-in-out infinite",
                     }}
                   />
                 </div>
+              </div>
+            </div>
 
-                <div className="flex justify-between mt-1" style={{ paddingLeft: 0, paddingRight: 0 }}>
+            {activeNodes.length > 0 && milestones.length > 0 && (
+              <div className="mt-3">
+                <div className="flex justify-between items-end px-0.5">
                   {milestoneStates.map((ms, idx) => {
+                    const isActive = ms.isAchieved || ms.isCurrent;
                     return (
-                      <div
-                        key={ms.rank}
-                        className="flex flex-col items-center cursor-pointer"
-                        style={{ width: `${100 / milestones.length}%` }}
-                        onClick={() => {}}
-                      >
+                      <div key={ms.rank} className="flex flex-col items-center" style={{ width: `${100 / milestones.length}%` }}>
                         <div
-                          className="w-4 h-4 rounded-full -mt-[13px] flex items-center justify-center transition-all relative z-10"
+                          className="w-5 h-5 rounded-full flex items-center justify-center relative"
                           style={{
                             background: ms.isAchieved
                               ? "linear-gradient(135deg, #22c55e, #16a34a)"
@@ -225,33 +206,27 @@ export default function ProfileNodesPage() {
                               ? "linear-gradient(135deg, #facc15, #eab308)"
                               : ms.isFailed || ms.isExpired
                               ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                              : "rgba(255,255,255,0.12)",
-                            border: ms.isAchieved
-                              ? "2px solid #4ade80"
-                              : ms.isCurrent
-                              ? "2px solid #fde047"
-                              : ms.isFailed || ms.isExpired
-                              ? "2px solid #f87171"
-                              : "2px solid rgba(255,255,255,0.15)",
+                              : "rgba(255,255,255,0.1)",
                             boxShadow: ms.isCurrent
-                              ? "0 0 12px rgba(250,204,21,0.6)"
+                              ? "0 0 12px rgba(250,204,21,0.5)"
                               : ms.isAchieved
-                              ? "0 0 8px rgba(74,222,128,0.5)"
+                              ? "0 0 8px rgba(74,222,128,0.4)"
                               : "none",
                           }}
                         >
                           {ms.isAchieved && (
-                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 5L4.5 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4.5 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           )}
+                          {ms.isCurrent && <div className="w-2 h-2 rounded-full bg-white" />}
                           {(ms.isFailed || ms.isExpired) && (
-                            <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
                           )}
                         </div>
                         <span className={`text-[9px] mt-1 font-bold ${
                           ms.isAchieved ? "text-green-400" :
                           ms.isCurrent ? "text-yellow-300" :
                           ms.isFailed || ms.isExpired ? "text-red-400" :
-                          "text-white/35"
+                          "text-white/30"
                         }`}>
                           {ms.rank}
                         </span>
@@ -259,21 +234,20 @@ export default function ProfileNodesPage() {
                     );
                   })}
                 </div>
-              </div>
 
-              {currentMilestone && (
-                <div
-                  className="mt-3 rounded-xl px-3 py-2.5 flex items-center justify-between"
-                  style={{ background: "rgba(250,204,21,0.08)", border: "1px solid rgba(250,204,21,0.2)" }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-yellow-400 shrink-0 animate-pulse" style={{ boxShadow: "0 0 6px rgba(250,204,21,0.5)" }} />
-                    <span className="text-[11px] text-white/70 truncate font-medium">{getMilestoneDesc(currentMilestone)}</span>
+                {currentMilestone && (
+                  <div
+                    className="mt-3 rounded-xl px-3 py-2 flex items-center gap-2"
+                    style={{ background: "rgba(250,204,21,0.06)", border: "1px solid rgba(250,204,21,0.15)" }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0 animate-pulse" style={{ boxShadow: "0 0 6px rgba(250,204,21,0.5)" }} />
+                    <span className="text-[10px] text-white/60 truncate font-medium flex-1">{getMilestoneDesc(currentMilestone)}</span>
+                    <span className="text-[10px] font-bold text-yellow-400 shrink-0">{currentMilestone.daysLeft}{t("profile.daysLeft")}</span>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -292,75 +266,97 @@ export default function ProfileNodesPage() {
         </div>
       ) : (
         <div className="px-4 -mt-1 space-y-3">
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: "#181818", border: "1px solid rgba(255,255,255,0.45)", boxShadow: "0 2px 20px rgba(0,0,0,0.3)" }}>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                className="rounded-xl py-3 px-3 flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]"
-                style={{ background: "linear-gradient(135deg, rgba(74,222,128,0.18), rgba(74,222,128,0.06))", border: "1px solid rgba(74,222,128,0.35)" }}
-                onClick={() => { setPurchaseNodeType("MAX"); setPurchaseDialogOpen(true); }}
-              >
-                <span className="text-[12px] font-bold text-white">{t("profile.applyLargeNode")}</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-green-400" />
-              </button>
-              <button
-                className="rounded-xl py-3 px-3 flex items-center justify-center gap-1.5 transition-all active:scale-[0.97]"
-                style={{ background: "linear-gradient(135deg, rgba(74,222,128,0.18), rgba(74,222,128,0.06))", border: "1px solid rgba(74,222,128,0.35)" }}
-                onClick={() => { setPurchaseNodeType("MINI"); setPurchaseDialogOpen(true); }}
-              >
-                <span className="text-[12px] font-bold text-white">{t("profile.applySmallNode")}</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-green-400" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5 text-center -mt-0.5">
-              <span className="text-[10px] text-white/45">{t("profile.contribution")} {NODE_PLANS.MAX.price} USDC</span>
-              <span className="text-[10px] text-white/45">{t("profile.contribution")} {NODE_PLANS.MINI.price} USDC</span>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              className="rounded-2xl p-4 flex flex-col items-start gap-2 transition-all active:scale-[0.97] relative overflow-hidden group"
+              style={{
+                background: "linear-gradient(145deg, #1a2f20, #161616)",
+                border: "1px solid rgba(74,222,128,0.25)",
+              }}
+              onClick={() => { setPurchaseNodeType("MAX"); setPurchaseDialogOpen(true); }}
+            >
+              <div className="absolute top-0 right-0 w-20 h-20 opacity-20 group-hover:opacity-30 transition-opacity" style={{ background: "radial-gradient(circle, rgba(74,222,128,0.5), transparent 70%)", filter: "blur(10px)" }} />
+              <div className="relative">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-1" style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", boxShadow: "0 3px 10px rgba(34,197,94,0.3)" }}>
+                  <Zap className="h-4 w-4 text-white" />
+                </div>
+                <div className="text-[13px] font-bold text-white">{t("profile.applyLargeNode")}</div>
+                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MAX.price} USDC</div>
+              </div>
+              <div className="flex items-center gap-1 self-end">
+                <span className="text-[9px] text-green-400/60">{t("profile.nodeTotal")} ${NODE_PLANS.MAX.frozenAmount.toLocaleString()}</span>
+                <ArrowUpRight className="h-3 w-3 text-green-400/60" />
+              </div>
+            </button>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl p-3 text-center space-y-1" style={{ background: "#222", border: "1px solid rgba(255,255,255,0.25)" }}>
-                <div className="text-[10px] text-white/55 font-medium uppercase tracking-wide">{t("profile.nodeTotalAmount")}</div>
-                <Coins className="h-5 w-5 mx-auto text-green-400" />
-                <div className="text-[16px] font-black text-white">${totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <button
+              className="rounded-2xl p-4 flex flex-col items-start gap-2 transition-all active:scale-[0.97] relative overflow-hidden group"
+              style={{
+                background: "linear-gradient(145deg, #1e2328, #161616)",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+              onClick={() => { setPurchaseNodeType("MINI"); setPurchaseDialogOpen(true); }}
+            >
+              <div className="absolute top-0 right-0 w-20 h-20 opacity-15 group-hover:opacity-25 transition-opacity" style={{ background: "radial-gradient(circle, rgba(148,163,184,0.4), transparent 70%)", filter: "blur(10px)" }} />
+              <div className="relative">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-1" style={{ background: "linear-gradient(135deg, #475569, #334155)", boxShadow: "0 3px 10px rgba(71,85,105,0.3)" }}>
+                  <ShieldCheck className="h-4 w-4 text-white" />
+                </div>
+                <div className="text-[13px] font-bold text-white">{t("profile.applySmallNode")}</div>
+                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MINI.price} USDC</div>
               </div>
-              <div className="rounded-xl p-3 text-center space-y-1" style={{ background: "#222", border: "1px solid rgba(255,255,255,0.25)" }}>
-                <div className="text-[10px] text-white/55 font-medium uppercase tracking-wide">{t("profile.releaseDays")}</div>
-                <Calendar className="h-5 w-5 mx-auto text-green-400" />
-                <div className="text-[16px] font-black text-white">{daysActive}/{totalDays || 0}</div>
+              <div className="flex items-center gap-1 self-end">
+                <span className="text-[9px] text-white/40">{t("profile.nodeTotal")} ${NODE_PLANS.MINI.frozenAmount.toLocaleString()}</span>
+                <ArrowUpRight className="h-3 w-3 text-white/40" />
+              </div>
+            </button>
+          </div>
+
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "#181818", border: "1px solid rgba(255,255,255,0.12)" }}
+          >
+            <div className="grid grid-cols-2 divide-x divide-white/5">
+              <div className="p-3.5 text-center">
+                <div className="text-[9px] text-white/40 font-medium uppercase tracking-wider mb-1">{t("profile.nodeTotalAmount")}</div>
+                <div className="text-[18px] font-black text-white">${totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+              <div className="p-3.5 text-center">
+                <div className="text-[9px] text-white/40 font-medium uppercase tracking-wider mb-1">{t("profile.releasedEarnings")}</div>
+                <div className="text-[18px] font-black text-green-400">{formatCompactMA(releasedEarnings)}</div>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl p-3 text-center space-y-1" style={{ background: "#222", border: "1px solid rgba(255,255,255,0.25)" }}>
-                <div className="text-[10px] text-white/55 font-medium">{t("profile.releasedEarnings")}</div>
-                <div className="text-[14px] font-bold text-green-400">{formatCompactMA(releasedEarnings)}</div>
-              </div>
-              <div className="rounded-xl p-3 text-center space-y-1" style={{ background: "#222", border: "1px solid rgba(255,255,255,0.25)" }}>
-                <div className="text-[10px] text-white/55 font-medium">{t("profile.releaseStatus")}</div>
+            <div className="h-px bg-white/5" />
+            <div className="grid grid-cols-2 divide-x divide-white/5">
+              <div className="p-3.5 text-center">
+                <div className="text-[9px] text-white/40 font-medium uppercase tracking-wider mb-1">{t("profile.releaseStatus")}</div>
                 <div className="flex items-center justify-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${releaseStatus !== "--" ? "bg-green-400 animate-pulse" : "bg-white/25"}`} style={releaseStatus !== "--" ? { boxShadow: "0 0 6px rgba(74,222,128,0.5)" } : {}} />
+                  <div className={`w-2 h-2 rounded-full ${releaseStatus !== "--" ? "bg-green-400 animate-pulse" : "bg-white/20"}`} style={releaseStatus !== "--" ? { boxShadow: "0 0 6px rgba(74,222,128,0.5)" } : {}} />
                   <span className="text-[14px] font-bold text-white/90">{releaseStatus}</span>
                 </div>
               </div>
+              <div className="p-3.5 text-center">
+                <div className="text-[9px] text-white/40 font-medium uppercase tracking-wider mb-1">{t("profile.availableBalance")}</div>
+                <div className="text-[14px] font-bold text-white">{formatCompactMA(availableBalance)}</div>
+                <div className="text-[9px] text-white/25">/ {formatCompactMA(lockedEarnings)}</div>
+              </div>
             </div>
 
-            <div
-              className="rounded-xl px-3 py-2.5 flex items-center justify-between"
-              style={{ background: "#222", border: "1px solid rgba(255,255,255,0.25)" }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-white/55">{t("profile.availableBalance")}:</span>
-                <span className="text-[12px] font-bold text-white">{formatCompactMA(availableBalance)}/{formatCompactMA(lockedEarnings)}</span>
-              </div>
+            <div className="px-3.5 pb-3.5">
               <button
-                className="text-[11px] rounded-lg px-3 py-1 font-semibold transition-colors active:scale-95"
-                style={{ background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80" }}
+                className="w-full rounded-xl h-10 flex items-center justify-center gap-1.5 text-[12px] font-bold text-green-400 transition-all active:scale-[0.97]"
+                style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)" }}
               >
                 {t("profile.withdrawBtn")}
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            className="flex rounded-xl overflow-hidden"
+            style={{ background: "#151515", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
             {([
               { key: "purchase" as TabKey, label: t("profile.purchaseRecords") },
               { key: "earnings" as TabKey, label: t("profile.earningsDetailTab") },
@@ -368,25 +364,25 @@ export default function ProfileNodesPage() {
             ]).map((tab) => (
               <button
                 key={tab.key}
-                className="py-2.5 rounded-xl text-[12px] font-bold transition-all text-center"
+                className="flex-1 py-2.5 text-[11px] font-bold transition-all text-center relative"
                 style={{
-                  border: activeTab === tab.key
-                    ? "1px solid rgba(74,222,128,0.5)"
-                    : "1px solid rgba(255,255,255,0.3)",
-                  color: activeTab === tab.key ? "#4ade80" : "rgba(255,255,255,0.6)",
-                  background: activeTab === tab.key ? "rgba(74,222,128,0.1)" : "#181818",
+                  color: activeTab === tab.key ? "#4ade80" : "rgba(255,255,255,0.45)",
+                  background: activeTab === tab.key ? "rgba(74,222,128,0.08)" : "transparent",
                 }}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
+                {activeTab === tab.key && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-green-400" />
+                )}
               </button>
             ))}
           </div>
 
           {activeTab === "purchase" && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {allMemberships.length === 0 ? (
-                <div className="text-center py-16 text-white/35 text-[14px] italic">
+                <div className="text-center py-16 text-white/30 text-[13px]">
                   {t("profile.noData")}
                 </div>
               ) : (
@@ -394,47 +390,47 @@ export default function ProfileNodesPage() {
                   <div
                     key={m.id}
                     className="rounded-xl p-3.5 space-y-2"
-                    style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}
+                    style={{ background: "#181818", border: "1px solid rgba(255,255,255,0.1)" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-white">
-                        {m.nodeType === "MAX" ? t("profile.applyLargeNode") : t("profile.applySmallNode")}
-                      </span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: m.nodeType === "MAX" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.08)" }}>
+                          {m.nodeType === "MAX" ? <Zap className="h-3 w-3 text-green-400" /> : <ShieldCheck className="h-3 w-3 text-white/50" />}
+                        </div>
+                        <span className="text-[12px] font-bold text-white">
+                          {m.nodeType === "MAX" ? t("profile.applyLargeNode") : t("profile.applySmallNode")}
+                        </span>
+                      </div>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
                         m.status === "ACTIVE" ? "text-green-400" :
                         m.status === "PENDING_MILESTONES" ? "text-yellow-300" :
                         m.status === "CANCELLED" ? "text-red-400" :
                         "text-white/40"
                       }`} style={{
-                        background: m.status === "ACTIVE" ? "rgba(74,222,128,0.15)" :
-                        m.status === "PENDING_MILESTONES" ? "rgba(250,204,21,0.12)" :
-                        m.status === "CANCELLED" ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.06)",
-                        border: m.status === "ACTIVE" ? "1px solid rgba(74,222,128,0.25)" :
-                        m.status === "PENDING_MILESTONES" ? "1px solid rgba(250,204,21,0.2)" :
-                        m.status === "CANCELLED" ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(255,255,255,0.1)",
+                        background: m.status === "ACTIVE" ? "rgba(74,222,128,0.12)" :
+                        m.status === "PENDING_MILESTONES" ? "rgba(250,204,21,0.1)" :
+                        m.status === "CANCELLED" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)",
                       }}>
                         {m.status}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5 text-[10px] text-white/55">
+                    <div className="grid grid-cols-2 gap-1 text-[10px] text-white/45">
                       <span>{t("profile.contribution")}: {Number(m.contributionAmount || m.depositAmount || 0)} USDC</span>
                       <span>{t("profile.frozenFunds")}: {Number(m.frozenAmount || 0).toLocaleString()} USDC</span>
                       <span>{t("profile.startDate")}: {formatDate(m.startDate)}</span>
                       <span>{t("profile.endDate")}: {formatDate(m.endDate)}</span>
                     </div>
                     {m.milestones && m.milestones.length > 0 && (
-                      <div className="flex gap-1.5 flex-wrap mt-1">
+                      <div className="flex gap-1.5 flex-wrap">
                         {m.milestones.map((ms, i) => (
                           <span
                             key={i}
                             className="text-[9px] px-2 py-0.5 rounded-md font-bold"
                             style={{
-                              background: ms.status === "ACHIEVED" ? "rgba(74,222,128,0.15)" :
-                                ms.status === "FAILED" ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.08)",
-                              border: ms.status === "ACHIEVED" ? "1px solid rgba(74,222,128,0.3)" :
-                                ms.status === "FAILED" ? "1px solid rgba(239,68,68,0.25)" : "1px solid rgba(255,255,255,0.15)",
+                              background: ms.status === "ACHIEVED" ? "rgba(74,222,128,0.12)" :
+                                ms.status === "FAILED" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.06)",
                               color: ms.status === "ACHIEVED" ? "#4ade80" :
-                                ms.status === "FAILED" ? "#f87171" : "rgba(255,255,255,0.45)",
+                                ms.status === "FAILED" ? "#f87171" : "rgba(255,255,255,0.35)",
                             }}
                           >
                             {ms.requiredRank} ({ms.deadlineDays}d)
@@ -449,9 +445,9 @@ export default function ProfileNodesPage() {
           )}
 
           {activeTab === "earnings" && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {earningsRecords.length === 0 ? (
-                <div className="text-center py-16 text-white/35 text-[14px] italic">
+                <div className="text-center py-16 text-white/30 text-[13px]">
                   {t("profile.noData")}
                 </div>
               ) : (
@@ -459,15 +455,15 @@ export default function ProfileNodesPage() {
                   <div
                     key={r.id}
                     className="rounded-xl p-3.5 flex items-center justify-between"
-                    style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}
+                    style={{ background: "#181818", border: "1px solid rgba(255,255,255,0.1)" }}
                   >
                     <div>
-                      <div className="text-[13px] font-semibold text-white/90">
+                      <div className="text-[12px] font-semibold text-white/90">
                         {r.rewardType === "FIXED_YIELD" ? t("profile.dailyEarnings") :
                          r.rewardType === "POOL_DIVIDEND" ? t("profile.poolDividend") :
                          t("profile.teamCommission")}
                       </div>
-                      <div className="text-[10px] text-white/40">
+                      <div className="text-[10px] text-white/35">
                         {r.details?.node_type || "--"} · {formatDate(r.createdAt)}
                       </div>
                     </div>
@@ -481,46 +477,62 @@ export default function ProfileNodesPage() {
           )}
 
           {activeTab === "detail" && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {activeNodes.length === 0 ? (
-                <div className="text-center py-16 text-white/35 text-[14px] italic">
+                <div className="text-center py-16 text-white/30 text-[13px]">
                   {t("profile.noData")}
                 </div>
               ) : (
                 activeNodes.map((n) => (
                   <div
                     key={n.id}
-                    className="rounded-xl p-3.5 space-y-2"
-                    style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}
+                    className="rounded-xl p-3.5 space-y-2.5"
+                    style={{ background: "#181818", border: "1px solid rgba(255,255,255,0.1)" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-white">
-                        {n.nodeType === "MAX" ? t("profile.applyLargeNode") : t("profile.applySmallNode")}
-                      </span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: n.nodeType === "MAX" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.08)" }}>
+                          {n.nodeType === "MAX" ? <Zap className="h-3 w-3 text-green-400" /> : <ShieldCheck className="h-3 w-3 text-white/50" />}
+                        </div>
+                        <span className="text-[12px] font-bold text-white">
+                          {n.nodeType === "MAX" ? t("profile.applyLargeNode") : t("profile.applySmallNode")}
+                        </span>
+                      </div>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
                         n.status === "ACTIVE" ? "text-green-400" : "text-yellow-300"
                       }`} style={{
-                        background: n.status === "ACTIVE" ? "rgba(74,222,128,0.15)" : "rgba(250,204,21,0.12)",
-                        border: n.status === "ACTIVE" ? "1px solid rgba(74,222,128,0.25)" : "1px solid rgba(250,204,21,0.2)",
+                        background: n.status === "ACTIVE" ? "rgba(74,222,128,0.12)" : "rgba(250,204,21,0.1)",
                       }}>
                         {n.status}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5 text-[10px] text-white/55">
-                      <span>{t("profile.frozenFunds")}: {Number(n.frozenAmount || 0).toLocaleString()} USDC</span>
-                      <span>{t("profile.dailyEarnings")}: {(Number(n.dailyRate || 0) * 100).toFixed(1)}%</span>
-                      <span>{t("profile.milestoneSchedule")}: {n.milestoneStage}/{n.totalMilestones}</span>
-                      <span>{t("profile.earningsCapacity")}: {(Number(n.earningsCapacity || 0) * 100).toFixed(0)}%</span>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg p-2 text-center" style={{ background: "rgba(255,255,255,0.03)" }}>
+                        <div className="text-[9px] text-white/35">{t("profile.frozenFunds")}</div>
+                        <div className="text-[12px] font-bold text-white">{Number(n.frozenAmount || 0).toLocaleString()}</div>
+                      </div>
+                      <div className="rounded-lg p-2 text-center" style={{ background: "rgba(255,255,255,0.03)" }}>
+                        <div className="text-[9px] text-white/35">{t("profile.dailyEarnings")}</div>
+                        <div className="text-[12px] font-bold text-green-400">{(Number(n.dailyRate || 0) * 100).toFixed(1)}%</div>
+                      </div>
                     </div>
-                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${n.totalMilestones > 0 ? (n.milestoneStage / n.totalMilestones) * 100 : 0}%`,
-                          background: "linear-gradient(90deg, #22c55e, #4ade80)",
-                          boxShadow: "0 0 6px rgba(74,222,128,0.3)",
-                        }}
-                      />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] text-white/35">{t("profile.milestoneSchedule")}</span>
+                        <span className="text-[10px] font-bold text-white/60">{n.milestoneStage}/{n.totalMilestones}</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${n.totalMilestones > 0 ? (n.milestoneStage / n.totalMilestones) * 100 : 0}%`,
+                            background: "linear-gradient(90deg, #22c55e, #4ade80)",
+                            boxShadow: "0 0 6px rgba(74,222,128,0.3)",
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))
@@ -529,7 +541,6 @@ export default function ProfileNodesPage() {
           )}
         </div>
       )}
-
 
       <NodePurchaseDialog
         open={purchaseDialogOpen}
