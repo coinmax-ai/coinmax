@@ -81,6 +81,16 @@ export default function ProfileNodesPage() {
     ? activeNodes.some((n) => n.status === "ACTIVE") ? t("profile.releasing") : t("profile.pending")
     : "--";
 
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      ACTIVE: t("profile.statusActive"),
+      PENDING_MILESTONES: t("profile.statusPendingMilestones"),
+      CANCELLED: t("profile.statusCancelled"),
+      EXPIRED: t("profile.statusExpired"),
+    };
+    return map[status] || status;
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "--";
     return new Date(d).toLocaleDateString();
@@ -435,7 +445,7 @@ export default function ProfileNodesPage() {
                         m.status === "PENDING_MILESTONES" ? "rgba(250,204,21,0.1)" :
                         m.status === "CANCELLED" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)",
                       }}>
-                        {m.status}
+                        {getStatusLabel(m.status)}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 text-xs text-white/45">
@@ -528,7 +538,7 @@ export default function ProfileNodesPage() {
                         color: n.status === "ACTIVE" ? tiffanyLight : "#fde047",
                         background: n.status === "ACTIVE" ? "rgba(10,186,181,0.12)" : "rgba(250,204,21,0.1)",
                       }}>
-                        {n.status}
+                        {getStatusLabel(n.status)}
                       </span>
                     </div>
 

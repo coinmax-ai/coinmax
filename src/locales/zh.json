@@ -554,7 +554,11 @@
     "nodeTotal": "节点总额",
     "dailyRelease": "每日释放利息",
     "releaseByMA": "按MA当天价格释放MA",
-    "largeNodeDesc": "大节点会员详情"
+    "largeNodeDesc": "大节点会员详情",
+    "statusActive": "活跃中",
+    "statusPendingMilestones": "待达标",
+    "statusCancelled": "已取消",
+    "statusExpired": "已过期"
   },
   "market": {
     "marketAnalysis": "市场分析",

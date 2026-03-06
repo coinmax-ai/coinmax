@@ -554,7 +554,11 @@
     "nodeTotal": "Node Total",
     "dailyRelease": "Daily Release",
     "releaseByMA": "Released as MA at daily price",
-    "largeNodeDesc": "Large Node membership details"
+    "largeNodeDesc": "Large Node membership details",
+    "statusActive": "Active",
+    "statusPendingMilestones": "Pending Milestones",
+    "statusCancelled": "Cancelled",
+    "statusExpired": "Expired"
   },
   "market": {
     "marketAnalysis": "Market Analysis",
