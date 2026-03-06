@@ -559,7 +559,11 @@
     "statusPendingMilestones": "Pending Milestones",
     "statusCancelled": "Cancelled",
     "statusExpired": "Expired",
-    "statusNotStarted": "Not Started"
+    "statusNotStarted": "Not Started",
+    "enterRefCode": "Enter Referral Code",
+    "refCodeRequired": "A referral code is required to register",
+    "refCodePlaceholder": "Enter referral code",
+    "invalidRefCode": "Invalid referral code, please try again"
   },
   "market": {
     "marketAnalysis": "Market Analysis",

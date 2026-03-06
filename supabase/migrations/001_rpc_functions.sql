@@ -27,7 +27,11 @@ BEGIN
     RETURN to_jsonb(result);
   END IF;
 
-  -- New user: create profile with referrer
+  -- New user: require valid referral code
+  IF referrer_profile.id IS NULL THEN
+    RETURN jsonb_build_object('error', 'REFERRAL_REQUIRED', 'message', 'A valid referral code is required to register');
+  END IF;
+
   INSERT INTO profiles (wallet_address, referrer_id)
   VALUES (addr, referrer_profile.id)
   RETURNING * INTO result;

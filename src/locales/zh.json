@@ -559,7 +559,11 @@
     "statusPendingMilestones": "待达标",
     "statusCancelled": "已取消",
     "statusExpired": "已过期",
-    "statusNotStarted": "尚未开启"
+    "statusNotStarted": "尚未开启",
+    "enterRefCode": "输入推荐码",
+    "refCodeRequired": "注册需要推荐码",
+    "refCodePlaceholder": "请输入推荐码",
+    "invalidRefCode": "推荐码无效，请重试"
   },
   "market": {
     "marketAnalysis": "市场分析",

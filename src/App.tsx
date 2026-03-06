@@ -8,8 +8,9 @@ import { ThirdwebProvider, ConnectButton, useActiveAccount } from "thirdweb/reac
 import { createWallet, inAppWallet } from "thirdweb/wallets";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
 import { BottomNav } from "@/components/bottom-nav";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import Dashboard from "@/pages/dashboard";
 import Trade from "@/pages/trade";
@@ -50,23 +51,108 @@ function getRefCodeFromUrl(): string | null {
 }
 
 function WalletSync() {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const refCodeRef = useRef<string | null>(null);
+  const [showRefDialog, setShowRefDialog] = useState(false);
+  const [refInput, setRefInput] = useState("");
+  const [refError, setRefError] = useState("");
+  const [refLoading, setRefLoading] = useState(false);
 
   useEffect(() => {
     refCodeRef.current = getRefCodeFromUrl();
   }, []);
 
+  const doAuth = useCallback(async (address: string, refCode?: string) => {
+    const result = await authWallet(address, refCode);
+    if (result?.error === "REFERRAL_REQUIRED") {
+      setShowRefDialog(true);
+      return false;
+    }
+    if (refCode) sessionStorage.removeItem("coinmax_ref_code");
+    return true;
+  }, []);
+
   useEffect(() => {
     if (account?.address) {
       const refCode = refCodeRef.current || sessionStorage.getItem("coinmax_ref_code");
-      authWallet(account.address, refCode || undefined)
-        .then(() => { if (refCode) sessionStorage.removeItem("coinmax_ref_code"); })
-        .catch(console.error);
+      doAuth(account.address, refCode || undefined).catch(console.error);
     }
-  }, [account?.address]);
+  }, [account?.address, doAuth]);
 
-  return null;
+  const handleRefSubmit = async () => {
+    if (!refInput.trim() || !account?.address) return;
+    setRefError("");
+    setRefLoading(true);
+    try {
+      const ok = await doAuth(account.address, refInput.trim());
+      if (ok) {
+        setShowRefDialog(false);
+        setRefInput("");
+      } else {
+        setRefError(t("profile.invalidRefCode"));
+      }
+    } catch {
+      setRefError(t("profile.invalidRefCode"));
+    } finally {
+      setRefLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={showRefDialog} onOpenChange={() => {}}>
+      <DialogContent
+        className="max-w-[340px] p-0 overflow-hidden"
+        style={{
+          background: "#1a1a1a",
+          border: "1px solid rgba(10,186,181,0.3)",
+          borderRadius: 20,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.7), 0 0 40px rgba(10,186,181,0.1)",
+        }}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogTitle className="sr-only">{t("profile.enterRefCode")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("profile.refCodeRequired")}</DialogDescription>
+        <div className="px-6 pt-6 pb-2">
+          <div className="text-center mb-4">
+            <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #0abab5, #34d399)", boxShadow: "0 4px 15px rgba(10,186,181,0.4)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-white">{t("profile.enterRefCode")}</h3>
+            <p className="text-xs text-white/40 mt-1">{t("profile.refCodeRequired")}</p>
+          </div>
+        </div>
+        <div className="px-6 pb-6 space-y-3">
+          <input
+            type="text"
+            value={refInput}
+            onChange={(e) => { setRefInput(e.target.value); setRefError(""); }}
+            placeholder={t("profile.refCodePlaceholder")}
+            className="w-full h-11 rounded-xl px-4 text-sm text-white placeholder:text-white/25 outline-none"
+            style={{ background: "rgba(255,255,255,0.06)", border: refError ? "1px solid #ef4444" : "1px solid rgba(10,186,181,0.15)" }}
+            onKeyDown={(e) => e.key === "Enter" && handleRefSubmit()}
+            autoFocus
+          />
+          {refError && <p className="text-xs text-red-400">{refError}</p>}
+          <button
+            onClick={handleRefSubmit}
+            disabled={refLoading || !refInput.trim()}
+            className="w-full h-11 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40"
+            style={{
+              background: "linear-gradient(135deg, #0abab5, #34d399)",
+              boxShadow: "0 4px 15px rgba(10,186,181,0.3)",
+            }}
+          >
+            {refLoading ? t("common.processing") : t("common.confirm")}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function Header() {

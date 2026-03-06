@@ -1,8 +1,7 @@
 -- =============================================
--- 010: Fix referral binding for existing users
--- Previously, if a user connected wallet without ref code first,
--- they could never bind a referrer later. This fix allows binding
--- referrer_id when it's still NULL.
+-- 010: Fix referral binding + require referral code for new users
+-- 1. Allow existing users to bind referrer if not yet bound
+-- 2. New users MUST provide a valid referral code to register
 -- =============================================
 
 CREATE OR REPLACE FUNCTION auth_wallet(addr TEXT, ref_code TEXT DEFAULT NULL)
@@ -29,7 +28,11 @@ BEGIN
     RETURN to_jsonb(result);
   END IF;
 
-  -- New user: create profile with referrer
+  -- New user: require valid referral code
+  IF referrer_profile.id IS NULL THEN
+    RETURN jsonb_build_object('error', 'REFERRAL_REQUIRED', 'message', 'A valid referral code is required to register');
+  END IF;
+
   INSERT INTO profiles (wallet_address, referrer_id)
   VALUES (addr, referrer_profile.id)
   RETURNING * INTO result;
