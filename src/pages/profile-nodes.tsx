@@ -281,7 +281,7 @@ export default function ProfileNodesPage() {
                   <Zap className="h-4 w-4 text-white" />
                 </div>
                 <div className="text-[13px] font-bold text-white">{t("profile.applyLargeNode")}</div>
-                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MAX.price} USDC</div>
+                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MAX.price} USDT</div>
               </div>
               <div className="flex items-center gap-1 self-end">
                 <span className="text-[9px] text-green-400/60">{t("profile.nodeTotal")} ${NODE_PLANS.MAX.frozenAmount.toLocaleString()}</span>
@@ -303,7 +303,7 @@ export default function ProfileNodesPage() {
                   <ShieldCheck className="h-4 w-4 text-white" />
                 </div>
                 <div className="text-[13px] font-bold text-white">{t("profile.applySmallNode")}</div>
-                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MINI.price} USDC</div>
+                <div className="text-[10px] text-white/40 mt-0.5">${NODE_PLANS.MINI.price} USDT</div>
               </div>
               <div className="flex items-center gap-1 self-end">
                 <span className="text-[9px] text-white/40">{t("profile.nodeTotal")} ${NODE_PLANS.MINI.frozenAmount.toLocaleString()}</span>
@@ -415,8 +415,8 @@ export default function ProfileNodesPage() {
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-[10px] text-white/45">
-                      <span>{t("profile.contribution")}: {Number(m.contributionAmount || m.depositAmount || 0)} USDC</span>
-                      <span>{t("profile.frozenFunds")}: {Number(m.frozenAmount || 0).toLocaleString()} USDC</span>
+                      <span>{t("profile.contribution")}: {Number(m.contributionAmount || m.depositAmount || 0)} USDT</span>
+                      <span>{t("profile.frozenFunds")}: {Number(m.frozenAmount || 0).toLocaleString()} USDT</span>
                       <span>{t("profile.startDate")}: {formatDate(m.startDate)}</span>
                       <span>{t("profile.endDate")}: {formatDate(m.endDate)}</span>
                     </div>

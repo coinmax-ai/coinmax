@@ -152,7 +152,7 @@ export function NodePurchaseDialog({ open, onOpenChange, nodeType, walletAddr }:
             style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.03))", border: "1px solid rgba(74,222,128,0.15)" }}
           >
             <span className="text-[13px] font-bold text-white/70">{t("profile.totalPayment")}</span>
-            <span className="text-[19px] font-black text-green-400">${plan.price} <span className="text-[11px] font-semibold text-white/40">USDC</span></span>
+            <span className="text-[19px] font-black text-green-400">${plan.price} <span className="text-[11px] font-semibold text-white/40">USDT</span></span>
           </div>
 
           <button
