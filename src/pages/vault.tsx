@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, ArrowDownToLine, ArrowUpFromLine, Sparkles, AlertCircle, Loader2, ChevronRight } from "lucide-react";
 import { VaultChart } from "@/components/vault/vault-chart";
 import { VaultStats } from "@/components/vault/vault-stats";
-import { VaultPlans } from "@/components/vault/vault-plans";
 import { useActiveAccount } from "thirdweb/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getVaultPositions, getTransactions, getVaultRewards, vaultDeposit, vaultWithdraw } from "@/lib/api";
@@ -223,11 +222,6 @@ export default function Vault() {
     withdrawMutation.mutate({ walletAddress, positionId });
   };
 
-  const handlePlanSelect = (planKey: string) => {
-    setSelectedPlan(planKey);
-    setDepositOpen(true);
-  };
-
   return (
     <div className="space-y-6 pb-40 lg:pb-8 lg:px-6 lg:pt-4">
       <style>{`
@@ -239,12 +233,12 @@ export default function Vault() {
 
       <VaultChart />
 
-      <div className="px-4">
+      <div className="px-4 lg:px-0">
         <h3 className="text-base font-bold mb-3">{t("vault.vaultDetails")}</h3>
         <VaultStats />
       </div>
 
-      <div className="px-4">
+      <div className="px-4 lg:px-0">
         <Card className="border-border bg-card shadow-[0_0_15px_rgba(0,188,165,0.05)]">
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
@@ -273,11 +267,7 @@ export default function Vault() {
         </Card>
       </div>
 
-      <div className="px-4">
-        <VaultPlans selectedPlan={selectedPlan} onSelectPlan={handlePlanSelect} />
-      </div>
-
-      <div className="px-4">
+      <div className="px-4 lg:px-0">
         <h3 className="text-base font-bold mb-3">{t("vault.positions")}</h3>
         <Card className="border-border bg-card">
           <CardContent className="p-4">
@@ -348,7 +338,7 @@ export default function Vault() {
         </Card>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 lg:px-0">
         <Tabs defaultValue="deposit">
           <TabsList className="w-full bg-card border border-border">
             <TabsTrigger value="deposit" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-deposit">
@@ -467,8 +457,8 @@ export default function Vault() {
         </Tabs>
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md px-3 sm:px-4 py-2.5 sm:py-3">
-        <div className="mx-auto max-w-lg flex gap-2 sm:gap-3">
+      <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md px-3 sm:px-4 py-2.5 sm:py-3">
+        <div className="mx-auto max-w-lg lg:max-w-2xl flex gap-2 sm:gap-3">
           <Button
             className="flex-1 min-w-0 bg-cyan-600 text-white border-cyan-700 text-xs sm:text-sm px-2 sm:px-4 h-9 sm:h-10"
             onClick={() => setDepositOpen(true)}
