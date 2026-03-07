@@ -104,7 +104,6 @@ export function PriceChart({
   const forecastSeriesRef = useRef<ISeriesApi<any> | null>(null);
   const forecastPriceLineRef = useRef<any>(null);
   const [chartType, setChartType] = useState<ChartType>("candle");
-  const [visible, setVisible] = useState(false);
   const prevChartTypeRef = useRef<ChartType>(chartType);
   const dataVersionRef = useRef(0);
   const userScrolledRef = useRef(false);
@@ -125,14 +124,6 @@ export function PriceChart({
     "bg-yellow-500/15 text-yellow-400";
 
   const forecastLineColor = "#38bdf8";
-
-  useEffect(() => {
-    if (hasData) {
-      const timer = setTimeout(() => setVisible(true), 80);
-      return () => clearTimeout(timer);
-    }
-    setVisible(false);
-  }, [hasData]);
 
   const destroyChart = useCallback(() => {
     if (chartRef.current) {
@@ -571,9 +562,8 @@ export function PriceChart({
         <Skeleton className="h-[280px] lg:h-[480px] w-full rounded-lg" />
       ) : (
         <div
-          className="relative w-full transition-opacity duration-500 ease-out rounded-lg overflow-hidden"
+          className="relative w-full rounded-lg overflow-hidden"
           style={{
-            opacity: visible ? 1 : 0,
             background: "linear-gradient(180deg, rgba(10,18,14,0.5) 0%, rgba(8,14,11,0.8) 100%)",
             border: "1px solid rgba(0,231,160,0.06)",
           }}

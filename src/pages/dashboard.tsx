@@ -123,7 +123,6 @@ export default function Dashboard() {
     <div className="space-y-4 pb-24 lg:pb-8 lg:px-6 lg:pt-4" data-testid="page-dashboard">
       <div
         className="gradient-green-dark rounded-b-2xl lg:rounded-2xl px-3 pb-3 pt-1.5 lg:pt-3"
-        style={{ animation: "fadeSlideIn 0.5s ease-out" }}
       >
         <div className="flex items-start justify-between gap-2">
           <PriceHeader coin={selectedCoin} isLoading={pricesLoading} />
@@ -151,12 +150,12 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="px-4 lg:px-0" style={{ animation: "fadeSlideIn 0.55s ease-out" }}>
+      <div className="px-4 lg:px-0">
         <AssetTabs selected={selectedAsset} onChange={setSelectedAsset} />
       </div>
 
       {/* AI Model Carousel */}
-      <div className="px-4 lg:px-0" style={{ animation: "fadeSlideIn 0.6s ease-out" }}>
+      <div className="px-4 lg:px-0">
         <AiModelCarousel
           forecasts={allForecasts}
           isLoading={forecastLoading}
@@ -167,7 +166,7 @@ export default function Dashboard() {
 
       {/* Desktop: two-column grid for depth + trending */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-4 lg:space-y-0">
-        <div className="px-4 lg:px-0" style={{ animation: "fadeSlideIn 0.7s ease-out" }}>
+        <div className="px-4 lg:px-0">
           <DepthBar
             buyPercent={depthBuy}
             sellPercent={depthSell}
@@ -177,14 +176,14 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="px-4 lg:px-0" style={{ animation: "fadeSlideIn 0.85s ease-out" }}>
+        <div className="px-4 lg:px-0">
           <div className="glass-card rounded-2xl p-4 relative overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
             <TrendingFeed prices={prices} isLoading={pricesLoading} />
           </div>
         </div>
       </div>
 
-      <div className="px-4 lg:px-0" style={{ animation: "fadeSlideIn 0.9s ease-out" }}>
+      <div className="px-4 lg:px-0">
         <div className="glass-card rounded-2xl p-4 relative overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
           <ExchangeDepth symbol={selectedAsset} />
         </div>
