@@ -151,9 +151,10 @@ export function PriceChart({
 
     destroyChart();
 
+    const chartHeight = window.innerWidth >= 1024 ? 480 : 280;
     const chart = createChart(container, {
       width: container.clientWidth,
-      height: 280,
+      height: chartHeight,
       layout: {
         background: { type: ColorType.Solid, color: BG_COLOR },
         textColor: TEXT_COLOR,
@@ -256,7 +257,8 @@ export function PriceChart({
 
     const handleResize = () => {
       if (chartRef.current && container) {
-        chartRef.current.applyOptions({ width: container.clientWidth });
+        const h = window.innerWidth >= 1024 ? 480 : 280;
+        chartRef.current.applyOptions({ width: container.clientWidth, height: h });
       }
     };
     const resizeObserver = new ResizeObserver(handleResize);
@@ -484,11 +486,11 @@ export function PriceChart({
     <div data-testid="chart-price-container">
       {onTimeframeChange && (
         <div className="mb-2 space-y-1" data-testid="timeframe-selector">
-          <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-0.5 lg:gap-1 overflow-x-auto scrollbar-hide">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.key}
-                className={`px-1.5 py-0.5 rounded text-[12px] font-medium transition-all duration-200 shrink-0 ${
+                className={`px-1.5 lg:px-2.5 py-0.5 lg:py-1 rounded text-[12px] lg:text-sm font-medium transition-all duration-200 shrink-0 ${
                   selectedTimeframe === tf.key
                     ? "bg-[rgba(0,231,160,0.15)] text-[#00e7a0] shadow-[0_0_8px_rgba(0,231,160,0.12)]"
                     : "text-[rgba(180,195,190,0.45)] hover:text-[rgba(180,195,190,0.75)] hover:bg-white/[0.03]"
@@ -532,7 +534,7 @@ export function PriceChart({
           </div>
 
           {hasOhlc && lastCandle && (
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono leading-none overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 text-[10px] sm:text-[11px] lg:text-xs font-mono leading-none overflow-x-auto scrollbar-hide">
               <span className="text-[rgba(180,195,190,0.4)] whitespace-nowrap">O <span className="text-[rgba(220,235,230,0.75)]">{formatUSD(lastCandle.open)}</span></span>
               <span className="text-[rgba(180,195,190,0.4)] whitespace-nowrap">H <span className="text-[rgba(220,235,230,0.75)]">{formatUSD(lastCandle.high)}</span></span>
               <span className="text-[rgba(180,195,190,0.4)] whitespace-nowrap">L <span className="text-[rgba(220,235,230,0.75)]">{formatUSD(lastCandle.low)}</span></span>
@@ -566,7 +568,7 @@ export function PriceChart({
       )}
 
       {isLoading || !hasData ? (
-        <Skeleton className="h-[280px] w-full rounded-lg" />
+        <Skeleton className="h-[280px] lg:h-[480px] w-full rounded-lg" />
       ) : (
         <div
           className="relative w-full transition-opacity duration-500 ease-out rounded-lg overflow-hidden"
@@ -578,7 +580,7 @@ export function PriceChart({
           data-testid="chart-price"
         >
 
-          <div ref={chartContainerRef} className="w-full tv-hide-logo" style={{ height: 280 }} />
+          <div ref={chartContainerRef} className="w-full tv-hide-logo h-[280px] lg:h-[480px]" />
           <div className="absolute bottom-1.5 left-2 text-[11px] font-bold tracking-widest text-white/[0.06] pointer-events-none select-none">
             NEXA AI
           </div>
