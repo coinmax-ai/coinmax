@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ export function AiPredictionGrid({ asset, currentPrice }: AiPredictionGridProps)
     queryFn: () => getAiPrediction(asset, selectedTf, lang),
     staleTime: 3 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const isBullish = prediction?.prediction === "BULLISH";
