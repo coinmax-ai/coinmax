@@ -44,8 +44,10 @@ export function NodePurchaseDialog({ open, onOpenChange, nodeType, walletAddr, a
       queryClient.invalidateQueries({ queryKey: ["node-overview", walletAddr] });
       queryClient.invalidateQueries({ queryKey: ["profile", walletAddr] });
       queryClient.invalidateQueries({ queryKey: ["node-milestone-requirements", walletAddr] });
+      queryClient.invalidateQueries({ queryKey: ["node-memberships", walletAddr] });
+      queryClient.invalidateQueries({ queryKey: ["node-earnings", walletAddr] });
       payment.reset();
-      handleClose();
+      onOpenChange(false);
     },
     onError: (err: Error) => {
       const failedTxHash = payment.txHash;
