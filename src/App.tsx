@@ -266,14 +266,8 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-4 lg:px-8 py-2.5 lg:py-3 border-b border-border/40 bg-background/90 backdrop-blur-xl">
-      <Link href="/" className="flex items-center gap-2.5 cursor-pointer" data-testid="link-logo-home">
-        <div className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center neon-glow-sm border border-primary/30 relative overflow-hidden">
-          <span className="font-display text-sm lg:text-base font-black text-primary drop-shadow-[0_0_8px_rgba(0,188,165,0.6)]">C</span>
-          <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/5" />
-        </div>
-        <span className="font-display text-sm lg:text-base font-bold tracking-widest text-foreground">
-          Coin<span className="text-primary drop-shadow-[0_0_6px_rgba(0,188,165,0.5)]">Max</span>
-        </span>
+      <Link href="/" className="flex items-center cursor-pointer" data-testid="link-logo-home">
+        <img src="/LOGO.png" alt="Logo" className="h-8 lg:h-9" />
       </Link>
 
       {isLoading || !client ? (
