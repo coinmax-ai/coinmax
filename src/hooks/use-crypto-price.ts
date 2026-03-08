@@ -41,14 +41,14 @@ export interface OhlcDataPoint {
 export type ChartTimeframe = "1m" | "5m" | "15m" | "30m" | "1H" | "4H" | "1D" | "1W";
 
 const BINANCE_INTERVALS: Record<ChartTimeframe, { interval: string; limit: number }> = {
-  "1m": { interval: "1m", limit: 120 },
-  "5m": { interval: "5m", limit: 120 },
-  "15m": { interval: "15m", limit: 120 },
-  "30m": { interval: "30m", limit: 120 },
-  "1H": { interval: "1h", limit: 120 },
-  "4H": { interval: "4h", limit: 120 },
-  "1D": { interval: "1d", limit: 120 },
-  "1W": { interval: "1w", limit: 52 },
+  "1m": { interval: "1m", limit: 300 },
+  "5m": { interval: "5m", limit: 300 },
+  "15m": { interval: "15m", limit: 200 },
+  "30m": { interval: "30m", limit: 200 },
+  "1H": { interval: "1h", limit: 200 },
+  "4H": { interval: "4h", limit: 200 },
+  "1D": { interval: "1d", limit: 365 },
+  "1W": { interval: "1w", limit: 104 },
 };
 
 function formatTimeLabel(ts: number, tf: ChartTimeframe): string {
@@ -116,22 +116,53 @@ async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response
   }
 }
 
+const BYBIT_INTERVALS: Record<ChartTimeframe, string> = {
+  "1m": "1", "5m": "5", "15m": "15", "30m": "30",
+  "1H": "60", "4H": "240", "1D": "D", "1W": "W",
+};
+
+function parseBybitKlines(raw: any[], tf: ChartTimeframe): OhlcDataPoint[] {
+  return raw.map((k: any) => ({
+    timestamp: Number(k[0]),
+    open: parseFloat(k[1]),
+    high: parseFloat(k[2]),
+    low: parseFloat(k[3]),
+    close: parseFloat(k[4]),
+    volume: parseFloat(k[5]),
+    time: formatTimeLabel(Number(k[0]), tf),
+  })).sort((a, b) => a.timestamp - b.timestamp);
+}
+
 async function fetchBinanceKlines(symbol: string, timeframe: ChartTimeframe): Promise<OhlcDataPoint[]> {
   const pair = symbol === "DOGE" ? "DOGEUSDT" : `${symbol}USDT`;
   const cfg = BINANCE_INTERVALS[timeframe];
   const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
   const urlUs = `https://api.binance.us/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
 
+  // 1) Binance Global
   try {
     const res = await fetchWithTimeout(url);
     if (res.ok) return parseKlines(await res.json(), timeframe);
   } catch {}
 
+  // 2) Bybit (good global coverage, no geo-restrictions)
+  try {
+    const bybitInterval = BYBIT_INTERVALS[timeframe];
+    const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${pair}&interval=${bybitInterval}&limit=${cfg.limit}`;
+    const res = await fetchWithTimeout(bybitUrl);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.result?.list?.length) return parseBybitKlines(json.result.list, timeframe);
+    }
+  } catch {}
+
+  // 3) Binance US
   try {
     const res = await fetchWithTimeout(urlUs);
     if (res.ok) return parseKlines(await res.json(), timeframe);
   } catch {}
 
+  // 4) Proxy fallback
   try {
     const data = await proxyFetch(url);
     if (Array.isArray(data)) return parseKlines(data, timeframe);

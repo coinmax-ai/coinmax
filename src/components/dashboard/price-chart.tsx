@@ -60,17 +60,17 @@ const CHART_TYPES: { key: ChartType; icon: any; label: string }[] = [
 ];
 
 function getVisibleBars(tf?: ChartTimeframe): number {
-  if (!tf) return 30;
+  if (!tf) return 60;
   switch (tf) {
-    case "1m": return 25;
-    case "5m": return 28;
-    case "15m": return 30;
-    case "30m": return 32;
-    case "1H": return 35;
-    case "4H": return 35;
-    case "1D": return 40;
-    case "1W": return 30;
-    default: return 30;
+    case "1m": return 50;
+    case "5m": return 55;
+    case "15m": return 60;
+    case "30m": return 60;
+    case "1H": return 65;
+    case "4H": return 70;
+    case "1D": return 80;
+    case "1W": return 52;
+    default: return 60;
   }
 }
 
@@ -173,14 +173,14 @@ export function PriceChart({
       },
       rightPriceScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        scaleMargins: { top: 0.05, bottom: 0.12 },
       },
       timeScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 8,
-        barSpacing: 14,
+        barSpacing: 10,
         fixLeftEdge: false,
         fixRightEdge: false,
       },
@@ -234,7 +234,7 @@ export function PriceChart({
         priceScaleId: "volume",
       });
       chart.priceScale("volume").applyOptions({
-        scaleMargins: { top: 0.82, bottom: 0 },
+        scaleMargins: { top: 0.88, bottom: 0 },
       });
       volumeSeriesRef.current = volumeSeries;
     }
