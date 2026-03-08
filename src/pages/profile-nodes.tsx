@@ -284,48 +284,73 @@ export default function ProfileNodesPage() {
       ) : (
         <div className="px-4 sm:px-6 -mt-1 space-y-3">
           {/* Purchase buttons */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
+            {/* MAX node — prominent CTA */}
             <button
-              className="rounded-2xl p-4 flex flex-col items-start gap-2 transition-all active:scale-[0.97] relative overflow-hidden group"
+              className="rounded-2xl p-4 sm:p-5 flex flex-col gap-3 transition-all active:translate-y-[1px] active:shadow-none relative overflow-hidden group"
               style={{
-                background: "linear-gradient(145deg, #0f2625, #101418)",
-                border: `1px solid rgba(10,186,181,0.25)`,
+                background: "linear-gradient(160deg, #0d3330 0%, #0a2420 40%, #081a18 100%)",
+                border: "1.5px solid rgba(10,186,181,0.4)",
+                boxShadow: "0 4px 0 rgba(10,186,181,0.15), 0 8px 25px rgba(10,186,181,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
               }}
               onClick={() => { setPurchaseNodeType("MAX"); setPurchaseDialogOpen(true); }}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 opacity-20 group-hover:opacity-35 transition-opacity" style={{ background: `radial-gradient(circle, rgba(10,186,181,0.5), transparent 70%)`, filter: "blur(12px)" }} />
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1.5" style={{ background: `linear-gradient(135deg, ${tiffany}, ${accentGreen})`, boxShadow: `0 3px 12px rgba(10,186,181,0.35)` }}>
-                  <Zap className="h-5 w-5 text-white" />
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-30" style={{ background: `radial-gradient(circle, rgba(10,186,181,0.6), transparent 65%)`, filter: "blur(20px)" }} />
+              <div className="absolute bottom-0 left-0 w-20 h-20 opacity-20" style={{ background: `radial-gradient(circle, rgba(52,211,153,0.5), transparent 65%)`, filter: "blur(15px)" }} />
+
+              <div className="relative flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{
+                  background: `linear-gradient(135deg, ${tiffany}, ${accentGreen})`,
+                  boxShadow: `0 4px 15px rgba(10,186,181,0.5), inset 0 1px 0 rgba(255,255,255,0.25)`,
+                }}>
+                  <Zap className="h-6 w-6 text-white drop-shadow-sm" />
                 </div>
-                <div className="text-sm sm:text-base font-bold text-white">{t("profile.applyLargeNode")}</div>
-                <div className="text-xs text-white/40 mt-0.5">${NODE_PLANS.MAX.price} USDT</div>
+                <div className="text-left">
+                  <div className="text-[15px] sm:text-base font-extrabold text-white tracking-tight">{t("profile.applyLargeNode")}</div>
+                  <div className="text-[13px] font-bold mt-0.5" style={{ color: tiffanyLight }}>${NODE_PLANS.MAX.price} <span className="text-[11px] font-medium text-white/40">USDT</span></div>
+                </div>
               </div>
-              <div className="flex items-center gap-1 self-end">
-                <span className="text-[11px]" style={{ color: `rgba(10,186,181,0.7)` }}>{t("profile.nodeTotal")} ${NODE_PLANS.MAX.frozenAmount.toLocaleString()}</span>
-                <ArrowUpRight className="h-3.5 w-3.5" style={{ color: `rgba(10,186,181,0.7)` }} />
+
+              <div className="relative flex items-center justify-between w-full">
+                <span className="text-[11px] font-medium" style={{ color: `rgba(10,186,181,0.6)` }}>{t("profile.nodeTotal")} ${NODE_PLANS.MAX.frozenAmount.toLocaleString()}</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: "rgba(10,186,181,0.12)", border: "1px solid rgba(10,186,181,0.2)" }}>
+                  <span className="text-[10px] font-bold" style={{ color: tiffanyLight }}>GO</span>
+                  <ArrowUpRight className="h-3 w-3" style={{ color: tiffanyLight }} />
+                </div>
               </div>
             </button>
 
+            {/* MINI node — secondary CTA */}
             <button
-              className="rounded-2xl p-4 flex flex-col items-start gap-2 transition-all active:scale-[0.97] relative overflow-hidden group"
+              className="rounded-2xl p-4 sm:p-5 flex flex-col gap-3 transition-all active:translate-y-[1px] active:shadow-none relative overflow-hidden group"
               style={{
-                background: "linear-gradient(145deg, #161a20, #101418)",
-                border: "1px solid rgba(129,216,208,0.15)",
+                background: "linear-gradient(160deg, #1a2028 0%, #141820 40%, #101418 100%)",
+                border: "1.5px solid rgba(129,216,208,0.2)",
+                boxShadow: "0 4px 0 rgba(129,216,208,0.08), 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
               }}
               onClick={() => { setPurchaseNodeType("MINI"); setPurchaseDialogOpen(true); }}
             >
-              <div className="absolute top-0 right-0 w-20 h-20 opacity-10 group-hover:opacity-20 transition-opacity" style={{ background: "radial-gradient(circle, rgba(129,216,208,0.4), transparent 70%)", filter: "blur(10px)" }} />
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1.5" style={{ background: "linear-gradient(135deg, #3b6b68, #2a4a48)", boxShadow: "0 3px 10px rgba(59,107,104,0.3)" }}>
-                  <ShieldCheck className="h-5 w-5 text-white" />
+              <div className="absolute top-0 right-0 w-24 h-24 opacity-15 group-hover:opacity-25 transition-opacity" style={{ background: "radial-gradient(circle, rgba(129,216,208,0.5), transparent 65%)", filter: "blur(15px)" }} />
+
+              <div className="relative flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{
+                  background: "linear-gradient(135deg, #3b6b68, #2a4a48)",
+                  boxShadow: "0 4px 12px rgba(59,107,104,0.35), inset 0 1px 0 rgba(255,255,255,0.1)",
+                }}>
+                  <ShieldCheck className="h-6 w-6 text-white/90 drop-shadow-sm" />
                 </div>
-                <div className="text-sm sm:text-base font-bold text-white">{t("profile.applySmallNode")}</div>
-                <div className="text-xs text-white/40 mt-0.5">${NODE_PLANS.MINI.price} USDT</div>
+                <div className="text-left">
+                  <div className="text-[15px] sm:text-base font-extrabold text-white tracking-tight">{t("profile.applySmallNode")}</div>
+                  <div className="text-[13px] font-bold mt-0.5 text-white/60">${NODE_PLANS.MINI.price} <span className="text-[11px] font-medium text-white/30">USDT</span></div>
+                </div>
               </div>
-              <div className="flex items-center gap-1 self-end">
-                <span className="text-[11px] text-white/35">{t("profile.nodeTotal")} ${NODE_PLANS.MINI.frozenAmount.toLocaleString()}</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-white/35" />
+
+              <div className="relative flex items-center justify-between w-full">
+                <span className="text-[11px] text-white/30 font-medium">{t("profile.nodeTotal")} ${NODE_PLANS.MINI.frozenAmount.toLocaleString()}</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span className="text-[10px] font-bold text-white/40">GO</span>
+                  <ArrowUpRight className="h-3 w-3 text-white/40" />
+                </div>
               </div>
             </button>
           </div>
