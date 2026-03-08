@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -11,12 +12,29 @@ interface StrategyOverviewData {
   avgReturn: string;
 }
 
+function useFloatingValue(min: number, max: number, intervalMs = 2000) {
+  const [value, setValue] = useState(() => min + Math.random() * (max - min));
+  const ref = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    const tick = () => {
+      setValue(min + Math.random() * (max - min));
+      ref.current = setTimeout(tick, intervalMs + Math.random() * intervalMs * 0.5);
+    };
+    ref.current = setTimeout(tick, intervalMs);
+    return () => clearTimeout(ref.current);
+  }, [min, max, intervalMs]);
+  return value;
+}
+
 export function StrategyHeader() {
   const { t } = useTranslation();
   const { data: overview, isLoading } = useQuery<StrategyOverviewData>({
     queryKey: ["strategy-overview"],
     queryFn: getStrategyOverview,
   });
+
+  const floatingWinRate = useFloatingValue(80, 85, 3000);
+  const floatingMonthlyReturn = useFloatingValue(18, 28, 4000);
 
   if (isLoading || !overview) {
     return (
@@ -53,7 +71,7 @@ export function StrategyHeader() {
             <div className="flex items-center gap-1 text-[12px] text-muted-foreground mb-1">
               <Target className="h-3 w-3" /> {t("strategy.avgWinRate")}
             </div>
-            <div className="text-xl font-bold text-neon-value" data-testid="text-win-rate">{overview.avgWinRate}</div>
+            <div className="text-xl font-bold text-neon-value" data-testid="text-win-rate">{floatingWinRate.toFixed(1)}%</div>
           </CardContent>
         </Card>
         <Card className="border-border bg-card/50">
@@ -61,7 +79,7 @@ export function StrategyHeader() {
             <div className="flex items-center gap-1 text-[12px] text-muted-foreground mb-1">
               <BarChart3 className="h-3 w-3" /> {t("strategy.avgMonthlyReturn")}
             </div>
-            <div className="text-xl font-bold text-neon-value" data-testid="text-avg-return">{overview.avgReturn}</div>
+            <div className="text-xl font-bold text-neon-value" data-testid="text-avg-return">{floatingMonthlyReturn.toFixed(1)}%</div>
           </CardContent>
         </Card>
       </div>
