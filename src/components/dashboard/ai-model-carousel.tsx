@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, Minus, Sparkles, Brain, Zap, Target, Activity } from "lucide-react";
 import { formatUSD } from "@/lib/constants";
@@ -39,19 +39,10 @@ function getModelMeta(model: string) {
 }
 
 function AnimatedGauge({ value, accent, glow, size = 64, confLabel = "CONF" }: { value: number; accent: string; glow: string; size?: number; confLabel?: string }) {
-  const [animValue, setAnimValue] = useState(0);
-  const [showValue, setShowValue] = useState(false);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setAnimValue(value), 300);
-    const t2 = setTimeout(() => setShowValue(true), 600);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [value]);
-
   const sw = 3.5;
   const r = (size - sw) / 2 - 3;
   const c = 2 * Math.PI * r;
-  const offset = c - (animValue / 100) * c;
+  const offset = c - (value / 100) * c;
   const gradId = `ag-${accent.replace('#', '')}-${size}`;
 
   return (
@@ -78,7 +69,7 @@ function AnimatedGauge({ value, accent, glow, size = 64, confLabel = "CONF" }: {
           </linearGradient>
         </defs>
       </svg>
-      <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${showValue ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-[18px] font-black tabular-nums leading-none" style={{ color: accent, textShadow: `0 0 12px rgba(${glow},0.4)` }}>{value}</span>
         <span className="text-[7px] font-semibold text-muted-foreground/60 mt-0.5 tracking-wider">{confLabel}</span>
       </div>
@@ -87,13 +78,8 @@ function AnimatedGauge({ value, accent, glow, size = 64, confLabel = "CONF" }: {
 }
 
 function MiniGauge({ value, accent, glow }: { value: number; accent: string; glow: string }) {
-  const [animValue, setAnimValue] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setAnimValue(value), 200);
-    return () => clearTimeout(t);
-  }, [value]);
   const size = 30; const sw = 2.5; const r = (size-sw)/2-1;
-  const c = 2*Math.PI*r; const offset = c-(animValue/100)*c;
+  const c = 2*Math.PI*r; const offset = c-(value/100)*c;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" style={{ width: size, height: size }}>
@@ -350,13 +336,7 @@ function MarqueeRow({ children, paused }: { children: React.ReactNode; paused: b
 
 export function AiModelCarousel({ forecasts, isLoading, activeModel, onSelectModel }: AiModelCarouselProps) {
   const { t } = useTranslation();
-  const [mounted, setMounted] = useState(false);
   const [marqueeHovered, setMarqueeHovered] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(t);
-  }, []);
 
   const sorted = useMemo(() => {
     if (!forecasts) return [];
@@ -397,7 +377,7 @@ export function AiModelCarousel({ forecasts, isLoading, activeModel, onSelectMod
 
   return (
     <div
-      className={`ai-wrapper-glass relative overflow-hidden rounded-2xl ${mounted ? 'ai-mounted' : ''}`}
+      className="ai-wrapper-glass relative overflow-hidden rounded-2xl"
       style={{
         background: `linear-gradient(170deg, rgba(${consensusGlow},0.06) 0%, rgba(255,255,255,0.02) 30%, rgba(0,0,0,0.2) 100%)`,
         backdropFilter: 'blur(20px) saturate(1.4)',
