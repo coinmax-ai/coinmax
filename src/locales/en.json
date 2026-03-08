@@ -509,6 +509,8 @@
     "withdrawBtn": "Withdraw",
     "withdrawNotReady": "Not Eligible Yet",
     "withdrawNotReadyDesc": "You have not met the withdrawal requirements yet. Please continue to complete milestones.",
+    "alreadyPurchased": "Already Purchased",
+    "alreadyPurchasedDesc": "Each account can only purchase one node.",
     "purchaseRecords": "Purchase Records",
     "earningsDetailTab": "Earnings Detail",
     "myDetailTab": "My Detail",

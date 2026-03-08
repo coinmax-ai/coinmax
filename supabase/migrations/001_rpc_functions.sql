@@ -285,16 +285,17 @@ END;
 $$;
 
 -- purchase_node: create membership, update profile, create transaction
+-- Each account can only purchase one MAX and one MINI node
 CREATE OR REPLACE FUNCTION purchase_node(addr TEXT, node_type_param TEXT, tx_hash TEXT DEFAULT NULL, payment_mode_param TEXT DEFAULT 'FULL')
 RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 DECLARE
   profile_row profiles%ROWTYPE;
-  node_price NUMERIC;
+  frozen_amount NUMERIC;
+  contribution NUMERIC;
   node_duration INT;
-  node_rank TEXT;
-  charge_amount NUMERIC;
+  existing_count INT;
   membership node_memberships%ROWTYPE;
 BEGIN
   SELECT * INTO profile_row FROM profiles WHERE wallet_address = addr;
@@ -302,33 +303,38 @@ BEGIN
     RAISE EXCEPTION 'Profile not found';
   END IF;
 
-  -- New pricing: MINI=100 USDC, MAX=1000 USDC
+  -- Each account can only purchase one node (MAX or MINI)
+  SELECT COUNT(*) INTO existing_count
+  FROM node_memberships
+  WHERE user_id = profile_row.id
+    AND status IN ('ACTIVE', 'PENDING_MILESTONES');
+  IF existing_count > 0 THEN
+    RAISE EXCEPTION 'Already purchased a node';
+  END IF;
+
+  -- Frozen amounts: MAX=6000, MINI=1000; Contributions: MAX=600, MINI=100
   IF node_type_param = 'MAX' THEN
-    node_price := 1000;
+    frozen_amount := 6000;
+    contribution := 600;
     node_duration := 120;
   ELSE
-    node_price := 100;
+    frozen_amount := 1000;
+    contribution := 100;
     node_duration := 90;
   END IF;
 
-  IF payment_mode_param = 'DEPOSIT' THEN
-    charge_amount := node_price * 0.1;
-  ELSE
-    charge_amount := node_price;
-  END IF;
-
   INSERT INTO node_memberships (user_id, node_type, price, status, start_date, end_date)
-  VALUES (profile_row.id, node_type_param, node_price,
-    CASE WHEN payment_mode_param = 'DEPOSIT' THEN 'PENDING_MILESTONES' ELSE 'ACTIVE' END,
+  VALUES (profile_row.id, node_type_param, frozen_amount,
+    'ACTIVE',
     NOW(), NOW() + (node_duration || ' days')::INTERVAL)
   RETURNING * INTO membership;
 
-  -- Don't auto-set rank on purchase; rank is evaluated separately
+  -- Update profile node_type
   UPDATE profiles SET node_type = node_type_param
   WHERE id = profile_row.id;
 
   INSERT INTO transactions (user_id, type, token, amount, tx_hash, status)
-  VALUES (profile_row.id, 'NODE_PURCHASE', 'USDC', charge_amount, tx_hash, 'CONFIRMED');
+  VALUES (profile_row.id, 'NODE_PURCHASE', 'USDC', contribution, tx_hash, 'CONFIRMED');
 
   RETURN to_jsonb(membership);
 END;
