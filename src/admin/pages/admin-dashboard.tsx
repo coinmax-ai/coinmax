@@ -18,43 +18,23 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">
-        {t("admin.dashboard", "Dashboard")}
+    <div className="space-y-4 lg:space-y-6">
+      <h1 className="text-lg lg:text-xl font-bold text-foreground">
+        {t("admin.dashboard", "仪表盘")}
       </h1>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[120px] rounded-2xl" />
+            <Skeleton key={i} className="h-[90px] lg:h-[120px] rounded-2xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title={t("admin.totalUsers", "Total Users")}
-            value={stats?.totalUsers ?? 0}
-            icon={Users}
-            subtitle={t("admin.registeredAccounts", "Registered accounts")}
-          />
-          <StatsCard
-            title={t("admin.totalDeposited", "Total Deposited")}
-            value={formatUSD(Number(stats?.totalDeposited ?? 0))}
-            icon={Wallet}
-            subtitle={t("admin.allTimeDeposits", "All time deposits")}
-          />
-          <StatsCard
-            title={t("admin.activeNodes", "Active Nodes")}
-            value={stats?.activeNodes ?? 0}
-            icon={Server}
-            subtitle={t("admin.currentlyActive", "Currently active")}
-          />
-          <StatsCard
-            title={t("admin.totalCommissions", "Total Commissions")}
-            value={formatUSD(Number(stats?.totalCommissions ?? 0))}
-            icon={TrendingUp}
-            subtitle={t("admin.allTimeCommissions", "All time commissions")}
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatsCard title="总用户" value={stats?.totalUsers ?? 0} icon={Users} subtitle="注册账户" />
+          <StatsCard title="总存入" value={formatUSD(Number(stats?.totalDeposited ?? 0))} icon={Wallet} subtitle="历史总额" />
+          <StatsCard title="活跃节点" value={stats?.activeNodes ?? 0} icon={Server} subtitle="当前活跃" />
+          <StatsCard title="总佣金" value={formatUSD(Number(stats?.totalCommissions ?? 0))} icon={TrendingUp} subtitle="历史总额" />
         </div>
       )}
     </div>

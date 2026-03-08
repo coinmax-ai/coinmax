@@ -6,37 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
 import { StatsCard } from "@/admin/components/stats-card";
+import { MobileDataCard } from "@/admin/components/mobile-card";
 import { adminGetPerformanceStats, adminGetCommissions } from "@/admin/admin-api";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { shortenAddress, formatUSD } from "@/lib/constants";
 
 const PAGE_SIZE = 20;
 
-function commissionTypeBadge(type: string) {
-  switch (type?.toLowerCase()) {
-    case "direct":
-      return (
-        <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/20">
-          Direct
-        </Badge>
-      );
-    case "differential":
-      return (
-        <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/20">
-          Differential
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{type}</Badge>;
-  }
+function typeBadge(type: string) {
+  const t = type?.toLowerCase();
+  if (t === "direct") return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/20 text-[10px] h-5">直推</Badge>;
+  if (t === "differential") return <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/20 text-[10px] h-5">差级</Badge>;
+  return <Badge variant="outline" className="text-[10px] h-5">{type}</Badge>;
 }
 
 export default function AdminPerformance() {
@@ -61,139 +45,85 @@ export default function AdminPerformance() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">
-        {t("admin.performance", "Performance")}
-      </h1>
+    <div className="space-y-4 lg:space-y-6">
+      <h1 className="text-lg lg:text-xl font-bold text-foreground">业绩管理</h1>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       {statsLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[120px] rounded-2xl" />
-          ))}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[90px] lg:h-[120px] rounded-2xl" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatsCard
-            title={t("admin.totalUsers", "Total Users")}
-            value={stats?.totalUsers ?? 0}
-            icon={Users}
-          />
-          <StatsCard
-            title={t("admin.totalDeposited", "Total Deposited")}
-            value={formatUSD(Number(stats?.totalDeposited ?? 0))}
-            icon={Wallet}
-          />
-          <StatsCard
-            title={t("admin.activeNodes", "Active Nodes")}
-            value={stats?.activeNodes ?? 0}
-            icon={Server}
-          />
-          <StatsCard
-            title={t("admin.totalCommissions", "Total Commissions")}
-            value={formatUSD(Number(stats?.totalCommissions ?? 0))}
-            icon={TrendingUp}
-          />
-          <StatsCard
-            title={t("admin.totalDeposited", "Total Deposited")}
-            value={formatUSD(Number(stats?.totalDeposited ?? 0))}
-            icon={DollarSign}
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatsCard title="总用户" value={stats?.totalUsers ?? 0} icon={Users} />
+          <StatsCard title="总存入" value={formatUSD(Number(stats?.totalDeposited ?? 0))} icon={Wallet} />
+          <StatsCard title="活跃节点" value={stats?.activeNodes ?? 0} icon={Server} />
+          <StatsCard title="总佣金" value={formatUSD(Number(stats?.totalCommissions ?? 0))} icon={TrendingUp} />
         </div>
       )}
 
       {/* Commission Records */}
-      <h2 className="text-lg font-semibold text-foreground/80">
-        {t("admin.commissionRecords", "Commission Records")}
-      </h2>
+      <h2 className="text-sm lg:text-lg font-semibold text-foreground/80">佣金记录</h2>
 
-      <div
-        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-x-auto"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-        }}
-      >
-        {commissionsLoading ? (
-          <div className="p-6 space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
+      {commissionsLoading ? (
+        <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 lg:h-10 w-full rounded-xl" />)}</div>
+      ) : (
+        <>
+          {/* Mobile */}
+          <div className="lg:hidden space-y-3">
+            {commissions.length === 0 ? (
+              <p className="text-center text-foreground/40 py-8 text-sm">暂无佣金记录</p>
+            ) : commissions.map((r: any) => (
+              <MobileDataCard
+                key={r.id}
+                header={
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-primary">{shortenAddress(r.userWallet ?? r.userId)}</span>
+                    {typeBadge(r.details?.type ?? r.rewardType)}
+                  </div>
+                }
+                fields={[
+                  { label: "金额", value: formatUSD(Number(r.amount)) },
+                  { label: "来源", value: r.sourceWallet ? shortenAddress(r.sourceWallet) : r.details?.sourceUser ? shortenAddress(r.details.sourceUser) : "-", mono: true },
+                  { label: "时间", value: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-" },
+                ]}
+              />
             ))}
           </div>
-        ) : (
-          <Table className="min-w-[640px]">
-            <TableHeader>
-              <TableRow className="border-border/20 hover:bg-transparent">
-                <TableHead>{t("admin.userWallet", "User Wallet")}</TableHead>
-                <TableHead>{t("admin.amount", "Amount")}</TableHead>
-                <TableHead>{t("admin.type", "Type")}</TableHead>
-                <TableHead>{t("admin.sourceWallet", "Source Wallet")}</TableHead>
-                <TableHead>{t("admin.createdAt", "Created At")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {commissions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-foreground/40 py-8">
-                    {t("admin.noData", "No data found")}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                commissions.map((record: any) => (
-                  <TableRow key={record.id} className="border-border/10">
-                    <TableCell className="font-mono text-xs text-foreground/70">
-                      {shortenAddress(record.userWallet ?? record.userId)}
-                    </TableCell>
-                    <TableCell className="text-foreground/70 font-medium">
-                      {formatUSD(Number(record.amount))}
-                    </TableCell>
-                    <TableCell>
-                      {commissionTypeBadge(record.details?.type ?? record.rewardType)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-foreground/40">
-                      {record.sourceWallet
-                        ? shortenAddress(record.sourceWallet)
-                        : record.details?.sourceUser
-                        ? shortenAddress(record.details.sourceUser)
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-foreground/40 text-xs">
-                      {record.createdAt
-                        ? new Date(record.createdAt).toLocaleDateString()
-                        : "-"}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
 
-      {/* Pagination */}
+          {/* Desktop */}
+          <div className="hidden lg:block rounded-2xl border border-border/30 backdrop-blur-sm overflow-x-auto" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)" }}>
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="border-border/20 hover:bg-transparent">
+                  <TableHead>用户钱包</TableHead><TableHead>金额</TableHead><TableHead>类型</TableHead>
+                  <TableHead>来源</TableHead><TableHead>时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {commissions.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center text-foreground/40 py-8">暂无佣金记录</TableCell></TableRow>
+                ) : commissions.map((r: any) => (
+                  <TableRow key={r.id} className="border-border/10">
+                    <TableCell className="font-mono text-xs text-foreground/70">{shortenAddress(r.userWallet ?? r.userId)}</TableCell>
+                    <TableCell className="text-foreground/70 font-medium">{formatUSD(Number(r.amount))}</TableCell>
+                    <TableCell>{typeBadge(r.details?.type ?? r.rewardType)}</TableCell>
+                    <TableCell className="font-mono text-xs text-foreground/40">{r.sourceWallet ? shortenAddress(r.sourceWallet) : r.details?.sourceUser ? shortenAddress(r.details.sourceUser) : "-"}</TableCell>
+                    <TableCell className="text-foreground/40 text-xs">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-xs text-foreground/40">
-            {t("admin.pageInfo", "Page {{page}} of {{total}}", { page, total: totalPages })}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              {t("admin.prev", "Prev")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              {t("admin.next", "Next")}
-            </Button>
+          <span className="text-xs text-foreground/40">{page} / {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>上一页</Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>下一页</Button>
           </div>
         </div>
       )}

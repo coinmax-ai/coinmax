@@ -1,8 +1,8 @@
 import { Switch, Route, useLocation } from "wouter";
-import { AdminSidebar, SidebarProvider, useSidebar } from "./components/admin-sidebar";
+import { AdminSidebar, AdminBottomNav, SidebarProvider, navItems } from "./components/admin-sidebar";
 import { AdminAuthProvider } from "./admin-auth";
 import { useTranslation } from "react-i18next";
-import { Shield, Menu } from "lucide-react";
+import { Shield } from "lucide-react";
 
 // Page imports
 import AdminDashboard from "./pages/admin-dashboard";
@@ -12,38 +12,30 @@ import AdminVaults from "./pages/admin-vaults";
 import AdminNodes from "./pages/admin-nodes";
 import AdminPerformance from "./pages/admin-performance";
 
-const sectionNames: Record<string, string> = {
-  "/admin": "Dashboard",
-  "/admin/members": "会员管理",
-  "/admin/referrals": "推荐管理",
-  "/admin/vaults": "金库管理",
-  "/admin/nodes": "节点管理",
-  "/admin/performance": "业绩管理",
-};
-
 function AdminHeader() {
   const [location] = useLocation();
   const { t } = useTranslation();
-  const { toggle } = useSidebar();
 
-  const currentSection =
-    Object.entries(sectionNames).find(([path]) =>
-      path === "/admin" ? location === "/admin" : location.startsWith(path)
-    )?.[1] ?? "Admin";
+  const current = navItems.find((item) =>
+    item.exact ? location === item.path : location.startsWith(item.path)
+  );
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 lg:px-6 border-b border-border/30 bg-background/90 backdrop-blur-xl">
-      <div className="flex items-center gap-3">
-        <button onClick={toggle} className="lg:hidden p-1.5 rounded-lg text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.05]">
-          <Menu className="h-5 w-5" />
-        </button>
-        <h1 className="text-sm font-semibold text-foreground tracking-wide">
-          {currentSection}
-        </h1>
+    <header className="sticky top-0 z-30 flex items-center justify-between h-12 lg:h-14 px-4 lg:px-6 border-b border-border/30 bg-background/90 backdrop-blur-xl">
+      <div className="flex items-center gap-2 lg:hidden">
+        <div className="h-7 w-7 rounded-md bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center border border-primary/30">
+          <span className="font-display text-xs font-black text-primary">C</span>
+        </div>
+        <span className="font-display text-sm font-bold tracking-widest text-foreground">
+          <span className="text-primary">Admin</span>
+        </span>
       </div>
-      <div className="flex items-center gap-2.5">
-        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-          <Shield className="h-4 w-4 text-primary" />
+      <h1 className="hidden lg:block text-sm font-semibold text-foreground tracking-wide">
+        {current?.label ?? "Admin"}
+      </h1>
+      <div className="flex items-center gap-2">
+        <div className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+          <Shield className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-primary" />
         </div>
         <span className="text-xs font-medium text-foreground/50 hidden sm:inline">
           {t("common.admin", "管理员")}
@@ -60,7 +52,7 @@ function AdminLayout() {
         <AdminSidebar />
         <div className="lg:ml-[240px]">
           <AdminHeader />
-          <main className="p-4 lg:p-6">
+          <main className="px-3 py-4 lg:p-6 pb-24 lg:pb-6">
             <Switch>
               <Route path="/admin" component={AdminDashboard} />
               <Route path="/admin/members" component={AdminMembers} />
@@ -71,6 +63,7 @@ function AdminLayout() {
             </Switch>
           </main>
         </div>
+        <AdminBottomNav />
       </div>
     </SidebarProvider>
   );
