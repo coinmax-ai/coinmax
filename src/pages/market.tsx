@@ -9,6 +9,7 @@ import { formatUSD, formatCompact } from "@/lib/constants";
 import { ArrowLeft, ChevronLeft, ChevronRight, Activity, Flame, Eye, Globe, Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { useLocation } from "wouter";
 import { fetchMarketCalendar, fetchFearGreedHistory, fetchSentiment, fetchFuturesOI, fetchExchangePrices } from "@/lib/api";
+import { ExchangeLogo } from "@/components/exchange-logo";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -47,23 +48,6 @@ interface CoinExchangeData {
 }
 
 /* ───────── Reusable Animation Helpers ───────── */
-
-const EXCHANGE_COLORS: Record<string, string> = {
-  Binance: "#F0B90B",
-  OKX: "#fff",
-  Bybit: "#F7A600",
-  Coinbase: "#0052FF",
-  Bitget: "#00F0FF",
-  "Gate.io": "#2354E6",
-  KuCoin: "#23AF5F",
-  HTX: "#2A70EF",
-  MEXC: "#1972E2",
-  Kraken: "#5741D9",
-};
-
-function getExchangeColor(name: string) {
-  return EXCHANGE_COLORS[name] || "#888";
-}
 
 /** Fast-jitter animated value (300-600ms tick) */
 function AnimatedValue({ value, decimals = 2, prefix = "", suffix = "", color, className = "" }: {
@@ -650,7 +634,6 @@ export default function MarketPage() {
                   {filteredPositions.map((item, idx) => {
                     const isPositive = item.priceChange24h >= 0;
                     const oiPct = (item.openInterestValue / maxOI) * 100;
-                    const exColor = getExchangeColor(item.exchange);
                     return (
                       <div
                         key={`${item.pair}-${item.exchange}`}
@@ -664,7 +647,7 @@ export default function MarketPage() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: exColor }} />
+                            <ExchangeLogo name={item.exchange} size={20} />
                             <div className="min-w-0">
                               <div className="text-xs font-bold">{item.pair}</div>
                               <div className="text-[11px] text-muted-foreground">{item.exchange}</div>
@@ -745,7 +728,6 @@ export default function MarketPage() {
                 </div>
                 {rows.map((row, idx) => {
                   const isPos = row.change24h >= 0;
-                  const exColor = getExchangeColor(row.exchange);
                   const isLowest = row.price === minPrice && rows.length > 1;
                   const isHighest = row.price === maxPrice && rows.length > 1;
                   return (
@@ -759,8 +741,8 @@ export default function MarketPage() {
                         transition: `opacity 0.4s ease ${idx * 50}ms, transform 0.4s ease ${idx * 50}ms`,
                       }}
                     >
-                      <div className="w-24 shrink-0 flex items-center gap-1.5">
-                        <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: exColor }} />
+                      <div className="w-28 shrink-0 flex items-center gap-1.5">
+                        <ExchangeLogo name={row.exchange} size={16} />
                         <span className="text-[13px] font-medium truncate">{row.exchange}</span>
                       </div>
                       <div className="flex-1 text-center flex items-center justify-center gap-1.5">

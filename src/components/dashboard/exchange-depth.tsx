@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { fetchExchangeDepth } from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import { ExchangeLogo } from "@/components/exchange-logo";
 
 interface ExchangeRow {
   name: string;
@@ -96,7 +97,10 @@ function DepthBarRow({ ex, mounted, index }: { ex: ExchangeRow; mounted: boolean
         transition: `opacity 0.4s ease ${index * 40}ms, transform 0.4s ease ${index * 40}ms`,
       }}
     >
-      <span className="w-[60px] shrink-0 text-[11px] font-medium text-foreground/80 truncate">{ex.name}</span>
+      <div className="w-[72px] shrink-0 flex items-center gap-1.5 min-w-0">
+        <ExchangeLogo name={ex.name} size={14} />
+        <span className="text-[11px] font-medium text-foreground/80 truncate">{ex.name}</span>
+      </div>
       <span className="w-[18px] shrink-0 text-[11px] text-emerald-400/70 font-medium">{t("dashboard.buyLabel")}</span>
       <span className="w-[36px] shrink-0 text-right"><JitterPercent value={ex.buy} color="#34d399" /></span>
 
