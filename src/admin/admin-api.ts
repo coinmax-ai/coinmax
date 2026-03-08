@@ -118,6 +118,66 @@ export async function adminGetReferralPairs(page: number, pageSize: number) {
 }
 
 // ─────────────────────────────────────────────
+// Referral Tree (recursive)
+// ─────────────────────────────────────────────
+
+export interface ReferralNode {
+  id: string;
+  walletAddress: string;
+  rank: string;
+  nodeType: string | null;
+  refCode: string;
+  createdAt: string;
+  children: ReferralNode[];
+}
+
+export async function adminGetReferralTree(walletAddress: string): Promise<ReferralNode | null> {
+  // Get root profile
+  const { data: root, error } = await supabase
+    .from("profiles")
+    .select("id, wallet_address, rank, node_type, ref_code, created_at")
+    .eq("wallet_address", walletAddress)
+    .single();
+  if (error || !root) return null;
+
+  // Recursively fetch children (max 4 levels deep)
+  async function fetchChildren(parentId: string, depth: number): Promise<ReferralNode[]> {
+    if (depth > 4) return [];
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, wallet_address, rank, node_type, ref_code, created_at")
+      .eq("referrer_id", parentId)
+      .order("created_at", { ascending: true });
+    if (!data?.length) return [];
+    const nodes: ReferralNode[] = [];
+    for (const row of data) {
+      const children = await fetchChildren(row.id, depth + 1);
+      nodes.push({
+        id: row.id,
+        walletAddress: row.wallet_address,
+        rank: row.rank,
+        nodeType: row.node_type,
+        refCode: row.ref_code,
+        createdAt: row.created_at,
+        children,
+      });
+    }
+    return nodes;
+  }
+
+  const children = await fetchChildren(root.id, 1);
+  return {
+    id: root.id,
+    walletAddress: root.wallet_address,
+    rank: root.rank,
+    nodeType: root.node_type,
+    refCode: root.ref_code,
+    createdAt: root.created_at,
+    children,
+  };
+}
+
+// ─────────────────────────────────────────────
 // Vault Positions
 // ─────────────────────────────────────────────
 

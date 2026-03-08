@@ -78,7 +78,7 @@ export default function AdminMembers() {
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs text-primary">{shortenAddress(p.walletAddress)}</span>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="text-[10px] h-5">{p.rank}</Badge>
+                      <Badge className="text-[10px] h-5 bg-primary/10 text-primary border border-primary/20">{p.rank}</Badge>
                       {p.isVip && <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/20 text-[10px] h-5">VIP</Badge>}
                     </div>
                   </div>
@@ -111,7 +111,7 @@ export default function AdminMembers() {
                 {profiles.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-foreground/40 py-8">{t("admin.noData", "暂无数据")}</TableCell></TableRow>
                 ) : profiles.map((p: any) => (
-                  <TableRow key={p.id} className="border-border/10">
+                  <TableRow key={p.id} className="border-border/10 hover:bg-white/[0.015]">
                     <TableCell className="font-mono text-xs text-foreground/70">{shortenAddress(p.walletAddress)}</TableCell>
                     <TableCell className="text-foreground/70">{p.refCode}</TableCell>
                     <TableCell><Badge variant="outline" className="text-xs">{p.rank}</Badge></TableCell>

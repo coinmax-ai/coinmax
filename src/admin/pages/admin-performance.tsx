@@ -104,7 +104,7 @@ export default function AdminPerformance() {
                 {commissions.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center text-foreground/40 py-8">暂无佣金记录</TableCell></TableRow>
                 ) : commissions.map((r: any) => (
-                  <TableRow key={r.id} className="border-border/10">
+                  <TableRow key={r.id} className="border-border/10 hover:bg-white/[0.015]">
                     <TableCell className="font-mono text-xs text-foreground/70">{shortenAddress(r.userWallet ?? r.userId)}</TableCell>
                     <TableCell className="text-foreground/70 font-medium">{formatUSD(Number(r.amount))}</TableCell>
                     <TableCell>{typeBadge(r.details?.type ?? r.rewardType)}</TableCell>

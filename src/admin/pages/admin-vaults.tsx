@@ -105,7 +105,7 @@ export default function AdminVaults() {
                 {positions.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-foreground/40 py-8">暂无数据</TableCell></TableRow>
                 ) : positions.map((pos: any) => (
-                  <TableRow key={pos.id} className="border-border/10">
+                  <TableRow key={pos.id} className="border-border/10 hover:bg-white/[0.015]">
                     <TableCell className="font-mono text-xs text-foreground/70">{shortenAddress(pos.userWallet ?? pos.userId)}</TableCell>
                     <TableCell className="text-foreground/70">{pos.planType}</TableCell>
                     <TableCell className="text-foreground/70">{formatUSD(Number(pos.principal))}</TableCell>
