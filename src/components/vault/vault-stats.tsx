@@ -1,46 +1,20 @@
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Lock, Layers } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
 import { VAULT_PLANS } from "@/lib/data";
-import { getVaultOverview } from "@/lib/api";
 import { useTranslation } from "react-i18next";
-
-interface VaultOverviewResponse {
-  tvl: string;
-  holders: number;
-  activePositions: number;
-}
+import { useGrowingStats } from "@/hooks/use-growing-stats";
 
 export function VaultStats() {
   const { t } = useTranslation();
-  const { data: overview, isLoading } = useQuery<VaultOverviewResponse>({
-    queryKey: ["vault-overview"],
-    queryFn: getVaultOverview,
-  });
+  const { tvlFormatted, holders, positions } = useGrowingStats();
 
   const maxApr = Object.values(VAULT_PLANS).reduce((max, p) => {
     const apr = parseFloat(p.apr);
     return apr > max ? apr : max;
   }, 0);
-
-  if (isLoading || !overview) {
-    return (
-      <div className="grid grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-md" />
-        ))}
-      </div>
-    );
-  }
-
-  const tvlNum = Number(overview.tvl || 0);
-  const tvlFormatted = tvlNum >= 1_000_000
-    ? `$${(tvlNum / 1_000_000).toFixed(2)}M`
-    : tvlNum >= 1_000
-      ? `$${(tvlNum / 1_000).toFixed(1)}K`
-      : `$${tvlNum.toFixed(2)}`;
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -68,7 +42,7 @@ export function VaultStats() {
           <div className="text-[12px] text-muted-foreground mb-1 flex items-center gap-1">
             <Users className="h-3 w-3" /> {t("vault.holders")}
           </div>
-          <div className="text-lg font-bold" data-testid="text-holders">{overview.holders}</div>
+          <div className="text-lg font-bold" data-testid="text-holders">{holders}+</div>
         </CardContent>
       </Card>
       <Card className="border-border bg-card">
@@ -76,7 +50,7 @@ export function VaultStats() {
           <div className="text-[12px] text-muted-foreground mb-1 flex items-center gap-1">
             <Lock className="h-3 w-3" /> {t("vault.activePositions")}
           </div>
-          <div className="text-lg font-bold" data-testid="text-positions">{overview.activePositions}</div>
+          <div className="text-lg font-bold" data-testid="text-positions">{positions}+</div>
         </CardContent>
       </Card>
     </div>
