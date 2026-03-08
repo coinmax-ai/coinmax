@@ -137,32 +137,34 @@ async function fetchBinanceKlines(symbol: string, timeframe: ChartTimeframe): Pr
   const pair = symbol === "DOGE" ? "DOGEUSDT" : `${symbol}USDT`;
   const cfg = BINANCE_INTERVALS[timeframe];
   const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
-  const urlUs = `https://api.binance.us/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
+  const bybitInterval = BYBIT_INTERVALS[timeframe];
+  const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${pair}&interval=${bybitInterval}&limit=${cfg.limit}`;
 
-  // 1) Binance Global
+  // Race: try Binance + Bybit concurrently, first success wins
   try {
-    const res = await fetchWithTimeout(url);
+    const result = await Promise.any([
+      fetchWithTimeout(url, 4000).then(async (res) => {
+        if (!res.ok) throw new Error("not ok");
+        return parseKlines(await res.json(), timeframe);
+      }),
+      fetchWithTimeout(bybitUrl, 4000).then(async (res) => {
+        if (!res.ok) throw new Error("not ok");
+        const json = await res.json();
+        if (!json.result?.list?.length) throw new Error("no data");
+        return parseBybitKlines(json.result.list, timeframe);
+      }),
+    ]);
+    return result;
+  } catch {}
+
+  // Fallback: Binance US
+  try {
+    const urlUs = `https://api.binance.us/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
+    const res = await fetchWithTimeout(urlUs, 4000);
     if (res.ok) return parseKlines(await res.json(), timeframe);
   } catch {}
 
-  // 2) Bybit (good global coverage, no geo-restrictions)
-  try {
-    const bybitInterval = BYBIT_INTERVALS[timeframe];
-    const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${pair}&interval=${bybitInterval}&limit=${cfg.limit}`;
-    const res = await fetchWithTimeout(bybitUrl);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.result?.list?.length) return parseBybitKlines(json.result.list, timeframe);
-    }
-  } catch {}
-
-  // 3) Binance US
-  try {
-    const res = await fetchWithTimeout(urlUs);
-    if (res.ok) return parseKlines(await res.json(), timeframe);
-  } catch {}
-
-  // 4) Proxy fallback
+  // Last resort: Proxy
   try {
     const data = await proxyFetch(url);
     if (Array.isArray(data)) return parseKlines(data, timeframe);
@@ -197,10 +199,11 @@ export function useBinanceKlines(symbol: string, timeframe: ChartTimeframe) {
     queryFn: () => fetchBinanceKlines(symbol, timeframe),
     refetchInterval: timeframe === "1m" ? 30000 : timeframe === "5m" ? 30000 : 60000,
     staleTime: timeframe === "1m" ? 25000 : 30000,
+    gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
     structuralSharing: true,
-    retry: 3,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchOnWindowFocus: false,
   });
 }

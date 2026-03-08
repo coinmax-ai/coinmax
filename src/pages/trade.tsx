@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { usePriceChart, useCryptoPrices } from "@/hooks/use-crypto-price";
-import { ASSET_IDS } from "@/lib/constants";
+import { useBinanceKlines, useCryptoPrices } from "@/hooks/use-crypto-price";
 import { TRADE_ASSETS, BET_DEFAULTS } from "@/lib/data";
 import { formatUSD } from "@/lib/constants";
 import { PriceChart } from "@/components/dashboard/price-chart";
@@ -33,8 +32,7 @@ export default function Trade() {
   const [duration, setDuration] = useState(BET_DEFAULTS.defaultDuration);
   const [infoTab, setInfoTab] = useState<"market" | "leaderboard">("market");
 
-  const coinId = ASSET_IDS[selectedAsset] || "bitcoin";
-  const { data: chartData, isLoading: chartLoading } = usePriceChart(coinId);
+  const { data: klineData, isLoading: chartLoading } = useBinanceKlines(selectedAsset, "5m");
   const { data: prices } = useCryptoPrices();
 
   const currentPrice = useMemo(() => {
@@ -200,7 +198,7 @@ export default function Trade() {
                   {t("trade.live1s")}
                 </div>
               </div>
-              <PriceChart data={chartData} isLoading={chartLoading} color="hsl(174, 72%, 46%)" />
+              <PriceChart ohlcData={klineData} isLoading={chartLoading} color="hsl(174, 72%, 46%)" />
             </div>
           ) : (
             <div className="px-4 pb-4 text-center text-sm text-muted-foreground">

@@ -77,6 +77,7 @@ export default function Dashboard() {
     queryKey: ["ai-forecast-multi", selectedAsset, selectedTimeframe, lang],
     queryFn: () => getAiForecastMulti(selectedAsset, selectedTimeframe, lang),
     staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
     retry: 1,
