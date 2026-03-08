@@ -145,7 +145,7 @@ export default function AdminAuthCodes() {
                 fields={[
                   { label: "节点类型", value: <Badge variant="outline" className="text-[10px] h-5 capitalize">{c.nodeType}</Badge> },
                   { label: "创建人", value: c.createdBy || "-" },
-                  { label: "使用者", value: c.usedByWallet ? shortenAddress(c.usedByWallet) : "-", mono: true },
+                  { label: "使用者", value: c.usedBy ? shortenAddress(c.usedBy) : "-", mono: true },
                   { label: "使用时间", value: c.usedAt ? new Date(c.usedAt).toLocaleDateString() : "-" },
                 ]}
                 actions={
@@ -188,7 +188,7 @@ export default function AdminAuthCodes() {
                     <TableCell><Badge variant="outline" className="text-xs capitalize">{c.nodeType}</Badge></TableCell>
                     <TableCell>{codeBadge(c.status)}</TableCell>
                     <TableCell className="text-foreground/50 text-xs">{c.createdBy}</TableCell>
-                    <TableCell className="font-mono text-xs text-foreground/40">{c.usedByWallet ? shortenAddress(c.usedByWallet) : "-"}</TableCell>
+                    <TableCell className="font-mono text-xs text-foreground/40">{c.usedBy ? shortenAddress(c.usedBy) : "-"}</TableCell>
                     <TableCell className="text-foreground/40 text-xs">{c.usedAt ? new Date(c.usedAt).toLocaleDateString() : "-"}</TableCell>
                     <TableCell>
                       {c.status?.toUpperCase() === "ACTIVE" && (
