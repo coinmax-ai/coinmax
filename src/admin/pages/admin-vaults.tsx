@@ -72,7 +72,7 @@ export default function AdminVaults() {
       </h1>
 
       {/* Status Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map((status) => (
           <Button
             key={status}
@@ -90,7 +90,7 @@ export default function AdminVaults() {
 
       {/* Table */}
       <div
-        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-hidden"
+        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-x-auto"
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
@@ -103,7 +103,7 @@ export default function AdminVaults() {
             ))}
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-border/20 hover:bg-transparent">
                 <TableHead>{t("admin.userWallet", "User Wallet")}</TableHead>

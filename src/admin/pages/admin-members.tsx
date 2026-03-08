@@ -49,8 +49,8 @@ export default function AdminMembers() {
       </h1>
 
       {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="relative flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
           <Input
             placeholder={t("admin.searchWalletOrRef", "Search wallet address or ref code...")}
@@ -67,7 +67,7 @@ export default function AdminMembers() {
 
       {/* Table */}
       <div
-        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-hidden"
+        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-x-auto"
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
@@ -80,7 +80,7 @@ export default function AdminMembers() {
             ))}
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-border/20 hover:bg-transparent">
                 <TableHead>{t("admin.walletAddress", "Wallet Address")}</TableHead>

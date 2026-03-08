@@ -109,7 +109,7 @@ export default function AdminPerformance() {
       </h2>
 
       <div
-        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-hidden"
+        className="rounded-2xl border border-border/30 backdrop-blur-sm overflow-x-auto"
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
@@ -122,7 +122,7 @@ export default function AdminPerformance() {
             ))}
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-border/20 hover:bg-transparent">
                 <TableHead>{t("admin.userWallet", "User Wallet")}</TableHead>
