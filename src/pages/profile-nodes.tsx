@@ -112,7 +112,7 @@ export default function ProfileNodesPage() {
     ? Math.floor((Date.now() - new Date(firstNode.startDate).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
   const nodeType = (firstNode?.nodeType || "MINI") as keyof typeof NODE_PLANS;
-  const nodeFrozenTotal = firstNode ? Number((firstNode as any).price || NODE_PLANS[nodeType]?.frozenAmount || 0) : 0;
+  const nodeFrozenTotal = firstNode ? (NODE_PLANS[nodeType]?.frozenAmount || 0) : 0;
   const totalDays = firstNode ? (NODE_PLANS[nodeType]?.durationDays || 0) : 0;
   const milestones = NODE_MILESTONES[nodeType] || [];
 
@@ -565,7 +565,7 @@ export default function ProfileNodesPage() {
                       </div>
                       <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="text-[10px] text-white/30 mb-0.5">{t("profile.nodeTotal")}</div>
-                        <div className="text-[13px] font-bold text-white">${Number(m.price || 0).toLocaleString()}</div>
+                        <div className="text-[13px] font-bold text-white">${(m.nodeType === "MAX" ? NODE_PLANS.MAX.frozenAmount : NODE_PLANS.MINI.frozenAmount).toLocaleString()}</div>
                       </div>
                       <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="text-[10px] text-white/30 mb-0.5">{t("profile.dailyRelease")}</div>
