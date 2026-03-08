@@ -457,7 +457,14 @@ export function PriceChart({
     const totalBars = baseBars + forecastBars;
     const visibleBars = getVisibleBars(selectedTimeframe);
     if (!userScrolledRef.current) {
-      if (baseBars > visibleBars) {
+      if (forecastBars > 0) {
+        // When forecast exists, ensure both recent candles + all forecast bars are visible
+        const showBars = Math.max(visibleBars, forecastBars + 20);
+        chart.timeScale().setVisibleLogicalRange({
+          from: totalBars - showBars,
+          to: totalBars + 4,
+        });
+      } else if (baseBars > visibleBars) {
         chart.timeScale().setVisibleLogicalRange({
           from: totalBars - visibleBars,
           to: totalBars + 8,
