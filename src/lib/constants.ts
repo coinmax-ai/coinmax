@@ -24,7 +24,16 @@ export function formatUSD(value: number): string {
   }).format(value);
 }
 
+function isZh(): boolean {
+  try { return (localStorage.getItem("coinmax-lang") || "en") === "zh"; } catch { return false; }
+}
+
 export function formatCompact(value: number): string {
+  if (isZh()) {
+    if (value >= 100_000_000) return `$${(value / 100_000_000).toFixed(2)}亿`;
+    if (value >= 10_000) return `$${(value / 10_000).toFixed(2)}万`;
+    return `$${value.toFixed(2)}`;
+  }
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
   return `$${value.toFixed(2)}`;
@@ -43,6 +52,11 @@ export function formatMA(usdc: number): string {
 
 export function formatCompactMA(usdc: number): string {
   const ma = usdcToMA(usdc);
+  if (isZh()) {
+    if (ma >= 100_000_000) return `${(ma / 100_000_000).toFixed(2)}亿 MA`;
+    if (ma >= 10_000) return `${(ma / 10_000).toFixed(2)}万 MA`;
+    return `${ma.toFixed(2)} MA`;
+  }
   if (ma >= 1_000_000) return `${(ma / 1_000_000).toFixed(2)}M MA`;
   if (ma >= 1_000) return `${(ma / 1_000).toFixed(1)}K MA`;
   return `${ma.toFixed(2)} MA`;
