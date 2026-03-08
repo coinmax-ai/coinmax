@@ -105,7 +105,7 @@ function parseKlines(raw: any[], tf: ChartTimeframe): OhlcDataPoint[] {
   }));
 }
 
-async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -140,35 +140,28 @@ async function fetchBinanceKlines(symbol: string, timeframe: ChartTimeframe): Pr
   const bybitInterval = BYBIT_INTERVALS[timeframe];
   const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${pair}&interval=${bybitInterval}&limit=${cfg.limit}`;
 
-  // Race: try Binance + Bybit concurrently, first success wins
-  try {
-    const result = await Promise.any([
-      fetchWithTimeout(url, 4000).then(async (res) => {
-        if (!res.ok) throw new Error("not ok");
-        return parseKlines(await res.json(), timeframe);
-      }),
-      fetchWithTimeout(bybitUrl, 4000).then(async (res) => {
-        if (!res.ok) throw new Error("not ok");
-        const json = await res.json();
-        if (!json.result?.list?.length) throw new Error("no data");
-        return parseBybitKlines(json.result.list, timeframe);
-      }),
-    ]);
-    return result;
-  } catch {}
+  // Race all sources concurrently — proxy included so blocked networks get data fast
+  const result = await Promise.any([
+    // Direct Binance
+    fetchWithTimeout(url, 3500).then(async (res) => {
+      if (!res.ok) throw new Error("not ok");
+      return parseKlines(await res.json(), timeframe);
+    }),
+    // Direct Bybit
+    fetchWithTimeout(bybitUrl, 3500).then(async (res) => {
+      if (!res.ok) throw new Error("not ok");
+      const json = await res.json();
+      if (!json.result?.list?.length) throw new Error("no data");
+      return parseBybitKlines(json.result.list, timeframe);
+    }),
+    // Proxy (Supabase edge function) — works even when direct APIs are blocked
+    proxyFetch(url).then((data) => {
+      if (!Array.isArray(data)) throw new Error("bad proxy data");
+      return parseKlines(data, timeframe);
+    }),
+  ]).catch(() => null);
 
-  // Fallback: Binance US
-  try {
-    const urlUs = `https://api.binance.us/api/v3/klines?symbol=${pair}&interval=${cfg.interval}&limit=${cfg.limit}`;
-    const res = await fetchWithTimeout(urlUs, 4000);
-    if (res.ok) return parseKlines(await res.json(), timeframe);
-  } catch {}
-
-  // Last resort: Proxy
-  try {
-    const data = await proxyFetch(url);
-    if (Array.isArray(data)) return parseKlines(data, timeframe);
-  } catch {}
+  if (result) return result;
 
   throw new Error("Failed to fetch klines from all sources");
 }
@@ -187,8 +180,8 @@ export function useBinanceChart(symbol: string, timeframe: ChartTimeframe) {
     refetchInterval: timeframe === "1m" ? 30000 : timeframe === "5m" ? 30000 : 60000,
     staleTime: timeframe === "1m" ? 25000 : 30000,
     placeholderData: keepPreviousData,
-    retry: 3,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchOnWindowFocus: false,
   });
 }
@@ -212,24 +205,43 @@ export function useOrderBook(symbol: string) {
   return useQuery({
     queryKey: ["orderbook", symbol],
     queryFn: async () => {
+      // Try direct first, fallback to proxy
       try {
-        const res = await fetch(
-          `https://api.binance.com/api/v3/depth?symbol=${symbol}USDT&limit=10`
+        const res = await fetchWithTimeout(
+          `https://api.binance.com/api/v3/depth?symbol=${symbol}USDT&limit=10`,
+          3000
         );
-        if (!res.ok) throw new Error("Failed to fetch order book");
-        const data = await res.json();
-        const totalBids = data.bids.reduce((s: number, b: string[]) => s + parseFloat(b[1]), 0);
-        const totalAsks = data.asks.reduce((s: number, a: string[]) => s + parseFloat(a[1]), 0);
-        const total = totalBids + totalAsks;
-        return {
-          bids: data.bids.slice(0, 10),
-          asks: data.asks.slice(0, 10),
-          buyPercent: ((totalBids / total) * 100).toFixed(1),
-          sellPercent: ((totalAsks / total) * 100).toFixed(1),
-        };
-      } catch {
-        return { bids: [], asks: [], buyPercent: "50.0", sellPercent: "50.0" };
-      }
+        if (res.ok) {
+          const data = await res.json();
+          const totalBids = data.bids.reduce((s: number, b: string[]) => s + parseFloat(b[1]), 0);
+          const totalAsks = data.asks.reduce((s: number, a: string[]) => s + parseFloat(a[1]), 0);
+          const total = totalBids + totalAsks;
+          return {
+            bids: data.bids.slice(0, 10),
+            asks: data.asks.slice(0, 10),
+            buyPercent: ((totalBids / total) * 100).toFixed(1),
+            sellPercent: ((totalAsks / total) * 100).toFixed(1),
+          };
+        }
+      } catch {}
+
+      // Proxy fallback
+      try {
+        const data = await proxyFetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}USDT&limit=10`);
+        if (data?.bids && data?.asks) {
+          const totalBids = data.bids.reduce((s: number, b: string[]) => s + parseFloat(b[1]), 0);
+          const totalAsks = data.asks.reduce((s: number, a: string[]) => s + parseFloat(a[1]), 0);
+          const total = totalBids + totalAsks;
+          return {
+            bids: data.bids.slice(0, 10),
+            asks: data.asks.slice(0, 10),
+            buyPercent: ((totalBids / total) * 100).toFixed(1),
+            sellPercent: ((totalAsks / total) * 100).toFixed(1),
+          };
+        }
+      } catch {}
+
+      return { bids: [], asks: [], buyPercent: "50.0", sellPercent: "50.0" };
     },
     refetchInterval: 10000,
     staleTime: 5000,
