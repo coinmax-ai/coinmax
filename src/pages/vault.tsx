@@ -461,7 +461,7 @@ export default function Vault() {
         <div className="mx-auto max-w-lg lg:max-w-2xl flex gap-2 sm:gap-3">
           <Button
             className="flex-1 min-w-0 bg-cyan-600 text-white border-cyan-700 text-xs sm:text-sm px-2 sm:px-4 h-9 sm:h-10"
-            onClick={() => toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" })}
+            onClick={() => toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" })}
             data-testid="button-deposit-vault"
           >
             <ArrowDownToLine className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
@@ -470,7 +470,7 @@ export default function Vault() {
           <Button
             variant="secondary"
             className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-4 h-9 sm:h-10"
-            onClick={() => toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" })}
+            onClick={() => toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" })}
             data-testid="button-redeem-vault"
           >
             <ArrowUpFromLine className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />

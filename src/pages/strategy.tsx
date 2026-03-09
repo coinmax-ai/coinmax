@@ -244,20 +244,13 @@ export default function StrategyPage() {
   };
 
   const handleConfirmSubscribe = () => {
-    toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" });
+    toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" });
     return;
   };
 
   const handleHedgePurchase = () => {
-    if (!walletAddr) {
-      toast({ title: t("common.connectWallet"), description: t("strategy.connectWalletDesc"), variant: "destructive" });
-      return;
-    }
-    if (!hedgeAmount || Number(hedgeAmount) < HEDGE_CONFIG.minAmount) {
-      toast({ title: t("strategy.invalidAmount"), description: t("strategy.hedgeMinError"), variant: "destructive" });
-      return;
-    }
-    hedgeMutation.mutate({ walletAddress: walletAddr, amount: Number(hedgeAmount) });
+    toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" });
+    return;
   };
 
   const totalPremium = hedgePositions.reduce((sum, h) => sum + Number(h.amount || 0), 0);
@@ -1191,7 +1184,7 @@ export default function StrategyPage() {
             <Button
               className="text-xs bg-gradient-to-r from-emerald-600 to-teal-500 border-emerald-500/50 text-white"
               data-testid="button-inv-deposit"
-              onClick={() => toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" })}
+              onClick={() => toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" })}
             >
               <Wallet className="h-3.5 w-3.5 mr-1" />
               {t("common.deposit")}
@@ -1382,7 +1375,7 @@ export default function StrategyPage() {
             <Button
               className="bg-gradient-to-r from-emerald-600 to-teal-500 border-emerald-500/50 text-white"
               onClick={() => {
-                toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" });
+                toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" });
               }}
               data-testid="button-confirm-deposit"
             >
@@ -1715,7 +1708,7 @@ export default function StrategyPage() {
             <Button
               className="bg-gradient-to-r from-blue-600 to-indigo-500 border-blue-500/50 text-white"
               onClick={() => {
-                toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" });
+                toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" });
               }}
               data-testid="button-confirm-bind-telegram"
             >

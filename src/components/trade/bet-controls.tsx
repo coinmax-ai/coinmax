@@ -29,7 +29,7 @@ export function BetControls({ amount, onAmountChange, duration, onDurationChange
   }
 
   function handleBet(direction: "up" | "down") {
-    toast({ title: "暂未开发", description: "该功能正在开发中，敬请期待" });
+    toast({ title: "暂未开放", description: "该功能正在开发中，敬请期待" });
     return;
   }
 
