@@ -140,9 +140,9 @@ export async function adminGetReferralTree(walletAddress: string): Promise<Refer
     .single();
   if (error || !root) return null;
 
-  // Recursively fetch children (max 4 levels deep)
+  // Recursively fetch children (max 15 levels deep)
   async function fetchChildren(parentId: string, depth: number): Promise<ReferralNode[]> {
-    if (depth > 4) return [];
+    if (depth > 15) return [];
     const { data } = await supabase
       .from("profiles")
       .select("id, wallet_address, rank, node_type, ref_code, created_at")
