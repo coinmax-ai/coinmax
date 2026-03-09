@@ -394,53 +394,29 @@ export default function ProfilePage() {
           {isConnected && !profile?.isVip && showVipPlans && (
             <div className="px-4 pb-4 space-y-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="pt-3" />
-              {(Object.keys(VIP_PLANS) as Array<keyof typeof VIP_PLANS>).map((planKey) => {
-                const plan = VIP_PLANS[planKey];
-                const isSelected = selectedVipPlan === planKey;
-                return (
-                  <div
-                    key={planKey}
-                    className="rounded-xl p-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer"
-                    style={{
-                      border: isSelected ? "1px solid rgba(234,179,8,0.5)" : "1px solid rgba(255,255,255,0.12)",
-                      background: isSelected ? "rgba(234,179,8,0.06)" : "#1c1c1c",
-                    }}
-                    onClick={() => !vipMutation.isPending && setSelectedVipPlan(planKey)}
-                  >
-                    <div>
-                      <div className="text-[13px] font-bold text-white">
-                        {t(`profile.vipPlan_${planKey}`)}
-                      </div>
-                      <div className="text-[11px] text-white/40 mt-0.5">
-                        {plan.period}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[16px] font-black text-yellow-400">${plan.price}</div>
-                      {planKey === "semiannual" && (
-                        <div className="text-[10px] text-emerald-400/80 mt-0.5 font-medium">
-                          {t("profile.vipSave")} ${(VIP_PLANS.monthly.price * 6) - VIP_PLANS.semiannual.price}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              <div
+                className="rounded-xl p-3.5 flex items-center justify-between gap-3"
+                style={{ border: "1px solid rgba(234,179,8,0.5)", background: "rgba(234,179,8,0.06)" }}
+              >
+                <div>
+                  <div className="text-[13px] font-bold text-white">VIP {t("profile.vipPlan_monthly")}</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">1 month</div>
+                </div>
+                <div className="text-[16px] font-black text-yellow-400">$49</div>
+              </div>
               <div className="flex gap-2 pt-1">
                 <Button
                   size="sm"
                   variant="outline"
                   className="flex-1 text-[12px] rounded-xl h-9"
                   onClick={() => { setShowVipPlans(false); setSelectedVipPlan(null); }}
-                  disabled={vipMutation.isPending}
                 >
                   {t("common.cancel")}
                 </Button>
                 <button
-                  className="flex-1 h-9 rounded-xl text-[12px] font-bold text-black transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center"
+                  className="flex-1 h-9 rounded-xl text-[12px] font-bold text-black transition-all hover:brightness-110 active:scale-95 flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg, #facc15, #eab308)" }}
                   onClick={() => toast({ title: "暂未开放" })}
-                  disabled={vipMutation.isPending}
                 >
                   {t("profile.payNow")}
                 </button>

@@ -86,8 +86,7 @@ export const HEDGE_CONFIG = {
 } as const;
 
 export const VIP_PLANS = {
-  monthly: { price: 39, label: "monthly", period: "1 month", days: 30 },
-  semiannual: { price: 169, label: "semiannual", period: "6 months", days: 180 },
+  monthly: { price: 49, label: "monthly", period: "1 month", days: 30 },
 } as const;
 
 export const WITHDRAW_BURN_RATES = [
