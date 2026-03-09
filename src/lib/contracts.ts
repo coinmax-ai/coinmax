@@ -1,9 +1,9 @@
 import { getContract } from "thirdweb";
-import { defineChain } from "thirdweb/chains";
+import { bsc } from "thirdweb/chains";
 import type { ThirdwebClient } from "thirdweb";
 
 // BSC Mainnet (chain ID 56)
-export const BSC_CHAIN = defineChain(56);
+export const BSC_CHAIN = bsc;
 
 // USDT on BSC (18 decimals)
 export const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955";
