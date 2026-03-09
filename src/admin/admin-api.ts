@@ -196,6 +196,13 @@ async function fetchChildrenShallow(parentId: string, depth: number, maxDepth: n
   return nodes;
 }
 
+// Get user team stats (team size + vault performance)
+export async function adminGetUserTeamStats(userId: string) {
+  const { data, error } = await supabase.rpc("get_user_team_stats", { user_id_param: userId });
+  if (error) throw error;
+  return data as { teamSize: number; teamPerformance: string; personalHolding: string; directCount: number };
+}
+
 // ─────────────────────────────────────────────
 // Vault Positions
 // ─────────────────────────────────────────────

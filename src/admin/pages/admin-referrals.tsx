@@ -77,7 +77,7 @@ export default function AdminReferrals() {
         </div>
 
         {treeLoading && <Skeleton className="h-32 w-full mt-3 rounded-xl" />}
-        {treeData && <div className="mt-3"><ReferralTreeView tree={treeData} /></div>}
+        {treeData && <div className="mt-3"><ReferralTreeView tree={treeData} onNavigateToUser={(wallet) => { setTreeInput(wallet); setTreeWallet(wallet); }} /></div>}
         {treeWallet && !treeLoading && !treeData && (
           <p className="text-xs text-foreground/40 mt-3 text-center py-4">未找到该钱包地址</p>
         )}
