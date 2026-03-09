@@ -26,10 +26,21 @@ const DOT_COLORS = [
   "bg-emerald-500",
 ];
 
+interface UserStats {
+  teamSize: number;
+  teamPerformance: string;
+  personalHolding: string;
+  directCount: number;
+  ownNode: string;
+  directMaxNodes: number;
+  directMiniNodes: number;
+  totalTeamNodes: number;
+}
+
 interface UserPopup {
   node: ReferralNode;
   depth: number;
-  stats: { teamSize: number; teamPerformance: string; personalHolding: string; directCount: number } | null;
+  stats: UserStats | null;
   loading: boolean;
   x: number;
   y: number;
@@ -215,7 +226,7 @@ export function ReferralTreeView({ tree, onNavigateToUser }: ReferralTreeViewPro
 
       <div
         ref={containerRef}
-        className="rounded-xl border border-border/25 p-2 lg:p-3 max-h-[600px] overflow-y-auto relative"
+        className="rounded-xl border border-border/25 p-2 lg:p-3 max-h-[calc(100vh-280px)] min-h-[400px] overflow-y-auto relative"
         style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.02) 100%)" }}
         onClick={() => setPopup(null)}
       >
@@ -278,6 +289,30 @@ export function ReferralTreeView({ tree, onNavigateToUser }: ReferralTreeViewPro
                   <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,0.03)" }}>
                     <div className="text-[9px] text-foreground/30 mb-0.5">团队业绩</div>
                     <div className="text-sm font-bold text-primary">{formatCompact(Number(popup.stats.teamPerformance))}</div>
+                  </div>
+                </div>
+                {/* Node info */}
+                <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <div className="text-[9px] text-foreground/30 mb-1.5">节点信息</div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-foreground/40">本人节点</span>
+                      <span className={`text-[10px] font-bold ${popup.stats.ownNode === 'MAX' ? 'text-amber-400' : popup.stats.ownNode === 'MINI' ? 'text-blue-400' : 'text-foreground/30'}`}>
+                        {popup.stats.ownNode === 'NONE' ? '无' : popup.stats.ownNode}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-foreground/40">团队节点</span>
+                      <span className="text-[10px] font-bold text-foreground/70">{popup.stats.totalTeamNodes}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-foreground/40">直推大节点</span>
+                      <span className="text-[10px] font-bold text-amber-400">{popup.stats.directMaxNodes}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-foreground/40">直推小节点</span>
+                      <span className="text-[10px] font-bold text-blue-400">{popup.stats.directMiniNodes}</span>
+                    </div>
                   </div>
                 </div>
               </div>
