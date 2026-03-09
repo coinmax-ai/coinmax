@@ -23,8 +23,8 @@ export const PREDICTION_GRID_CONFIG = {
 };
 
 export const VAULT_PLANS = {
-  "7_DAYS": { days: 7, dailyRate: 0.005, label: "7 Days", apr: "182.5%", minAmount: 50, platformFee: 0.10 },
-  "30_DAYS": { days: 30, dailyRate: 0.007, label: "30 Days", apr: "255.5%", minAmount: 50, platformFee: 0.10 },
+  "5_DAYS": { days: 5, dailyRate: 0.005, label: "5 Days", apr: "182.5%", minAmount: 50, platformFee: 0.10 },
+  "45_DAYS": { days: 45, dailyRate: 0.007, label: "45 Days", apr: "255.5%", minAmount: 50, platformFee: 0.10 },
   "90_DAYS": { days: 90, dailyRate: 0.009, label: "90 Days", apr: "328.5%", minAmount: 50, platformFee: 0.10 },
   "180_DAYS": { days: 180, dailyRate: 0.012, label: "180 Days", apr: "438%", minAmount: 50, platformFee: 0.10 },
   "360_DAYS": { days: 360, dailyRate: 0.015, label: "360 Days", apr: "547.5%", minAmount: 50, platformFee: 0.10 },
@@ -63,12 +63,12 @@ export const NODE_MILESTONES = {
 } as const;
 
 export const RANKS = [
-  { level: "V1", commission: 0.10 },
-  { level: "V2", commission: 0.15 },
-  { level: "V3", commission: 0.20 },
-  { level: "V4", commission: 0.25 },
-  { level: "V5", commission: 0.30 },
-  { level: "V6", commission: 0.40 },
+  { level: "V1", commission: 0.05 },
+  { level: "V2", commission: 0.10 },
+  { level: "V3", commission: 0.15 },
+  { level: "V4", commission: 0.20 },
+  { level: "V5", commission: 0.25 },
+  { level: "V6", commission: 0.30 },
   { level: "V7", commission: 0.50 },
 ] as const;
 
@@ -99,13 +99,13 @@ export const WITHDRAW_BURN_RATES = [
 ] as const;
 
 export const RANK_CONDITIONS = [
-  { level: "V1", threeGenCount: 100, smallTeamVolume: 5000 },
-  { level: "V2", requiredSubRanks: 2, subRankLevel: "V1", personalHolding: 500, differentLines: true },
-  { level: "V3", requiredSubRanks: 2, subRankLevel: "V2", personalHolding: 1000, differentLines: true },
-  { level: "V4", requiredSubRanks: 2, subRankLevel: "V3", personalHolding: 5000, differentLines: true, airdrop: 5000 },
-  { level: "V5", requiredSubRanks: 2, subRankLevel: "V4", personalHolding: 10000, differentLines: true, airdrop: 20000 },
-  { level: "V6", requiredSubRanks: 2, subRankLevel: "V5", personalHolding: 50000, differentLines: true, airdrop: 100000 },
-  { level: "V7", requiredSubRanks: 2, subRankLevel: "V6", personalHolding: 100000, differentLines: true, airdrop: 200000 },
+  { level: "V1", personalHolding: 100, directReferrals: 1, teamPerformance: 5000 },
+  { level: "V2", personalHolding: 300, requiredSubRanks: 2, subRankLevel: "V1", teamPerformance: 20000 },
+  { level: "V3", personalHolding: 500, requiredSubRanks: 2, subRankLevel: "V2", teamPerformance: 50000 },
+  { level: "V4", personalHolding: 1000, requiredSubRanks: 2, subRankLevel: "V3", teamPerformance: 100000 },
+  { level: "V5", personalHolding: 3000, requiredSubRanks: 2, subRankLevel: "V4", teamPerformance: 500000 },
+  { level: "V6", personalHolding: 5000, requiredSubRanks: 2, subRankLevel: "V5", teamPerformance: 1000000 },
+  { level: "V7", personalHolding: 10000, requiredSubRanks: 2, subRankLevel: "V6", teamPerformance: 3000000 },
 ] as const;
 
 export const EXCHANGES = [

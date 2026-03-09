@@ -984,3 +984,41 @@ export async function getNewsPredictions() {
   if (error) throw error;
   return data;
 }
+
+// ─── Rank Promotion ───
+export async function checkRankPromotion(walletAddress: string) {
+  const { data, error } = await supabase.rpc("check_rank_promotion", { addr: walletAddress });
+  if (error) throw error;
+  return data;
+}
+
+export async function getRankStatus(walletAddress: string) {
+  const { data, error } = await supabase.rpc("get_rank_status", { addr: walletAddress });
+  if (error) throw error;
+  return data;
+}
+
+// ─── Earnings Release / Burn ───
+export async function requestEarningsRelease(walletAddress: string, releaseDays: number, amount: number, sourceType: "VAULT" | "NODE" = "VAULT") {
+  const { data, error } = await supabase.rpc("request_earnings_release", {
+    addr: walletAddress,
+    release_days: releaseDays,
+    amount,
+    source_type: sourceType,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function getEarningsReleases(walletAddress: string) {
+  const { data, error } = await supabase.rpc("get_earnings_releases", { addr: walletAddress });
+  if (error) throw error;
+  return data;
+}
+
+// ─── Daily Settlement (admin) ───
+export async function runDailySettlement() {
+  const { data, error } = await supabase.rpc("run_daily_settlement");
+  if (error) throw error;
+  return data;
+}
