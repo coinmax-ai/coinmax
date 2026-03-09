@@ -13,6 +13,7 @@ import { DesktopSidebar } from "@/components/desktop-sidebar";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 import Dashboard from "@/pages/dashboard";
 import Trade from "@/pages/trade";
@@ -55,6 +56,7 @@ function getRefCodeFromUrl(): string | null {
 
 function WalletSync() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const account = useActiveAccount();
   const refCodeRef = useRef<string | null>(null);
   const [showRefDialog, setShowRefDialog] = useState(false);
@@ -114,6 +116,7 @@ function WalletSync() {
       if (ok) {
         setShowRefConfirm(false);
         setRefInput("");
+        toast({ title: t("common.registerSuccess"), description: t("common.registerSuccessDesc") });
       } else {
         setRefError(t("profile.invalidRefCode"));
       }
@@ -133,6 +136,7 @@ function WalletSync() {
       if (ok) {
         setShowRefDialog(false);
         setRefInput("");
+        toast({ title: t("common.registerSuccess"), description: t("common.registerSuccessDesc") });
       } else {
         setRefError(t("profile.invalidRefCode"));
       }
