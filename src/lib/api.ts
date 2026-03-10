@@ -53,7 +53,23 @@ export async function getProfile(walletAddress: string) {
     .eq("wallet_address", walletAddress)
     .single();
   if (error && error.code !== "PGRST116") throw error;
-  return toCamel(data);
+  if (!data) return null;
+
+  const profile = toCamel(data);
+
+  // Resolve parent wallet address from referrer_id
+  if (data.referrer_id) {
+    const { data: parent } = await supabase
+      .from("profiles")
+      .select("wallet_address")
+      .eq("id", data.referrer_id)
+      .single();
+    if (parent) {
+      profile.parentWallet = parent.wallet_address;
+    }
+  }
+
+  return profile;
 }
 
 export async function getProfileByRefCode(refCode: string) {

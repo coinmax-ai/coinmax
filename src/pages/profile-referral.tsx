@@ -334,11 +334,16 @@ export default function ProfileReferralPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           <div className="rounded-xl p-3.5 text-center" style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}>
             <div className="text-[11px] text-white/50 font-medium mb-2">{t("profile.directInvites")}</div>
-            <Users className="h-5 w-5 mx-auto text-white/50 mb-1.5" />
+            <UserPlus className="h-5 w-5 mx-auto text-white/50 mb-1.5" />
             <div className="text-[18px] font-black text-white">{isConnected ? (teamData?.directCount || 0) : "--"}</div>
+          </div>
+          <div className="rounded-xl p-3.5 text-center" style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}>
+            <div className="text-[11px] text-white/50 font-medium mb-2">{t("profile.teamSize")}</div>
+            <Users className="h-5 w-5 mx-auto text-white/50 mb-1.5" />
+            <div className="text-[18px] font-black text-white">{isConnected ? (teamData?.teamSize || 0) : "--"}</div>
           </div>
           <div className="rounded-xl p-3.5 text-center" style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}>
             <div className="text-[11px] text-white/50 font-medium mb-2">{t("profile.teamPerformance")}</div>
@@ -468,11 +473,9 @@ export default function ProfileReferralPage() {
                           {shortenAddress(ref.walletAddress)}
                         </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {subCount > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "rgba(74,222,128,0.08)", color: "rgba(74,222,128,0.7)" }}>
-                              {t("profile.teamCount", { count: subCount })}
-                            </span>
-                          )}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: subCount > 0 ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.04)", color: subCount > 0 ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.3)" }}>
+                            {t("profile.teamCount", { count: subCount })}
+                          </span>
                           <span className="text-[10px] text-white/35">
                             {t("profile.teamPerformance")}: {formatCompact(teamDeposits)}
                           </span>
@@ -511,13 +514,11 @@ export default function ProfileReferralPage() {
                               <div className="text-[11px] font-mono text-white/60 truncate">
                                 {shortenAddress(sub.walletAddress)}
                               </div>
-                              {hasTeam && (
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "rgba(74,222,128,0.08)", color: "rgba(74,222,128,0.7)" }}>
-                                    {t("profile.teamCount", { count: sub.subCount })}
-                                  </span>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: hasTeam ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.04)", color: hasTeam ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.3)" }}>
+                                  {t("profile.teamCount", { count: sub.subCount || 0 })}
+                                </span>
+                              </div>
                             </div>
                             <span
                               className="text-[11px] px-2 py-0.5 rounded font-bold shrink-0"
