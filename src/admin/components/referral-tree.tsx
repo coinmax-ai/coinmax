@@ -56,11 +56,13 @@ function TreeNode({
   node,
   depth = 0,
   collapseBelow,
+  skipFirst,
   onUserClick,
 }: {
   node: ReferralNode;
   depth?: number;
   collapseBelow: number;
+  skipFirst: number;
   onUserClick: (node: ReferralNode, depth: number, e: React.MouseEvent) => void;
 }) {
   const [expanded, setExpanded] = useState(depth < collapseBelow);
@@ -147,8 +149,14 @@ function TreeNode({
 
       {expanded && children.length > 0 && (
         <div className="mt-0.5">
-          {children.map((child) => (
-            <TreeNode key={child.id} node={child} depth={depth + 1} collapseBelow={collapseBelow} onUserClick={onUserClick} />
+          {/* Only apply skipFirst at root level (depth 0) */}
+          {depth === 0 && skipFirst > 0 && children.length > skipFirst && (
+            <div className="py-1.5 px-3 text-[10px] text-foreground/30 text-center rounded-md mb-0.5" style={{ background: "rgba(255,255,255,0.02)" }}>
+              已压缩前 {Math.min(skipFirst, children.length)} 个成员
+            </div>
+          )}
+          {(depth === 0 ? children.slice(skipFirst) : children).map((child) => (
+            <TreeNode key={child.id} node={child} depth={depth + 1} collapseBelow={collapseBelow} skipFirst={skipFirst} onUserClick={onUserClick} />
           ))}
         </div>
       )}
@@ -169,9 +177,12 @@ const COLLAPSE_LEVELS = [
   { label: "40层", value: 40 },
 ];
 
+const SKIP_OPTIONS = [0, 5, 10, 20, 30, 40, 50];
+
 export function ReferralTreeView({ tree, onNavigateToUser }: ReferralTreeViewProps) {
   const total = tree.childCount || countDescendants(tree);
   const [collapseBelow, setCollapseBelow] = useState(2);
+  const [skipFirst, setSkipFirst] = useState(0);
   const [popup, setPopup] = useState<UserPopup | null>(null);
   const [treeKey, setTreeKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -224,13 +235,33 @@ export function ReferralTreeView({ tree, onNavigateToUser }: ReferralTreeViewPro
         ))}
       </div>
 
+      {/* Skip first N controls */}
+      {total > 5 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-foreground/30 mr-1">压缩前:</span>
+          {SKIP_OPTIONS.filter(n => n === 0 || n < total).map(n => (
+            <button
+              key={n}
+              onClick={() => { setSkipFirst(n); setTreeKey(k => k + 1); }}
+              className={`text-[10px] px-2 py-1 rounded-md border transition-all ${
+                skipFirst === n
+                  ? "bg-primary/15 border-primary/30 text-primary font-bold"
+                  : "bg-white/[0.03] border-border/20 text-foreground/40 hover:text-foreground/60 hover:border-border/40"
+              }`}
+            >
+              {n === 0 ? "全部" : n}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="rounded-xl border border-border/25 p-2 lg:p-3 max-h-[calc(100vh-280px)] min-h-[400px] overflow-y-auto relative"
         style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.02) 100%)" }}
         onClick={() => setPopup(null)}
       >
-        <TreeNode key={treeKey} node={tree} depth={0} collapseBelow={collapseBelow} onUserClick={handleUserClick} />
+        <TreeNode key={treeKey} node={tree} depth={0} collapseBelow={collapseBelow} skipFirst={skipFirst} onUserClick={handleUserClick} />
 
         {/* User detail popup */}
         {popup && (

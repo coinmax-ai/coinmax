@@ -51,6 +51,7 @@ export default function ProfileReferralPage() {
 
   const [addrStack, setAddrStack] = useState<Array<{ addr: string; label: string }>>([]);
   const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
+  const [skipCount, setSkipCount] = useState(0);
   const viewingAddr = addrStack.length > 0 ? addrStack[addrStack.length - 1].addr : walletAddr;
   const isViewingSelf = viewingAddr === walletAddr;
 
@@ -404,6 +405,28 @@ export default function ProfileReferralPage() {
               )}
             </div>
 
+            {/* Skip first N controls */}
+            {teamData?.referrals && teamData.referrals.length > 5 && (
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <span className="text-[10px] text-white/30 mr-0.5">压缩前:</span>
+                {[0, 5, 10, 20, 30, 40, 50].filter(n => n === 0 || n < teamData.referrals.length).map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setSkipCount(n)}
+                    className="text-[10px] px-2 py-1 rounded-md transition-all"
+                    style={{
+                      background: skipCount === n ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
+                      border: skipCount === n ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: skipCount === n ? "#4ade80" : "rgba(255,255,255,0.4)",
+                      fontWeight: skipCount === n ? 700 : 400,
+                    }}
+                  >
+                    {n === 0 ? "全部" : n}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {!isViewingSelf && (
               <div className="flex items-center gap-1 mb-3 flex-wrap text-[12px]">
                 <button
@@ -457,7 +480,15 @@ export default function ProfileReferralPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {teamData.referrals.map((ref) => {
+                {skipCount > 0 && teamData.referrals.length > skipCount && (
+                  <div
+                    className="rounded-xl p-2.5 text-center text-[11px] text-white/35"
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    已压缩前 {Math.min(skipCount, teamData.referrals.length)} 个成员
+                  </div>
+                )}
+                {teamData.referrals.slice(skipCount).map((ref) => {
                   const subCount = ref.subReferrals?.length || 0;
                   const teamDeposits = ref.subReferrals?.reduce((s, r) => s + Number(r.totalDeposited || 0), 0) || 0;
                   const isExpanded = expandedRefs.has(ref.id);
