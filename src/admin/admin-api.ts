@@ -130,16 +130,20 @@ export async function adminGetProfiles(
 
   const profiles = data ?? [];
 
-  // Fetch team count (direct referrals) for each profile
+  // Fetch team count for each profile (non-blocking)
   const profileIds = profiles.map((p: any) => p.id);
   let teamCountMap: Record<string, number> = {};
   if (profileIds.length > 0) {
-    const { data: counts } = await supabase
-      .rpc("get_team_counts", { profile_ids: profileIds });
-    if (counts) {
-      for (const c of counts) {
-        teamCountMap[c.profile_id] = c.team_count;
+    try {
+      const { data: counts, error: rpcErr } = await supabase
+        .rpc("get_team_counts", { profile_ids: profileIds });
+      if (!rpcErr && counts) {
+        for (const c of counts) {
+          teamCountMap[c.profile_id] = c.team_count;
+        }
       }
+    } catch {
+      // Don't let team count failure break profiles list
     }
   }
 
@@ -189,16 +193,20 @@ export async function adminGetReferralPairs(page: number, pageSize: number) {
     }
   }
 
-  // Fetch team count for each profile
+  // Fetch team count for each profile (non-blocking)
   const profileIds = profiles.map((p: any) => p.id);
   let teamCountMap: Record<string, number> = {};
   if (profileIds.length > 0) {
-    const { data: counts } = await supabase
-      .rpc("get_team_counts", { profile_ids: profileIds });
-    if (counts) {
-      for (const c of counts) {
-        teamCountMap[c.profile_id] = c.team_count;
+    try {
+      const { data: counts, error: rpcErr } = await supabase
+        .rpc("get_team_counts", { profile_ids: profileIds });
+      if (!rpcErr && counts) {
+        for (const c of counts) {
+          teamCountMap[c.profile_id] = c.team_count;
+        }
       }
+    } catch {
+      // Don't let team count failure break referral list
     }
   }
 

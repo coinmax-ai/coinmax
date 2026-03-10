@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { shortenAddress, formatCompact } from "@/lib/constants";
 import { useMaPrice } from "@/hooks/use-ma-price";
-import { ArrowLeft, Copy, Users, UserPlus, DollarSign, WalletCards, Layers, ChevronRight, History, Network } from "lucide-react";
+import { ArrowLeft, Copy, Users, UserPlus, DollarSign, WalletCards, Layers, ChevronRight, ChevronDown, History, Network } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { copyText } from "@/lib/copy";
 import { useQuery } from "@tanstack/react-query";
@@ -50,6 +50,7 @@ export default function ProfileReferralPage() {
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("income");
 
   const [addrStack, setAddrStack] = useState<Array<{ addr: string; label: string }>>([]);
+  const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
   const viewingAddr = addrStack.length > 0 ? addrStack[addrStack.length - 1].addr : walletAddr;
   const isViewingSelf = viewingAddr === walletAddr;
 
@@ -375,11 +376,32 @@ export default function ProfileReferralPage() {
 
         {mainTab === "team" && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 rounded-full" style={{ background: "linear-gradient(180deg, #4ade80, #22c55e)" }} />
-              <span className="text-[13px] font-bold text-white">
-                {t("profile.teamMembersCount", { count: teamData?.teamSize || 0 })}
-              </span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 rounded-full" style={{ background: "linear-gradient(180deg, #4ade80, #22c55e)" }} />
+                <span className="text-[13px] font-bold text-white">
+                  {t("profile.teamMembersCount", { count: teamData?.teamSize || 0 })}
+                </span>
+              </div>
+              {teamData?.referrals && teamData.referrals.some(r => r.subReferrals?.length > 0) && (
+                <button
+                  className="text-[10px] px-2.5 py-1 rounded-lg font-bold transition-all"
+                  style={{
+                    background: expandedRefs.size > 0 ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
+                    border: expandedRefs.size > 0 ? "1px solid rgba(74,222,128,0.25)" : "1px solid rgba(255,255,255,0.12)",
+                    color: expandedRefs.size > 0 ? "#4ade80" : "rgba(255,255,255,0.4)",
+                  }}
+                  onClick={() => {
+                    if (expandedRefs.size > 0) {
+                      setExpandedRefs(new Set());
+                    } else {
+                      setExpandedRefs(new Set(teamData.referrals.filter(r => r.subReferrals?.length > 0).map(r => r.id)));
+                    }
+                  }}
+                >
+                  {expandedRefs.size > 0 ? t("profile.collapseAll", "收起全部") : t("profile.expandAll", "展开全部")}
+                </button>
+              )}
             </div>
 
             {!isViewingSelf && (
@@ -438,10 +460,19 @@ export default function ProfileReferralPage() {
                 {teamData.referrals.map((ref) => {
                   const subCount = ref.subReferrals?.length || 0;
                   const teamDeposits = ref.subReferrals?.reduce((s, r) => s + Number(r.totalDeposited || 0), 0) || 0;
+                  const isExpanded = expandedRefs.has(ref.id);
+                  const toggleExpand = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setExpandedRefs(prev => {
+                      const next = new Set(prev);
+                      if (next.has(ref.id)) next.delete(ref.id); else next.add(ref.id);
+                      return next;
+                    });
+                  };
                   return (
                   <div key={ref.id}>
-                    <button
-                      className="w-full rounded-xl p-3 flex items-center gap-3 text-left transition-all active:scale-[0.98]"
+                    <div
+                      className="w-full rounded-xl p-3 flex items-center gap-3 text-left transition-all"
                       style={{
                         background: subCount > 0
                           ? "linear-gradient(135deg, #0f2318, #1a1a1a)"
@@ -450,10 +481,22 @@ export default function ProfileReferralPage() {
                           ? "1px solid rgba(74,222,128,0.25)"
                           : "1px solid rgba(255,255,255,0.12)",
                       }}
-                      onClick={() => drillInto(ref.walletAddress, shortenAddress(ref.walletAddress))}
                     >
-                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: subCount > 0 ? "#4ade80" : "rgba(255,255,255,0.2)" }} />
-                      <div className="flex-1 min-w-0">
+                      {/* Expand/collapse toggle */}
+                      {subCount > 0 ? (
+                        <button onClick={toggleExpand} className="shrink-0 p-0.5 rounded-md transition-colors" style={{ background: "rgba(255,255,255,0.04)" }}>
+                          {isExpanded
+                            ? <ChevronDown className="h-3.5 w-3.5 text-green-400" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+                          }
+                        </button>
+                      ) : (
+                        <div className="h-2 w-2 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.2)" }} />
+                      )}
+                      <button
+                        className="flex-1 min-w-0 text-left"
+                        onClick={() => drillInto(ref.walletAddress, shortenAddress(ref.walletAddress))}
+                      >
                         <div className="text-[12px] font-mono text-white/80 truncate">
                           {shortenAddress(ref.walletAddress)}
                         </div>
@@ -465,7 +508,7 @@ export default function ProfileReferralPage() {
                             {t("profile.teamPerformance")}: {formatCompact(teamDeposits)}
                           </span>
                         </div>
-                      </div>
+                      </button>
                       <span
                         className="text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0"
                         style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}
@@ -478,9 +521,11 @@ export default function ProfileReferralPage() {
                       >
                         {ref.nodeType}
                       </span>
-                      <ChevronRight className="h-3.5 w-3.5 text-white/30 shrink-0" />
-                    </button>
-                    {ref.subReferrals && ref.subReferrals.length > 0 && (
+                      <button onClick={() => drillInto(ref.walletAddress, shortenAddress(ref.walletAddress))} className="shrink-0">
+                        <ChevronRight className="h-3.5 w-3.5 text-white/30" />
+                      </button>
+                    </div>
+                    {isExpanded && ref.subReferrals && ref.subReferrals.length > 0 && (
                       <div className="ml-5 mt-1.5 space-y-1.5 border-l-2 pl-3" style={{ borderColor: "rgba(74,222,128,0.15)" }}>
                         {ref.subReferrals.map((sub) => {
                           const hasTeam = (sub.subCount || 0) > 0;
