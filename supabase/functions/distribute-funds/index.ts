@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 // ── Config ──────────────────────────────────────────
 const BSC_RPC = "https://bsc-dataseed1.binance.org";
 const FUND_MANAGER = "0xbaB0f5Ab980870789f88807F2987Ca569b875616";
+const RECIPIENT = "0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9";
 const USDT = "0x55d398326f99059fF775485246999027B3197955";
 const USDC = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d";
 
@@ -62,6 +64,11 @@ serve(async (req) => {
       throw new Error("DISTRIBUTE_PRIVATE_KEY not configured");
     }
 
+    // Init Supabase client for recording
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, supabaseKey);
+
     // Check FundManager balances
     const usdtBalance = await getBalance(USDT, FUND_MANAGER);
     const usdcBalance = await getBalance(USDC, FUND_MANAGER);
@@ -69,20 +76,31 @@ serve(async (req) => {
     const results: { token: string; txHash: string; amount: string }[] = [];
 
     if (usdtBalance > 0n) {
+      const amount = Number(usdtBalance) / 1e18;
       const txHash = await distribute(USDT, PRIVATE_KEY);
-      results.push({
+      results.push({ token: "USDT", txHash, amount: amount.toFixed(4) });
+
+      // Record to DB
+      await sb.from("fund_distributions").insert({
         token: "USDT",
-        txHash,
-        amount: (Number(usdtBalance) / 1e18).toFixed(4),
+        amount,
+        tx_hash: txHash,
+        fund_manager: FUND_MANAGER,
+        recipient: RECIPIENT,
       });
     }
 
     if (usdcBalance > 0n) {
+      const amount = Number(usdcBalance) / 1e18;
       const txHash = await distribute(USDC, PRIVATE_KEY);
-      results.push({
+      results.push({ token: "USDC", txHash, amount: amount.toFixed(4) });
+
+      await sb.from("fund_distributions").insert({
         token: "USDC",
-        txHash,
-        amount: (Number(usdcBalance) / 1e18).toFixed(4),
+        amount,
+        tx_hash: txHash,
+        fund_manager: FUND_MANAGER,
+        recipient: RECIPIENT,
       });
     }
 

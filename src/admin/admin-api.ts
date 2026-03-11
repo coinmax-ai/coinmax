@@ -658,6 +658,39 @@ export async function adminGetNodeFundStats() {
   return { totalRecords: rows.length, totalAmount, totalContribution };
 }
 
+// ─────────────────────────────────────────────
+// Fund Distributions (FundManager → recipients)
+// ─────────────────────────────────────────────
+
+export async function adminGetFundDistributions(page: number, pageSize: number) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
+    .from("fund_distributions")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+  return { data: toCamel(data ?? []), total: count ?? 0 };
+}
+
+export async function adminGetFundDistributionStats() {
+  const { data, error } = await supabase
+    .from("fund_distributions")
+    .select("token, amount");
+
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const totalDistributed = rows.reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
+  const usdtTotal = rows.filter((r: any) => r.token === "USDT").reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
+  const usdcTotal = rows.filter((r: any) => r.token === "USDC").reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
+
+  return { totalRecords: rows.length, totalDistributed, usdtTotal, usdcTotal };
+}
+
 export async function adminGetAuthCodeStats() {
   const { data, error } = await supabase
     .from("node_auth_codes")
