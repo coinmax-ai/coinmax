@@ -712,5 +712,26 @@
     "soundEffects": "音效",
     "soundEffectsDesc": "启用或关闭应用音效",
     "version": "CoinMax v1.0.0"
+  },
+  "calendar": {
+    "sun": "日",
+    "mon": "一",
+    "tue": "二",
+    "wed": "三",
+    "thu": "四",
+    "fri": "五",
+    "sat": "六",
+    "month0": "一月",
+    "month1": "二月",
+    "month2": "三月",
+    "month3": "四月",
+    "month4": "五月",
+    "month5": "六月",
+    "month6": "七月",
+    "month7": "八月",
+    "month8": "九月",
+    "month9": "十月",
+    "month10": "十一月",
+    "month11": "十二月"
   }
 }

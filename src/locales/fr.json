@@ -712,5 +712,26 @@
     "soundEffects": "Effets Sonores",
     "soundEffectsDesc": "Activer ou désactiver les effets sonores",
     "version": "CoinMax v1.0.0"
+  },
+  "calendar": {
+    "sun": "Dim",
+    "mon": "Lun",
+    "tue": "Mar",
+    "wed": "Mer",
+    "thu": "Jeu",
+    "fri": "Ven",
+    "sat": "Sam",
+    "month0": "Janvier",
+    "month1": "Février",
+    "month2": "Mars",
+    "month3": "Avril",
+    "month4": "Mai",
+    "month5": "Juin",
+    "month6": "Juillet",
+    "month7": "Août",
+    "month8": "Septembre",
+    "month9": "Octobre",
+    "month10": "Novembre",
+    "month11": "Décembre"
   }
 }

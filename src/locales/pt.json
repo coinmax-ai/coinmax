@@ -712,5 +712,26 @@
     "soundEffects": "Efeitos Sonoros",
     "soundEffectsDesc": "Ativar ou desativar efeitos sonoros do app",
     "version": "CoinMax v1.0.0"
+  },
+  "calendar": {
+    "sun": "Dom",
+    "mon": "Seg",
+    "tue": "Ter",
+    "wed": "Qua",
+    "thu": "Qui",
+    "fri": "Sex",
+    "sat": "Sáb",
+    "month0": "Janeiro",
+    "month1": "Fevereiro",
+    "month2": "Março",
+    "month3": "Abril",
+    "month4": "Maio",
+    "month5": "Junho",
+    "month6": "Julho",
+    "month7": "Agosto",
+    "month8": "Setembro",
+    "month9": "Outubro",
+    "month10": "Novembro",
+    "month11": "Dezembro"
   }
 }

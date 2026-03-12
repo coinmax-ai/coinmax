@@ -712,5 +712,26 @@
     "soundEffects": "Hiệu ứng âm thanh",
     "soundEffectsDesc": "Bật hoặc tắt hiệu ứng âm thanh",
     "version": "CoinMax v1.0.0"
+  },
+  "calendar": {
+    "sun": "CN",
+    "mon": "T2",
+    "tue": "T3",
+    "wed": "T4",
+    "thu": "T5",
+    "fri": "T6",
+    "sat": "T7",
+    "month0": "Tháng 1",
+    "month1": "Tháng 2",
+    "month2": "Tháng 3",
+    "month3": "Tháng 4",
+    "month4": "Tháng 5",
+    "month5": "Tháng 6",
+    "month6": "Tháng 7",
+    "month7": "Tháng 8",
+    "month8": "Tháng 9",
+    "month9": "Tháng 10",
+    "month10": "Tháng 11",
+    "month11": "Tháng 12"
   }
 }

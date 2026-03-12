@@ -712,5 +712,26 @@
     "soundEffects": "사운드 효과",
     "soundEffectsDesc": "앱 사운드 효과 활성화/비활성화",
     "version": "CoinMax v1.0.0"
+  },
+  "calendar": {
+    "sun": "일",
+    "mon": "월",
+    "tue": "화",
+    "wed": "수",
+    "thu": "목",
+    "fri": "금",
+    "sat": "토",
+    "month0": "1월",
+    "month1": "2월",
+    "month2": "3월",
+    "month3": "4월",
+    "month4": "5월",
+    "month5": "6월",
+    "month6": "7월",
+    "month7": "8월",
+    "month8": "9월",
+    "month9": "10월",
+    "month10": "11월",
+    "month11": "12월"
   }
 }
