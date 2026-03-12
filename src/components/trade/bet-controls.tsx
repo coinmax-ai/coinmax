@@ -29,7 +29,7 @@ export function BetControls({ amount, onAmountChange, duration, onDurationChange
   }
 
   function handleBet(direction: "up" | "down") {
-    toast({ title: "暂未开放" });
+    toast({ title: t("common.comingSoon") });
     return;
   }
 

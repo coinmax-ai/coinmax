@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Kết nối ví để xem dữ liệu, giao dịch và quản lý tài sản.",
     "notConnected": "Chưa kết nối",
     "rank": "Cấp bậc",
-    "node": "Nút"
+    "node": "Nút",
+    "comingSoon": "Sắp ra mắt"
   },
   "nav": {
     "home": "Trang chủ",

@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Connectez votre portefeuille pour voir vos données, trader et gérer vos actifs.",
     "notConnected": "Non connecté",
     "rank": "Rang",
-    "node": "Nœud"
+    "node": "Nœud",
+    "comingSoon": "Bientôt disponible"
   },
   "nav": {
     "home": "Accueil",

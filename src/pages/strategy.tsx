@@ -245,12 +245,12 @@ export default function StrategyPage() {
   };
 
   const handleConfirmSubscribe = () => {
-    toast({ title: "暂未开放" });
+    toast({ title: t("common.comingSoon") });
     return;
   };
 
   const handleHedgePurchase = () => {
-    toast({ title: "暂未开放" });
+    toast({ title: t("common.comingSoon") });
     return;
   };
 
@@ -390,7 +390,7 @@ export default function StrategyPage() {
                     </div>
                     <Button
                       className="w-full"
-                      onClick={() => toast({ title: "暂未开放" })}
+                      onClick={() => toast({ title: t("common.comingSoon") })}
                       data-testid="button-upgrade-vip"
                     >
                       <Zap className="mr-1 h-4 w-4" />
@@ -1255,7 +1255,7 @@ export default function StrategyPage() {
             <Button
               className="text-xs bg-gradient-to-r from-emerald-600 to-teal-500 border-emerald-500/50 text-white"
               data-testid="button-inv-deposit"
-              onClick={() => toast({ title: "暂未开放" })}
+              onClick={() => toast({ title: t("common.comingSoon") })}
             >
               <Wallet className="h-3.5 w-3.5 mr-1" />
               {t("common.deposit")}
@@ -1446,7 +1446,7 @@ export default function StrategyPage() {
             <Button
               className="bg-gradient-to-r from-emerald-600 to-teal-500 border-emerald-500/50 text-white"
               onClick={() => {
-                toast({ title: "暂未开放" });
+                toast({ title: t("common.comingSoon") });
               }}
               data-testid="button-confirm-deposit"
             >
@@ -1689,7 +1689,7 @@ export default function StrategyPage() {
             <Button variant="outline" onClick={() => setBetDialogOpen(false)} data-testid="button-cancel-bet">{t("common.cancel")}</Button>
             <Button
               className="bg-gradient-to-r from-emerald-600 to-teal-500 border-emerald-500/50 text-white"
-              onClick={() => toast({ title: "暂未开放" })}
+              onClick={() => toast({ title: t("common.comingSoon") })}
               data-testid="button-confirm-bet"
             >
               <DollarSign className="mr-1 h-4 w-4" />
@@ -1763,7 +1763,7 @@ export default function StrategyPage() {
             <Button
               className="bg-gradient-to-r from-blue-600 to-indigo-500 border-blue-500/50 text-white"
               onClick={() => {
-                toast({ title: "暂未开放" });
+                toast({ title: t("common.comingSoon") });
               }}
               data-testid="button-confirm-bind-telegram"
             >

@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Conecte sua carteira para visualizar dados, negociar e gerenciar ativos.",
     "notConnected": "Não conectado",
     "rank": "Nível",
-    "node": "Nó"
+    "node": "Nó",
+    "comingSoon": "Em breve"
   },
   "nav": {
     "home": "Início",

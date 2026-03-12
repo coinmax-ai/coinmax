@@ -43,7 +43,8 @@
     "connectWalletPrompt": "连接您的钱包以查看数据、交易和管理资产。",
     "notConnected": "未连接",
     "rank": "等级",
-    "node": "节点"
+    "node": "节点",
+    "comingSoon": "暂未开放"
   },
   "nav": {
     "home": "首页",

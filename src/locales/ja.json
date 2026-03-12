@@ -43,7 +43,8 @@
     "connectWalletPrompt": "ウォレットを接続してデータの表示、取引、資産管理を行いましょう。",
     "notConnected": "未接続",
     "rank": "ランク",
-    "node": "ノード"
+    "node": "ノード",
+    "comingSoon": "近日公開"
   },
   "nav": {
     "home": "ホーム",

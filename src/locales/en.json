@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Connect your wallet to view your data, trade, and manage assets.",
     "notConnected": "Not connected",
     "rank": "Rank",
-    "node": "Node"
+    "node": "Node",
+    "comingSoon": "Coming Soon"
   },
   "nav": {
     "home": "Home",

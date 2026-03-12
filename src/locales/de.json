@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Verbinden Sie Ihr Wallet, um Daten anzuzeigen, zu handeln und Vermögenswerte zu verwalten.",
     "notConnected": "Nicht verbunden",
     "rank": "Rang",
-    "node": "Knoten"
+    "node": "Knoten",
+    "comingSoon": "Demnächst verfügbar"
   },
   "nav": {
     "home": "Startseite",

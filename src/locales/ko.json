@@ -43,7 +43,8 @@
     "connectWalletPrompt": "지갑을 연결하여 데이터 조회, 거래, 자산 관리를 하세요.",
     "notConnected": "연결 안 됨",
     "rank": "등급",
-    "node": "노드"
+    "node": "노드",
+    "comingSoon": "곧 출시 예정"
   },
   "nav": {
     "home": "홈",

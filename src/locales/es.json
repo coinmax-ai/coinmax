@@ -43,7 +43,8 @@
     "connectWalletPrompt": "Conecte su billetera para ver sus datos, operar y gestionar activos.",
     "notConnected": "No conectado",
     "rank": "Rango",
-    "node": "Nodo"
+    "node": "Nodo",
+    "comingSoon": "Próximamente"
   },
   "nav": {
     "home": "Inicio",
