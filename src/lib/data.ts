@@ -134,12 +134,12 @@ export interface LocalStrategy {
 export const LOCAL_STRATEGIES: LocalStrategy[] = [
   {
     id: "hyperliquid-vault",
-    name: "HyperLiquid Vault",
-    description: "HyperLiquid on-chain vault strategy with delta-neutral market making",
+    name: "[Systemic Strategies] HyperGrowth",
+    description: "HyperLiquid on-chain vault — 226% APR systematic growth strategy",
     leverage: "3x",
     winRateRange: [76, 82],
-    monthlyReturnRange: [18, 26],
-    totalAumRange: [2_800_000, 3_500_000],
+    monthlyReturnRange: [16, 22],
+    totalAumRange: [7_800_000, 8_400_000],
     status: "ACTIVE",
     isHot: true,
     isVipOnly: false,
