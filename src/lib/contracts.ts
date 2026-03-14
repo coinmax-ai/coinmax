@@ -20,7 +20,7 @@ export const VIP_CONTRACT_ADDRESS = import.meta.env.VITE_VIP_CONTRACT_ADDRESS ||
 export const VIP_RECEIVER_ADDRESS = import.meta.env.VITE_VIP_RECEIVER_ADDRESS || "";
 
 // ── V2 Contract addresses (PancakeSwap V3 swap flow) ──
-export const SWAP_ROUTER_ADDRESS = import.meta.env.VITE_SWAP_ROUTER_ADDRESS || "0xF179A34CCE54F6337A337eaE2Bc4e3c5fBf51135";
+export const SWAP_ROUTER_ADDRESS = import.meta.env.VITE_SWAP_ROUTER_ADDRESS || "0x5650383D9f8d8f80fc972b8F49A3cc31d3A7F7E3";
 export const NODE_V2_CONTRACT_ADDRESS = import.meta.env.VITE_NODE_V2_CONTRACT_ADDRESS || "0x17DDad4C9c2fD61859D37dD40300c419cBdd4cE2";
 
 // Convert USD amount to USDT units (6 decimals)

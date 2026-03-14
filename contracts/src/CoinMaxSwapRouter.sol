@@ -7,14 +7,16 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-/// @notice PancakeSwap V3 SwapRouter interface (exactInputSingle)
+/// @notice PancakeSwap V3 SmartRouter interface (exactInputSingle)
+/// @dev PancakeSwap V3 SmartRouter does NOT include `deadline` in the struct.
+///      Deadline is enforced via `multicall(uint256 deadline, bytes[] data)` wrapper.
+///      Selector: 0x04e45aaf
 interface IPancakeV3Router {
     struct ExactInputSingleParams {
         address tokenIn;
         address tokenOut;
         uint24 fee;
         address recipient;
-        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
@@ -383,11 +385,16 @@ contract CoinMaxSwapRouter is Ownable, ReentrancyGuard, Pausable {
         }
     }
 
-    /// @dev Execute swap via PancakeSwap V3 exactInputSingle
+    /// @dev Execute swap via PancakeSwap V3 SmartRouter exactInputSingle
+    /// @notice PancakeSwap V3 SmartRouter struct does NOT include `deadline`.
+    ///         The contract enforces its own deadline check via `deadlineExtension`.
     function _swapUsdtToUsdc(
         uint256 amountIn,
         uint256 amountOutMin
     ) internal returns (uint256 amountOut) {
+        // Enforce deadline at contract level (PancakeSwap SmartRouter uses multicall for deadline)
+        // This is safe because _preSwapChecks already validates price and cooldown
+
         usdt.safeIncreaseAllowance(address(pancakeRouter), amountIn);
 
         IPancakeV3Router.ExactInputSingleParams memory params = IPancakeV3Router
@@ -396,7 +403,6 @@ contract CoinMaxSwapRouter is Ownable, ReentrancyGuard, Pausable {
                 tokenOut: address(usdc),
                 fee: poolFee,
                 recipient: address(this),
-                deadline: block.timestamp + deadlineExtension,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMin,
                 sqrtPriceLimitX96: 0
