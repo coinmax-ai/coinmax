@@ -481,13 +481,6 @@ export default function ProviderDocs() {
                 </div>
                 <span className="text-xl font-bold text-foreground/60">50%</span>
               </div>
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02]" style={{ border: "1px solid rgba(255,255,255,0.04)" }}>
-                <div>
-                  <p className="text-sm font-semibold text-foreground/70">推荐新用户奖励</p>
-                  <p className="text-[10px] text-foreground/25">通过策略带来的新注册</p>
-                </div>
-                <span className="text-xl font-bold text-foreground/60">+5%</span>
-              </div>
             </div>
           </InfoCard>
         </div>

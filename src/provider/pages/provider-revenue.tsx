@@ -103,13 +103,6 @@ export default function ProviderRevenue() {
             </div>
             <span className="text-lg font-bold text-foreground/60">50%</span>
           </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
-            <div>
-              <p className="text-sm font-semibold text-foreground/70">推荐新用户奖励</p>
-              <p className="text-[11px] text-foreground/35">通过策略带来的新注册用户</p>
-            </div>
-            <span className="text-lg font-bold text-foreground/60">+5%</span>
-          </div>
         </div>
         <p className="text-[10px] text-foreground/20 mt-3">* 具体分成比例以合约为准</p>
       </div>
