@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { supabase } from "@/lib/supabase";
-import { Brain, Target, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown } from "lucide-react";
+import { Brain, Target, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 
@@ -17,6 +17,7 @@ interface AccuracyRow {
   correct_predictions: number;
   avg_confidence: number;
   avg_price_error_pct: number;
+  computed_weight: number;
 }
 
 interface PredictionRow {
@@ -55,13 +56,19 @@ function AccuracyBar({ pct }: { pct: number }) {
   );
 }
 
+function formatPrice(price: number | null | undefined): string {
+  if (!price || price <= 0) return "—";
+  if (price >= 1000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (price >= 1) return `$${price.toFixed(2)}`;
+  return `$${price.toFixed(4)}`;
+}
+
 export default function AdminAIAccuracy() {
   const { adminUser } = useAdminAuth();
   const [selectedAsset, setSelectedAsset] = useState("BTC");
   const [selectedTimeframe, setSelectedTimeframe] = useState("1H");
   const [selectedPeriod, setSelectedPeriod] = useState("30d");
 
-  // Fetch accuracy aggregates
   const { data: accuracy, isLoading: accLoading, refetch: refetchAcc } = useQuery({
     queryKey: ["admin", "ai-accuracy", selectedAsset, selectedTimeframe, selectedPeriod],
     queryFn: async () => {
@@ -78,7 +85,6 @@ export default function AdminAIAccuracy() {
     enabled: !!adminUser,
   });
 
-  // Fetch recent predictions
   const { data: recent, isLoading: recLoading } = useQuery({
     queryKey: ["admin", "ai-predictions", selectedAsset, selectedTimeframe],
     queryFn: async () => {
@@ -95,7 +101,6 @@ export default function AdminAIAccuracy() {
     enabled: !!adminUser,
   });
 
-  // Summary stats
   const { data: summary } = useQuery({
     queryKey: ["admin", "ai-summary"],
     queryFn: async () => {
@@ -146,46 +151,33 @@ export default function AdminAIAccuracy() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        {/* Asset filter */}
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="space-y-2">
+        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
           {ASSETS.map((a) => (
-            <button
-              key={a}
-              onClick={() => setSelectedAsset(a)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-all ${selectedAsset === a ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
-            >
-              {a}
-            </button>
+            <button key={a} onClick={() => setSelectedAsset(a)}
+              className={`px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${selectedAsset === a ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+            >{a}</button>
           ))}
         </div>
-        {/* Timeframe filter */}
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setSelectedTimeframe(tf)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-all ${selectedTimeframe === tf ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
-            >
-              {tf}
-            </button>
-          ))}
-        </div>
-        {/* Period filter */}
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setSelectedPeriod(p)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-all ${selectedPeriod === p ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
+        <div className="flex gap-2">
+          <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
+            {TIMEFRAMES.map((tf) => (
+              <button key={tf} onClick={() => setSelectedTimeframe(tf)}
+                className={`px-2.5 py-1.5 text-xs font-semibold transition-all ${selectedTimeframe === tf ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              >{tf}</button>
+            ))}
+          </div>
+          <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
+            {PERIODS.map((p) => (
+              <button key={p} onClick={() => setSelectedPeriod(p)}
+                className={`px-2.5 py-1.5 text-xs font-semibold transition-all ${selectedPeriod === p ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              >{PERIOD_LABELS[p]}</button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Model Accuracy Table */}
+      {/* Model Accuracy */}
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
         <div className="px-4 py-3 border-b border-white/[0.06]">
           <h2 className="text-sm font-bold text-foreground/70">
@@ -193,25 +185,28 @@ export default function AdminAIAccuracy() {
           </h2>
         </div>
         {accLoading ? (
-          <div className="p-4 space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
-          </div>
+          <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}</div>
         ) : !accuracy || accuracy.length === 0 ? (
           <div className="p-8 text-center text-foreground/25 text-sm">暂无数据 — 预测验证后将自动填充</div>
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {accuracy.map((row) => (
-              <div key={row.model} className="px-4 py-3 flex items-center gap-4">
-                <div className="w-20 shrink-0">
-                  <p className="text-sm font-bold text-foreground/80">{row.model}</p>
+              <div key={row.model} className="px-4 py-3 space-y-2">
+                {/* Row 1: model name + accuracy bar */}
+                <div className="flex items-center gap-3">
+                  <div className="w-16 lg:w-24 shrink-0">
+                    <p className="text-xs lg:text-sm font-bold text-foreground/80 truncate">{row.model}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <AccuracyBar pct={row.accuracy_pct} />
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <AccuracyBar pct={row.accuracy_pct} />
-                </div>
-                <div className="flex gap-4 text-xs text-foreground/40 shrink-0">
-                  <span>{row.correct_predictions}/{row.total_predictions}</span>
-                  <span>信心 {row.avg_confidence.toFixed(0)}%</span>
-                  <span>误差 {row.avg_price_error_pct.toFixed(2)}%</span>
+                {/* Row 2: stats */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] lg:text-xs text-foreground/35 pl-0 lg:pl-24">
+                  <span>预测 <strong className="text-foreground/50">{row.correct_predictions}/{row.total_predictions}</strong></span>
+                  <span>信心 <strong className="text-foreground/50">{Number(row.avg_confidence).toFixed(0)}%</strong></span>
+                  <span>误差 <strong className="text-foreground/50">{Number(row.avg_price_error_pct).toFixed(2)}%</strong></span>
+                  <span>权重 <strong className="text-primary/80">{Number(row.computed_weight || 0).toFixed(2)}</strong></span>
                 </div>
               </div>
             ))}
@@ -219,62 +214,114 @@ export default function AdminAIAccuracy() {
         )}
       </div>
 
-      {/* Recent Predictions */}
+      {/* Recent Predictions - Mobile cards + Desktop table */}
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
         <div className="px-4 py-3 border-b border-white/[0.06]">
           <h2 className="text-sm font-bold text-foreground/70">最近预测记录</h2>
         </div>
         {recLoading ? (
-          <div className="p-4 space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-8 rounded-lg" />)}
-          </div>
+          <div className="p-4 space-y-2">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-8 rounded-lg" />)}</div>
         ) : !recent || recent.length === 0 ? (
           <div className="p-8 text-center text-foreground/25 text-sm">暂无预测记录</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-foreground/30 border-b border-white/[0.04]">
-                  <th className="text-left px-4 py-2 font-medium">时间</th>
-                  <th className="text-left px-4 py-2 font-medium">模型</th>
-                  <th className="text-left px-4 py-2 font-medium">预测</th>
-                  <th className="text-right px-4 py-2 font-medium">信心</th>
-                  <th className="text-right px-4 py-2 font-medium">目标价</th>
-                  <th className="text-right px-4 py-2 font-medium">实际价</th>
-                  <th className="text-right px-4 py-2 font-medium">变化%</th>
-                  <th className="text-center px-4 py-2 font-medium">正确</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {recent.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-2.5 text-foreground/40 whitespace-nowrap">
-                      {new Date(row.created_at).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="px-4 py-2.5 font-semibold text-foreground/60">{row.model}</td>
-                    <td className="px-4 py-2.5"><DirectionBadge direction={row.prediction} /></td>
-                    <td className="px-4 py-2.5 text-right text-foreground/50">{row.confidence}%</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-foreground/50">${Number(row.target_price).toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-foreground/50">
-                      {row.actual_price ? `$${Number(row.actual_price).toLocaleString()}` : <span className="text-foreground/20">—</span>}
-                    </td>
-                    <td className={`px-4 py-2.5 text-right font-mono ${row.actual_change_pct !== null ? (row.actual_change_pct >= 0 ? "text-green-400" : "text-red-400") : "text-foreground/20"}`}>
-                      {row.actual_change_pct !== null ? `${row.actual_change_pct > 0 ? "+" : ""}${row.actual_change_pct.toFixed(2)}%` : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
+          <>
+            {/* Mobile: card layout */}
+            <div className="lg:hidden divide-y divide-white/[0.04]">
+              {recent.map((row) => (
+                <div key={row.id} className="px-4 py-3 space-y-2">
+                  {/* Header: model + direction + result */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground/60">{row.model}</span>
+                      <DirectionBadge direction={row.prediction} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-foreground/30">{row.confidence}%</span>
                       {row.status === "pending" ? (
-                        <span className="text-yellow-400/60 text-[10px] font-semibold">待验证</span>
+                        <span className="text-yellow-400/60 text-[10px] font-semibold bg-yellow-500/8 px-1.5 py-0.5 rounded">待验证</span>
                       ) : row.direction_correct ? (
-                        <span className="text-green-400 text-[10px] font-bold">✓</span>
+                        <span className="text-green-400 text-[10px] font-bold bg-green-500/10 px-1.5 py-0.5 rounded">正确</span>
                       ) : (
-                        <span className="text-red-400 text-[10px] font-bold">✗</span>
+                        <span className="text-red-400 text-[10px] font-bold bg-red-500/10 px-1.5 py-0.5 rounded">错误</span>
                       )}
-                    </td>
+                    </div>
+                  </div>
+                  {/* Prices */}
+                  <div className="grid grid-cols-3 gap-2 text-[10px]">
+                    <div>
+                      <p className="text-foreground/25">当前价</p>
+                      <p className="text-foreground/50 font-mono">{formatPrice(row.current_price)}</p>
+                    </div>
+                    <div>
+                      <p className="text-foreground/25">目标价</p>
+                      <p className="text-foreground/50 font-mono">{formatPrice(row.target_price)}</p>
+                    </div>
+                    <div>
+                      <p className="text-foreground/25">实际价</p>
+                      <p className="text-foreground/50 font-mono">{row.actual_price ? formatPrice(row.actual_price) : "—"}</p>
+                    </div>
+                  </div>
+                  {/* Footer: change + time */}
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className={row.actual_change_pct !== null ? (row.actual_change_pct >= 0 ? "text-green-400" : "text-red-400") : "text-foreground/20"}>
+                      {row.actual_change_pct !== null ? `变化 ${row.actual_change_pct > 0 ? "+" : ""}${row.actual_change_pct.toFixed(3)}%` : ""}
+                    </span>
+                    <span className="text-foreground/20">
+                      {new Date(row.created_at).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: table layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-foreground/30 border-b border-white/[0.04]">
+                    <th className="text-left px-4 py-2 font-medium">时间</th>
+                    <th className="text-left px-4 py-2 font-medium">模型</th>
+                    <th className="text-left px-4 py-2 font-medium">预测</th>
+                    <th className="text-right px-4 py-2 font-medium">信心</th>
+                    <th className="text-right px-4 py-2 font-medium">当前价</th>
+                    <th className="text-right px-4 py-2 font-medium">目标价</th>
+                    <th className="text-right px-4 py-2 font-medium">实际价</th>
+                    <th className="text-right px-4 py-2 font-medium">变化%</th>
+                    <th className="text-center px-4 py-2 font-medium">正确</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {recent.map((row) => (
+                    <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-2.5 text-foreground/40 whitespace-nowrap">
+                        {new Date(row.created_at).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="px-4 py-2.5 font-semibold text-foreground/60">{row.model}</td>
+                      <td className="px-4 py-2.5"><DirectionBadge direction={row.prediction} /></td>
+                      <td className="px-4 py-2.5 text-right text-foreground/50">{row.confidence}%</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground/40">{formatPrice(row.current_price)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground/50">{formatPrice(row.target_price)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground/50">
+                        {row.actual_price ? formatPrice(row.actual_price) : <span className="text-foreground/20">—</span>}
+                      </td>
+                      <td className={`px-4 py-2.5 text-right font-mono ${row.actual_change_pct !== null ? (row.actual_change_pct >= 0 ? "text-green-400" : "text-red-400") : "text-foreground/20"}`}>
+                        {row.actual_change_pct !== null ? `${row.actual_change_pct > 0 ? "+" : ""}${row.actual_change_pct.toFixed(3)}%` : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {row.status === "pending" ? (
+                          <span className="text-yellow-400/60 text-[10px] font-semibold">待验证</span>
+                        ) : row.direction_correct ? (
+                          <span className="text-green-400 text-[10px] font-bold">✓</span>
+                        ) : (
+                          <span className="text-red-400 text-[10px] font-bold">✗</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -93,7 +93,7 @@ serve(async (req) => {
     const actualDirection = changePct >= 0 ? "BULLISH" : "BEARISH";
     const directionCorrect =
       pred.prediction === "NEUTRAL"
-        ? Math.abs(changePct) < 0.1 // NEUTRAL is correct if change < 0.1%
+        ? Math.abs(changePct) < 0.5 // NEUTRAL is correct if change < 0.5%
         : pred.prediction === actualDirection;
     const priceErrorPct = pred.target_price > 0
       ? ((Math.abs(actualPrice - pred.target_price) / pred.target_price) * 100)

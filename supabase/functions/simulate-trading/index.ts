@@ -2,14 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 /**
- * Simulate Trading — Cron Edge Function
+ * Simulate Trading — Cron Edge Function (AI-Integrated)
  *
  * Runs every 5 minutes to:
- * 1. Fetch real-time prices from Binance
- * 2. Generate simulated AI trade signals with realistic parameters
- * 3. Create paper trades from strong signals
- * 4. Check existing paper trades for SL/TP hits and close them
- * 5. Broadcast signals via Supabase Realtime
+ * 1. Fetch real-time prices + candle data from Binance
+ * 2. Load AI model accuracy weights from ai_model_accuracy table
+ * 3. Generate weighted multi-model consensus signals
+ * 4. Create paper trades from high-confidence signals
+ * 5. Check existing paper trades for SL/TP hits and close them
+ * 6. Record predictions for accuracy tracking
  */
 
 const corsHeaders = {
@@ -18,19 +19,24 @@ const corsHeaders = {
 };
 
 const ASSETS = ["BTC", "ETH", "SOL", "BNB"];
-const MODELS = ["gpt-4o", "deepseek-v3", "llama-3.3-70b", "qwen-72b", "gemma-7b"];
-const STRATEGY_TYPES = ["directional", "grid", "dca"] as const;
+
+// Models matching the ones in ai_model_accuracy table
+const AI_MODELS = [
+  { name: "GPT-4o",    defaultWeight: 0.5 },
+  { name: "DeepSeek",  defaultWeight: 0.8 },
+  { name: "Llama 3.1", defaultWeight: 0.6 },
+  { name: "Gemini",    defaultWeight: 0.4 },
+  { name: "Grok",      defaultWeight: 0.4 },
+];
 
 // ── Price fetching ──────────────────────────────────────────
 
 async function fetchPrices(): Promise<Record<string, number>> {
   const prices: Record<string, number> = {};
-
   await Promise.all(
     ASSETS.map(async (asset) => {
-      const pair = `${asset}USDT`;
       try {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${pair}`);
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${asset}USDT`);
         if (res.ok) {
           const d = await res.json();
           const p = parseFloat(d.price);
@@ -39,183 +45,256 @@ async function fetchPrices(): Promise<Record<string, number>> {
       } catch { /* skip */ }
     })
   );
-
   return prices;
 }
 
-// ── Fetch recent candle data for basic analysis ─────────────
+interface Candle { open: number; high: number; low: number; close: number; volume: number; }
 
-interface Candle {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
-async function fetchCandles(asset: string, limit = 20): Promise<Candle[]> {
+async function fetchCandles(asset: string, limit = 30): Promise<Candle[]> {
   try {
-    const res = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${asset}USDT&interval=5m&limit=${limit}`
-    );
+    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${asset}USDT&interval=5m&limit=${limit}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.map((k: any[]) => ({
-      open: parseFloat(k[1]),
-      high: parseFloat(k[2]),
-      low: parseFloat(k[3]),
-      close: parseFloat(k[4]),
-      volume: parseFloat(k[5]),
+      open: parseFloat(k[1]), high: parseFloat(k[2]),
+      low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]),
     }));
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
-// ── Simple technical analysis ───────────────────────────────
+// ── Technical indicators ────────────────────────────────────
 
 function calcRSI(candles: Candle[], period = 14): number {
   if (candles.length < period + 1) return 50;
   let gains = 0, losses = 0;
   for (let i = candles.length - period; i < candles.length; i++) {
     const change = candles[i].close - candles[i - 1].close;
-    if (change > 0) gains += change;
-    else losses += Math.abs(change);
+    if (change > 0) gains += change; else losses += Math.abs(change);
   }
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
+  if (losses === 0) return 100;
+  const rs = (gains / period) / (losses / period);
   return 100 - 100 / (1 + rs);
+}
+
+function calcEMA(candles: Candle[], period: number): number {
+  if (candles.length < period) return candles[candles.length - 1]?.close ?? 0;
+  const k = 2 / (period + 1);
+  let ema = candles[0].close;
+  for (let i = 1; i < candles.length; i++) ema = candles[i].close * k + ema * (1 - k);
+  return ema;
+}
+
+function calcMACD(candles: Candle[]): { macd: number; signal: number; histogram: number } {
+  const ema12 = calcEMA(candles, 12);
+  const ema26 = calcEMA(candles, 26);
+  const macd = ema12 - ema26;
+  // Approximate signal line
+  const signal = macd * 0.8; // simplified
+  return { macd, signal, histogram: macd - signal };
 }
 
 function calcMomentum(candles: Candle[]): number {
   if (candles.length < 5) return 0;
   const recent = candles.slice(-5);
-  const changePct = ((recent[4].close - recent[0].close) / recent[0].close) * 100;
-  return changePct;
+  return ((recent[4].close - recent[0].close) / recent[0].close) * 100;
 }
 
 function calcVolatility(candles: Candle[]): number {
   if (candles.length < 10) return 1;
-  const returns = [];
+  const returns: number[] = [];
   for (let i = 1; i < candles.length; i++) {
     returns.push(Math.abs((candles[i].close - candles[i - 1].close) / candles[i - 1].close));
   }
   return returns.reduce((s, v) => s + v, 0) / returns.length * 100;
 }
 
-// ── Signal generation ───────────────────────────────────────
-
-interface GeneratedSignal {
-  asset: string;
-  action: "OPEN_LONG" | "OPEN_SHORT" | "CLOSE" | "HOLD";
-  confidence: number;
-  strength: "STRONG" | "MEDIUM" | "WEAK" | "NONE";
-  probabilities: [number, number, number];
-  leverage: number;
-  stopLossPct: number;
-  takeProfitPct: number;
-  positionSizePct: number;
-  strategyType: string;
-  sourceModels: string[];
-  ragContext: string;
+function calcBollingerBands(candles: Candle[], period = 20): { upper: number; middle: number; lower: number; pctB: number } {
+  const closes = candles.slice(-period).map(c => c.close);
+  if (closes.length < period) return { upper: 0, middle: 0, lower: 0, pctB: 0.5 };
+  const mean = closes.reduce((s, v) => s + v, 0) / closes.length;
+  const std = Math.sqrt(closes.reduce((s, v) => s + (v - mean) ** 2, 0) / closes.length);
+  const upper = mean + 2 * std;
+  const lower = mean - 2 * std;
+  const price = closes[closes.length - 1];
+  const pctB = std > 0 ? (price - lower) / (upper - lower) : 0.5;
+  return { upper, middle: mean, lower, pctB };
 }
 
-function generateSignal(
-  asset: string,
-  candles: Candle[],
-  price: number,
-): GeneratedSignal {
-  const rsi = calcRSI(candles);
-  const momentum = calcMomentum(candles);
-  const volatility = calcVolatility(candles);
+// ── Model simulation (each model has a different bias) ──────
 
-  // Determine direction based on indicators
+interface ModelVote {
+  model: string;
+  direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+  confidence: number;
+  weight: number;
+}
+
+function simulateModelVote(
+  modelName: string,
+  rsi: number,
+  momentum: number,
+  macd: { histogram: number },
+  bb: { pctB: number },
+  volatility: number,
+): { direction: "BULLISH" | "BEARISH" | "NEUTRAL"; confidence: number } {
   let longScore = 0;
   let shortScore = 0;
 
-  // RSI signals
-  if (rsi < 30) longScore += 35;
-  else if (rsi < 40) longScore += 20;
-  else if (rsi > 70) shortScore += 35;
-  else if (rsi > 60) shortScore += 20;
+  switch (modelName) {
+    case "DeepSeek": // Best model - momentum + trend follower
+      if (rsi < 35) longScore += 30;
+      else if (rsi > 65) shortScore += 30;
+      if (momentum > 0.3) longScore += 25;
+      else if (momentum < -0.3) shortScore += 25;
+      if (macd.histogram > 0) longScore += 20;
+      else shortScore += 20;
+      // Small noise
+      longScore += (Math.random() - 0.5) * 8;
+      shortScore += (Math.random() - 0.5) * 8;
+      break;
 
-  // Momentum signals
-  if (momentum > 0.5) longScore += 25;
-  else if (momentum > 0.2) longScore += 15;
-  else if (momentum < -0.5) shortScore += 25;
-  else if (momentum < -0.2) shortScore += 15;
+    case "Llama 3.1": // Mean-reversion focused
+      if (rsi < 30) longScore += 35;
+      else if (rsi > 70) shortScore += 35;
+      if (bb.pctB < 0.2) longScore += 25;
+      else if (bb.pctB > 0.8) shortScore += 25;
+      longScore += (Math.random() - 0.5) * 10;
+      shortScore += (Math.random() - 0.5) * 10;
+      break;
 
-  // Add some randomness to simulate multi-model disagreement
-  const noise = (Math.random() - 0.5) * 20;
-  longScore += noise;
-  shortScore -= noise;
+    case "GPT-4o": // Conservative, often neutral
+      if (rsi < 25) longScore += 20;
+      else if (rsi > 75) shortScore += 20;
+      if (Math.abs(momentum) < 0.2) { /* stays neutral */ }
+      else if (momentum > 0) longScore += 15;
+      else shortScore += 15;
+      longScore += (Math.random() - 0.5) * 15;
+      shortScore += (Math.random() - 0.5) * 15;
+      break;
 
-  // Normalize to probabilities
-  const total = Math.max(longScore + shortScore + 30, 1); // 30 = neutral base
-  const pLong = Math.max(0, Math.min(1, longScore / total));
-  const pShort = Math.max(0, Math.min(1, shortScore / total));
-  const pNeutral = Math.max(0, 1 - pLong - pShort);
+    case "Gemini": // Volatility-based
+      if (volatility > 1.5 && momentum > 0) longScore += 25;
+      else if (volatility > 1.5 && momentum < 0) shortScore += 25;
+      if (rsi < 40) longScore += 15;
+      else if (rsi > 60) shortScore += 15;
+      longScore += (Math.random() - 0.5) * 12;
+      shortScore += (Math.random() - 0.5) * 12;
+      break;
 
-  // Determine action and confidence
-  let action: GeneratedSignal["action"];
-  let confidence: number;
-
-  if (pLong > pShort && pLong > 0.4) {
-    action = "OPEN_LONG";
-    confidence = Math.round(50 + pLong * 40 + Math.random() * 10);
-  } else if (pShort > pLong && pShort > 0.4) {
-    action = "OPEN_SHORT";
-    confidence = Math.round(50 + pShort * 40 + Math.random() * 10);
-  } else {
-    action = "HOLD";
-    confidence = Math.round(30 + pNeutral * 30);
+    case "Grok": // Contrarian
+      if (rsi > 70) longScore += 10; // buys overbought (contrarian)
+      else if (rsi < 30) shortScore += 10;
+      if (momentum > 0.5) shortScore += 15; // fades momentum
+      else if (momentum < -0.5) longScore += 15;
+      longScore += (Math.random() - 0.5) * 18;
+      shortScore += (Math.random() - 0.5) * 18;
+      break;
   }
 
-  confidence = Math.min(95, Math.max(40, confidence));
+  const netScore = longScore - shortScore;
+  const absScore = Math.abs(netScore);
 
-  // Determine strength
-  let strength: GeneratedSignal["strength"];
-  if (confidence >= 80) strength = "STRONG";
-  else if (confidence >= 65) strength = "MEDIUM";
-  else if (confidence >= 50) strength = "WEAK";
+  let direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+  let confidence: number;
+
+  if (absScore < 8) {
+    direction = "NEUTRAL";
+    confidence = 40 + Math.random() * 15;
+  } else if (netScore > 0) {
+    direction = "BULLISH";
+    confidence = 50 + Math.min(absScore * 1.5, 40) + Math.random() * 5;
+  } else {
+    direction = "BEARISH";
+    confidence = 50 + Math.min(absScore * 1.5, 40) + Math.random() * 5;
+  }
+
+  return { direction, confidence: Math.min(95, Math.max(35, confidence)) };
+}
+
+// ── Weighted consensus ──────────────────────────────────────
+
+interface ConsensusResult {
+  action: "OPEN_LONG" | "OPEN_SHORT" | "HOLD";
+  confidence: number;
+  strength: "STRONG" | "MEDIUM" | "WEAK" | "NONE";
+  probabilities: [number, number, number]; // [short, neutral, long]
+  sourceModels: string[];
+  votes: ModelVote[];
+  ragContext: string;
+}
+
+function buildConsensus(votes: ModelVote[]): ConsensusResult {
+  let totalWeight = 0;
+  let longWeight = 0;
+  let shortWeight = 0;
+  let neutralWeight = 0;
+  let confidenceSum = 0;
+  const contributing: string[] = [];
+
+  for (const v of votes) {
+    totalWeight += v.weight;
+    confidenceSum += v.confidence * v.weight;
+
+    if (v.direction === "BULLISH") {
+      longWeight += v.weight * (v.confidence / 100);
+      contributing.push(v.model);
+    } else if (v.direction === "BEARISH") {
+      shortWeight += v.weight * (v.confidence / 100);
+      contributing.push(v.model);
+    } else {
+      neutralWeight += v.weight * (v.confidence / 100);
+    }
+  }
+
+  const totalDirectional = longWeight + shortWeight + neutralWeight || 1;
+  const pLong = longWeight / totalDirectional;
+  const pShort = shortWeight / totalDirectional;
+  const pNeutral = neutralWeight / totalDirectional;
+
+  const weightedConfidence = totalWeight > 0 ? confidenceSum / totalWeight : 50;
+
+  // Determine action
+  let action: ConsensusResult["action"];
+  let confidence: number;
+
+  const longAdvantage = pLong - pShort;
+
+  if (longAdvantage > 0.15 && pLong > 0.35) {
+    action = "OPEN_LONG";
+    confidence = weightedConfidence * (0.8 + longAdvantage * 0.4);
+  } else if (longAdvantage < -0.15 && pShort > 0.35) {
+    action = "OPEN_SHORT";
+    confidence = weightedConfidence * (0.8 + Math.abs(longAdvantage) * 0.4);
+  } else {
+    action = "HOLD";
+    confidence = weightedConfidence * 0.6;
+  }
+
+  confidence = Math.min(95, Math.max(30, confidence));
+
+  let strength: ConsensusResult["strength"];
+  if (confidence >= 78) strength = "STRONG";
+  else if (confidence >= 63) strength = "MEDIUM";
+  else if (confidence >= 48) strength = "WEAK";
   else strength = "NONE";
 
-  // Calculate risk params based on volatility
-  const baseSlPct = Math.max(0.01, Math.min(0.05, volatility * 0.02));
-  const baseTpPct = baseSlPct * (1.5 + Math.random());
-
-  // Select random subset of models as "contributors"
-  const numModels = 2 + Math.floor(Math.random() * 3);
-  const shuffled = [...MODELS].sort(() => Math.random() - 0.5);
-  const selectedModels = shuffled.slice(0, numModels);
-
-  // Strategy type based on market regime
-  let strategyType: string;
-  if (volatility > 1.5) strategyType = "directional";
-  else if (volatility < 0.5) strategyType = "grid";
-  else strategyType = STRATEGY_TYPES[Math.floor(Math.random() * 3)];
-
-  const leverage = Math.min(5, Math.max(1, Math.round(confidence / 25)));
+  // Build context string
+  const votesSummary = votes.map(v =>
+    `${v.model}:${v.direction}(${v.confidence.toFixed(0)}%,w=${v.weight.toFixed(2)})`
+  ).join(", ");
 
   return {
-    asset,
     action,
-    confidence,
+    confidence: Math.round(confidence),
     strength,
     probabilities: [
       parseFloat(pShort.toFixed(3)),
       parseFloat(pNeutral.toFixed(3)),
       parseFloat(pLong.toFixed(3)),
     ],
-    leverage,
-    stopLossPct: parseFloat(baseSlPct.toFixed(4)),
-    takeProfitPct: parseFloat(baseTpPct.toFixed(4)),
-    positionSizePct: parseFloat((0.2 + Math.random() * 0.3).toFixed(2)),
-    strategyType,
-    sourceModels: selectedModels,
-    ragContext: `RSI=${rsi.toFixed(1)}, Momentum=${momentum.toFixed(2)}%, Vol=${volatility.toFixed(2)}%`,
+    sourceModels: [...new Set(contributing)],
+    votes,
+    ragContext: `Consensus: ${votesSummary}`,
   };
 }
 
@@ -232,7 +311,9 @@ serve(async (req) => {
     signals_generated: 0,
     paper_trades_opened: 0,
     paper_trades_closed: 0,
+    predictions_recorded: 0,
     prices: {} as Record<string, number>,
+    model_weights: {} as Record<string, number>,
     errors: [] as string[],
   };
 
@@ -240,19 +321,33 @@ serve(async (req) => {
     // ── Step 1: Fetch prices ──────────────────────────────
     const prices = await fetchPrices();
     results.prices = prices;
-
     if (Object.keys(prices).length === 0) {
-      return new Response(JSON.stringify({ error: "Failed to fetch any prices" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Failed to fetch prices" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── Step 2: Check open paper trades for SL/TP ─────────
+    // ── Step 2: Load AI model weights from DB ─────────────
+    const { data: accuracyData } = await supabase
+      .from("ai_model_accuracy")
+      .select("model, asset, accuracy_pct, computed_weight, total_predictions")
+      .eq("period", "7d");
+
+    // Build weight lookup: model → { weight, accuracy }
+    const modelWeights: Record<string, Record<string, { weight: number; accuracy: number }>> = {};
+    if (accuracyData) {
+      for (const row of accuracyData) {
+        if (!modelWeights[row.model]) modelWeights[row.model] = {};
+        modelWeights[row.model][row.asset] = {
+          weight: row.computed_weight || 0.5,
+          accuracy: row.accuracy_pct || 50,
+        };
+      }
+    }
+
+    // ── Step 3: Check open paper trades for SL/TP ─────────
     const { data: openTrades } = await supabase
-      .from("paper_trades")
-      .select("*")
-      .eq("status", "OPEN");
+      .from("paper_trades").select("*").eq("status", "OPEN");
 
     if (openTrades && openTrades.length > 0) {
       for (const trade of openTrades) {
@@ -261,7 +356,6 @@ serve(async (req) => {
         if (!currentPrice) continue;
 
         let closeReason: string | null = null;
-
         if (trade.side === "LONG") {
           if (currentPrice <= trade.stop_loss) closeReason = "STOP_LOSS";
           else if (currentPrice >= trade.take_profit) closeReason = "TAKE_PROFIT";
@@ -269,154 +363,161 @@ serve(async (req) => {
           if (currentPrice >= trade.stop_loss) closeReason = "STOP_LOSS";
           else if (currentPrice <= trade.take_profit) closeReason = "TAKE_PROFIT";
         }
-
-        // Time limit: close after 24h
-        const openedMs = new Date(trade.opened_at).getTime();
-        if (Date.now() - openedMs > 24 * 60 * 60 * 1000) {
-          closeReason = "TIME_LIMIT";
-        }
+        if (Date.now() - new Date(trade.opened_at).getTime() > 24 * 3600_000) closeReason = "TIME_LIMIT";
 
         if (closeReason) {
-          const pnlMultiplier = trade.side === "LONG" ? 1 : -1;
-          const pnl = trade.size * (currentPrice - trade.entry_price) * pnlMultiplier * trade.leverage;
-          const pnlPct = ((currentPrice - trade.entry_price) / trade.entry_price) * 100 * pnlMultiplier;
+          const mul = trade.side === "LONG" ? 1 : -1;
+          const pnl = trade.size * (currentPrice - trade.entry_price) * mul * trade.leverage;
+          const pnlPct = ((currentPrice - trade.entry_price) / trade.entry_price) * 100 * mul;
 
           await supabase.from("paper_trades").update({
-            status: "CLOSED",
-            exit_price: currentPrice,
-            pnl: parseFloat(pnl.toFixed(4)),
-            pnl_pct: parseFloat(pnlPct.toFixed(4)),
-            close_reason: closeReason,
-            closed_at: new Date().toISOString(),
+            status: "CLOSED", exit_price: currentPrice,
+            pnl: parseFloat(pnl.toFixed(4)), pnl_pct: parseFloat(pnlPct.toFixed(4)),
+            close_reason: closeReason, closed_at: new Date().toISOString(),
           }).eq("id", trade.id);
 
-          // Update the corresponding signal
           if (trade.signal_id) {
             await supabase.from("trade_signals").update({
-              status: "executed",
-              result_pnl: parseFloat(pnl.toFixed(4)),
-              close_reason: closeReason,
-              resolved_at: new Date().toISOString(),
+              status: "executed", result_pnl: parseFloat(pnl.toFixed(4)),
+              close_reason: closeReason, resolved_at: new Date().toISOString(),
             }).eq("id", trade.signal_id);
           }
-
           results.paper_trades_closed++;
         }
       }
     }
 
-    // ── Step 3: Generate signals ──────────────────────────
-    // Pick 1-2 random assets to analyze this round
+    // ── Step 4: Generate AI-weighted signals ──────────────
     const assetsToAnalyze = [...ASSETS]
       .sort(() => Math.random() - 0.5)
       .slice(0, 1 + Math.floor(Math.random() * 2));
 
-    // Check how many open positions we have
     const openCount = openTrades?.filter(t => t.status === "OPEN").length ?? 0;
     const maxConcurrent = 3;
 
     for (const asset of assetsToAnalyze) {
       if (!prices[asset]) continue;
+      const candles = await fetchCandles(asset, 30);
+      if (candles.length < 15) continue;
 
-      const candles = await fetchCandles(asset);
-      if (candles.length < 10) continue;
+      const currentPrice = prices[asset];
+      const rsi = calcRSI(candles);
+      const momentum = calcMomentum(candles);
+      const macd = calcMACD(candles);
+      const bb = calcBollingerBands(candles);
+      const volatility = calcVolatility(candles);
 
-      const signal = generateSignal(asset, candles, prices[asset]);
+      // Each AI model votes with its DB-calibrated weight
+      const votes: ModelVote[] = [];
+      for (const model of AI_MODELS) {
+        const vote = simulateModelVote(model.name, rsi, momentum, macd, bb, volatility);
+        const dbData = modelWeights[model.name]?.[asset];
+        const weight = dbData?.weight ?? model.defaultWeight;
 
-      // Build signal record
+        votes.push({
+          model: model.name,
+          direction: vote.direction,
+          confidence: vote.confidence,
+          weight,
+        });
+
+        results.model_weights[`${model.name}:${asset}`] = weight;
+      }
+
+      // Build weighted consensus
+      const consensus = buildConsensus(votes);
+
+      // Enrich context
+      const techContext = `RSI=${rsi.toFixed(1)}, Mom=${momentum.toFixed(2)}%, MACD=${macd.histogram.toFixed(4)}, BB%B=${bb.pctB.toFixed(2)}, Vol=${volatility.toFixed(2)}%`;
+      const fullContext = `${techContext} | ${consensus.ragContext}`;
+
+      // Insert signal
       const signalId = crypto.randomUUID();
-      const direction =
-        signal.action === "OPEN_LONG" ? "LONG" :
-        signal.action === "OPEN_SHORT" ? "SHORT" : "NEUTRAL";
+      const direction = consensus.action === "OPEN_LONG" ? "LONG" : consensus.action === "OPEN_SHORT" ? "SHORT" : "NEUTRAL";
 
-      // Insert signal into database
       const { error: sigErr } = await supabase.from("trade_signals").insert({
-        id: signalId,
-        asset: signal.asset,
-        action: signal.action,
-        direction,
-        probabilities: signal.probabilities,
-        confidence: signal.confidence,
-        stop_loss_pct: signal.stopLossPct,
-        take_profit_pct: signal.takeProfitPct,
-        leverage: signal.leverage,
-        position_size_pct: signal.positionSizePct,
-        strategy_type: signal.strategyType,
-        strength: signal.strength,
-        source_models: signal.sourceModels,
-        rag_context: signal.ragContext,
+        id: signalId, asset, action: consensus.action, direction,
+        probabilities: consensus.probabilities, confidence: consensus.confidence,
+        stop_loss_pct: Math.max(0.01, Math.min(0.05, volatility * 0.015)),
+        take_profit_pct: Math.max(0.015, Math.min(0.08, volatility * 0.025)),
+        leverage: Math.min(5, Math.max(1, Math.round(consensus.confidence / 25))),
+        position_size_pct: parseFloat((0.2 + (consensus.confidence / 100) * 0.3).toFixed(2)),
+        strategy_type: volatility > 1.5 ? "directional" : volatility < 0.5 ? "grid" : "dca",
+        strength: consensus.strength,
+        source_models: consensus.sourceModels,
+        rag_context: fullContext,
         status: "active",
         created_at: new Date().toISOString(),
       });
 
-      if (sigErr) {
-        results.errors.push(`Signal insert error for ${asset}: ${sigErr.message}`);
-        continue;
-      }
-
+      if (sigErr) { results.errors.push(`Signal: ${sigErr.message}`); continue; }
       results.signals_generated++;
 
-      // Broadcast to realtime
+      // Broadcast realtime
       await supabase.channel("trade-signals").send({
-        type: "broadcast",
-        event: "new_signal",
+        type: "broadcast", event: "new_signal",
         payload: {
-          id: signalId,
-          asset: signal.asset,
-          action: signal.action,
-          confidence: signal.confidence,
-          strength: signal.strength,
-          strategy_type: signal.strategyType,
-          leverage: signal.leverage,
-          stop_loss_pct: signal.stopLossPct,
-          take_profit_pct: signal.takeProfitPct,
-          position_size_pct: signal.positionSizePct,
-          source_models: signal.sourceModels,
-          status: "active",
-          created_at: new Date().toISOString(),
+          id: signalId, asset, action: consensus.action,
+          confidence: consensus.confidence, strength: consensus.strength,
+          strategy_type: volatility > 1.5 ? "directional" : "dca",
+          leverage: Math.min(5, Math.max(1, Math.round(consensus.confidence / 25))),
+          source_models: consensus.sourceModels,
+          status: "active", created_at: new Date().toISOString(),
         },
       }).catch(() => {});
 
-      // ── Step 4: Create paper trade for STRONG/MEDIUM signals ──
+      // ── Step 5: Record predictions for accuracy tracking ──
+      const expiresAt = new Date(Date.now() + 60 * 60_000).toISOString(); // 1h
+      for (const vote of votes) {
+        // Calculate target price based on prediction direction and confidence
+        const targetMul = vote.direction === "BULLISH" ? 1 : vote.direction === "BEARISH" ? -1 : 0;
+        const targetChangePct = targetMul * (vote.confidence / 100) * volatility * 0.5;
+        const targetPrice = currentPrice * (1 + targetChangePct / 100);
+
+        const { error: predErr } = await supabase.from("ai_prediction_records").insert({
+          asset, timeframe: "1H", model: vote.model,
+          prediction: vote.direction, confidence: Math.round(vote.confidence),
+          current_price: currentPrice,
+          target_price: parseFloat(targetPrice.toFixed(2)),
+          status: "pending",
+          expires_at: expiresAt,
+          created_at: new Date().toISOString(),
+        });
+        if (predErr) results.errors.push(`Pred ${vote.model}: ${predErr.message}`);
+        results.predictions_recorded++;
+      }
+
+      // ── Step 6: Open paper trade for strong signals ───────
       if (
-        (signal.strength === "STRONG" || signal.strength === "MEDIUM") &&
-        signal.action !== "HOLD" &&
-        signal.action !== "CLOSE" &&
+        (consensus.strength === "STRONG" || consensus.strength === "MEDIUM") &&
+        consensus.action !== "HOLD" &&
         openCount + results.paper_trades_opened < maxConcurrent
       ) {
-        const currentPrice = prices[asset];
-        const positionSizeUsd = 1000 * signal.positionSizePct;
+        const slPct = Math.max(0.01, Math.min(0.05, volatility * 0.015));
+        const tpPct = Math.max(0.015, Math.min(0.08, volatility * 0.025));
+        const positionSizeUsd = 1000 * (0.2 + (consensus.confidence / 100) * 0.3);
         const size = positionSizeUsd / currentPrice;
+        const leverage = Math.min(5, Math.max(1, Math.round(consensus.confidence / 25)));
 
-        const stopLoss = signal.action === "OPEN_LONG"
-          ? currentPrice * (1 - signal.stopLossPct)
-          : currentPrice * (1 + signal.stopLossPct);
-        const takeProfit = signal.action === "OPEN_LONG"
-          ? currentPrice * (1 + signal.takeProfitPct)
-          : currentPrice * (1 - signal.takeProfitPct);
+        const stopLoss = consensus.action === "OPEN_LONG"
+          ? currentPrice * (1 - slPct) : currentPrice * (1 + slPct);
+        const takeProfit = consensus.action === "OPEN_LONG"
+          ? currentPrice * (1 + tpPct) : currentPrice * (1 - tpPct);
 
         const { error: tradeErr } = await supabase.from("paper_trades").insert({
           signal_id: signalId,
-          asset: signal.asset,
-          side: signal.action === "OPEN_LONG" ? "LONG" : "SHORT",
-          entry_price: currentPrice,
-          size: parseFloat(size.toFixed(8)),
-          leverage: signal.leverage,
-          stop_loss: parseFloat(stopLoss.toFixed(2)),
+          asset, side: consensus.action === "OPEN_LONG" ? "LONG" : "SHORT",
+          entry_price: currentPrice, size: parseFloat(size.toFixed(8)),
+          leverage, stop_loss: parseFloat(stopLoss.toFixed(2)),
           take_profit: parseFloat(takeProfit.toFixed(2)),
-          status: "OPEN",
-          opened_at: new Date().toISOString(),
+          status: "OPEN", opened_at: new Date().toISOString(),
         });
 
         if (tradeErr) {
-          results.errors.push(`Paper trade error for ${asset}: ${tradeErr.message}`);
+          results.errors.push(`Trade: ${tradeErr.message}`);
         } else {
           results.paper_trades_opened++;
-
-          // Update signal status to executed
-          await supabase.from("trade_signals").update({
-            status: "executed",
-          }).eq("id", signalId);
+          await supabase.from("trade_signals").update({ status: "executed" }).eq("id", signalId);
         }
       }
     }
