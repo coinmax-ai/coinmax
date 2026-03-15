@@ -4,7 +4,7 @@
  * Module Index — each file is implemented per the phases in TECHNICAL_PLAN.md
  *
  * Phase 1:
- *   vector-store.ts      — Vector memory (Pinecone/pgvector) for market state embeddings
+ *   vector-store.ts      — Vector memory (Pinecone/pgvector) for market state embeddings ✅
  *
  * Phase 2:
  *   indicators.ts        — Technical indicator calculations (RSI, MACD, BB, etc.) ✅
@@ -24,11 +24,18 @@
  *   hummingbot/controllers/coinmax_ai_controller.py — Hummingbot V2 controller ✅
  *   hummingbot/scripts/coinmax_ai_trading.py — Hummingbot entry script ✅
  *
+ * Phase 5:
+ *   src/components/strategy/live-trading-panel.tsx — Real-time signal feed + position display ✅
+ *   src/components/strategy/risk-control.tsx       — User risk config (limits, kill switch) ✅
+ *   src/components/strategy/api-key-bind.tsx       — Exchange API key binding flow ✅
+ *   supabase/functions/trading-ws/                 — WebSocket for live PnL broadcast ✅
+ *
  * Phase 6:
- *   trade-recorder.ts    — Trade result recording → vector DB
- *   weight-adjuster.ts   — Automated model weight tuning
- *   auto-backtest.ts     — Automated backtesting pipeline
- *   strategy-tuner.ts    — Parameter optimization via grid search
+ *   trade-recorder.ts    — Trade result recording → vector DB ✅
+ *   weight-adjuster.ts   — Automated model weight tuning (hourly) ✅
+ *   auto-backtest.ts     — Automated backtesting pipeline (daily) ✅
+ *   strategy-tuner.ts    — Parameter optimization via grid search ✅
+ *   supabase/functions/adjust-weights/             — Cron: hourly weight recalculation ✅
  */
 
-export const AI_ENGINE_VERSION = "0.4.0";
+export const AI_ENGINE_VERSION = "0.6.0";
