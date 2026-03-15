@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { supabase } from "@/lib/supabase";
-import { Radio, RefreshCw, Check, X, Ban, Clock, Eye, ChevronDown } from "lucide-react";
+import { Radio, RefreshCw, Check, X, Ban, Clock, ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 
@@ -153,7 +153,7 @@ export default function AdminProviders() {
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
           </div>
         ) : !providers || providers.length === 0 ? (
           <div className="p-8 text-center text-foreground/25 text-sm">暂无策略提供方</div>
@@ -168,42 +168,86 @@ export default function AdminProviders() {
               return (
                 <div key={p.id}>
                   <div
-                    className="px-4 py-3 flex items-center gap-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                    className="px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
                     onClick={() => setExpanded(isExpanded ? null : p.id)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-bold text-foreground/80 truncate">{p.name}</p>
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${sc.color}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          {sc.label}
-                        </span>
+                    {/* Mobile layout */}
+                    <div className="lg:hidden space-y-2.5">
+                      {/* Row 1: name + status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-bold text-foreground/80 truncate">{p.name}</p>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${sc.color}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {sc.label}
+                          </span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-foreground/25 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-foreground/35">
-                        <span>{p.contact_email}</span>
-                        <span>Key: {p.api_key_prefix}...</span>
-                        <span>{new Date(p.created_at).toLocaleDateString("zh-CN")}</span>
+                      {/* Row 2: email + date */}
+                      <div className="flex items-center gap-3 text-[11px] text-foreground/30">
+                        <span className="truncate">{p.contact_email}</span>
+                        <span className="shrink-0">{new Date(p.created_at).toLocaleDateString("zh-CN")}</span>
+                      </div>
+                      {/* Row 3: stats */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-foreground/25">信号</span>
+                          <span className="font-bold text-foreground/60">{p.total_signals}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-foreground/25">胜率</span>
+                          <span className="font-bold text-foreground/60">{winRate}%</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-foreground/25">PnL</span>
+                          <span className={`font-bold ${Number(p.total_pnl) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {Number(p.total_pnl) >= 0 ? "+" : ""}{Number(p.total_pnl).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-foreground/25">Key</span>
+                          <span className="font-mono text-foreground/35">{p.api_key_prefix}...</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 text-xs text-foreground/50 shrink-0">
-                      <div className="text-center">
-                        <p className="font-bold text-foreground/70">{p.total_signals}</p>
-                        <p className="text-[10px] text-foreground/30">信号</p>
+                    {/* Desktop layout */}
+                    <div className="hidden lg:flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-bold text-foreground/80 truncate">{p.name}</p>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${sc.color}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {sc.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-foreground/35">
+                          <span>{p.contact_email}</span>
+                          <span>Key: {p.api_key_prefix}...</span>
+                          <span>{new Date(p.created_at).toLocaleDateString("zh-CN")}</span>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <p className="font-bold text-foreground/70">{winRate}%</p>
-                        <p className="text-[10px] text-foreground/30">胜率</p>
-                      </div>
-                      <div className="text-center">
-                        <p className={`font-bold ${Number(p.total_pnl) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {Number(p.total_pnl) >= 0 ? "+" : ""}{Number(p.total_pnl).toFixed(2)}
-                        </p>
-                        <p className="text-[10px] text-foreground/30">PnL</p>
-                      </div>
-                    </div>
 
-                    <ChevronDown className={`h-4 w-4 text-foreground/25 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <div className="flex items-center gap-6 text-xs text-foreground/50 shrink-0">
+                        <div className="text-center">
+                          <p className="font-bold text-foreground/70">{p.total_signals}</p>
+                          <p className="text-[10px] text-foreground/30">信号</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold text-foreground/70">{winRate}%</p>
+                          <p className="text-[10px] text-foreground/30">胜率</p>
+                        </div>
+                        <div className="text-center">
+                          <p className={`font-bold ${Number(p.total_pnl) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {Number(p.total_pnl) >= 0 ? "+" : ""}{Number(p.total_pnl).toFixed(2)}
+                          </p>
+                          <p className="text-[10px] text-foreground/30">PnL</p>
+                        </div>
+                      </div>
+
+                      <ChevronDown className={`h-4 w-4 text-foreground/25 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </div>
                   </div>
 
                   {/* Expanded details */}
@@ -216,7 +260,7 @@ export default function AdminProviders() {
                         </div>
                         <div>
                           <p className="text-[10px] text-foreground/30 mb-0.5">网站</p>
-                          <p className="text-xs text-foreground/60">{p.website || "—"}</p>
+                          <p className="text-xs text-foreground/60 break-all">{p.website || "—"}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-foreground/30 mb-0.5">允许资产</p>
@@ -251,18 +295,18 @@ export default function AdminProviders() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {p.status === "pending" && (
                           <>
                             <button
                               onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: p.id, status: "approved" }); }}
-                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                              className="flex-1 lg:flex-none px-4 py-2 text-xs font-semibold rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
                             >
                               通过
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: p.id, status: "rejected" }); }}
-                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                              className="flex-1 lg:flex-none px-4 py-2 text-xs font-semibold rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                             >
                               拒绝
                             </button>
@@ -271,7 +315,7 @@ export default function AdminProviders() {
                         {p.status === "approved" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: p.id, status: "suspended" }); }}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
+                            className="flex-1 lg:flex-none px-4 py-2 text-xs font-semibold rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
                           >
                             暂停
                           </button>
@@ -279,7 +323,7 @@ export default function AdminProviders() {
                         {p.status === "suspended" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: p.id, status: "approved" }); }}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                            className="flex-1 lg:flex-none px-4 py-2 text-xs font-semibold rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
                           >
                             恢复
                           </button>
