@@ -1,0 +1,41 @@
+/**
+ * CoinMax AI Trading Engine
+ *
+ * Module Index — each file is implemented per the phases in TECHNICAL_PLAN.md
+ *
+ * Phase 1:
+ *   vector-store.ts      — Vector memory (Pinecone/pgvector) for market state embeddings ✅
+ *
+ * Phase 2:
+ *   indicators.ts        — Technical indicator calculations (RSI, MACD, BB, etc.) ✅
+ *   onchain-data.ts      — On-chain data feeds (funding rate, OI, L/S ratio) ✅
+ *   patterns.ts          — Candlestick pattern recognition ✅
+ *
+ * Phase 3:
+ *   rag-predictor.ts     — RAG-enhanced multi-model prediction pipeline ✅
+ *   model-weights.ts     — Dynamic model weighting based on historical accuracy ✅
+ *   signal-filter.ts     — Confidence threshold filtering ✅
+ *   strategy-selector.ts — Auto strategy selection based on market regime ✅
+ *
+ * Phase 4:
+ *   signal-publisher.ts  — Trade signal publisher (Supabase Realtime + MQTT) ✅
+ *   execution-manager.ts — Execution mode management (paper/signal/semi/full auto) ✅
+ *   api-key-vault.ts     — Encrypted exchange API key storage (AES-256-GCM) ✅
+ *   hummingbot/controllers/coinmax_ai_controller.py — Hummingbot V2 controller ✅
+ *   hummingbot/scripts/coinmax_ai_trading.py — Hummingbot entry script ✅
+ *
+ * Phase 5:
+ *   src/components/strategy/live-trading-panel.tsx — Real-time signal feed + position display ✅
+ *   src/components/strategy/risk-control.tsx       — User risk config (limits, kill switch) ✅
+ *   src/components/strategy/api-key-bind.tsx       — Exchange API key binding flow ✅
+ *   supabase/functions/trading-ws/                 — WebSocket for live PnL broadcast ✅
+ *
+ * Phase 6:
+ *   trade-recorder.ts    — Trade result recording → vector DB ✅
+ *   weight-adjuster.ts   — Automated model weight tuning (hourly) ✅
+ *   auto-backtest.ts     — Automated backtesting pipeline (daily) ✅
+ *   strategy-tuner.ts    — Parameter optimization via grid search ✅
+ *   supabase/functions/adjust-weights/             — Cron: hourly weight recalculation ✅
+ */
+
+export const AI_ENGINE_VERSION = "0.6.0";

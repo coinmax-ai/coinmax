@@ -649,7 +649,7 @@ export async function adminGetNodeFundStats() {
   if (error) throw error;
 
   const rows = data ?? [];
-  const totalAmount = rows.reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
+  const totalAmount = rows.reduce((sum: number, r: any) => sum + Number(r.details?.frozen || r.amount || 0), 0);
   const totalContribution = rows.reduce((sum: number, r: any) => {
     const contribution = r.details?.contribution;
     return sum + Number(contribution || 0);

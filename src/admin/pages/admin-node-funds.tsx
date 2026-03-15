@@ -143,7 +143,7 @@ function PurchasesTab({ stats, records, isLoading, page, setPage, totalPages }: 
                   { label: "节点类型", value: <Badge variant="outline" className="text-[10px] h-5 capitalize">{r.details?.nodeType ?? "-"}</Badge> },
                   { label: "贡献金", value: r.details?.contribution ? formatUSD(Number(r.details.contribution)) : "-" },
                   { label: "冻结金", value: r.details?.frozen ? formatUSD(Number(r.details.frozen)) : "-" },
-                  { label: "总金额", value: formatUSD(Number(r.amount)) },
+                  { label: "总金额", value: formatUSD(Number(r.details?.frozen ?? r.amount)) },
                   { label: "Tx Hash", value: r.txHash ? <a href={`https://bscscan.com/tx/${r.txHash}`} target="_blank" rel="noreferrer" className="text-primary hover:underline font-mono">{shortenAddress(r.txHash)}</a> : "-" },
                   { label: "时间", value: r.createdAt ? new Date(r.createdAt).toLocaleString() : "-" },
                 ]}
@@ -170,7 +170,7 @@ function PurchasesTab({ stats, records, isLoading, page, setPage, totalPages }: 
                     <TableCell><Badge variant="outline" className="text-xs capitalize">{r.details?.nodeType ?? "-"}</Badge></TableCell>
                     <TableCell className="text-foreground/70">{r.details?.contribution ? formatUSD(Number(r.details.contribution)) : "-"}</TableCell>
                     <TableCell className="text-foreground/70">{r.details?.frozen ? formatUSD(Number(r.details.frozen)) : "-"}</TableCell>
-                    <TableCell className="text-foreground/70 font-medium">{formatUSD(Number(r.amount))}</TableCell>
+                    <TableCell className="text-foreground/70 font-medium">{formatUSD(Number(r.details?.frozen ?? r.amount))}</TableCell>
                     <TableCell>
                       {r.txHash ? (
                         <a href={`https://bscscan.com/tx/${r.txHash}`} target="_blank" rel="noreferrer" className="text-primary hover:underline font-mono text-xs">{shortenAddress(r.txHash)}</a>

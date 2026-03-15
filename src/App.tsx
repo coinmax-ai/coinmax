@@ -29,6 +29,8 @@ import ProfileNodeEarningsPage from "@/pages/profile-node-earnings";
 import ProfileSwapPage from "@/pages/profile-swap";
 import MarketPage from "@/pages/market";
 import AdminApp from "@/admin/admin-app";
+import ProviderApp from "@/provider/provider-app";
+import CopyTradingPage from "@/pages/copy-trading";
 import NotFound from "@/pages/not-found";
 
 const wallets = [
@@ -370,6 +372,14 @@ function RootRouter() {
 
   if (location.startsWith("/admin")) {
     return <AdminApp />;
+  }
+
+  if (location.startsWith("/provider")) {
+    return <ProviderApp />;
+  }
+
+  if (location.startsWith("/copy-trading")) {
+    return <CopyTradingPage />;
   }
 
   return <MainApp />;
