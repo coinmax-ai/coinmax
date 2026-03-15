@@ -1,0 +1,42 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+          echo "diff_size=$(wc -l < pr_diff.txt)" >> $GITHUB_OUTPUT
+
+      - name: Claude Code Review
+        if: steps.diff.outputs.diff_size > 0
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          prompt: |
+            Review this PR for the CoinMax crypto trading platform. Focus on:
+            1. Security issues (XSS, injection, leaked secrets, unsafe API calls)
+            2. Logic bugs in trading/financial calculations
+            3. Performance issues
+            4. Code quality and best practices
+
+            Be concise. Only comment on actual issues, not style preferences.
+            Use Chinese for comments (the team is Chinese-speaking).
+          direct_prompt: |
+            Review the changes in this pull request. Post review comments directly on the PR.
+            If there are no issues, approve the PR with a brief summary.

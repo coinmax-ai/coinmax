@@ -1,0 +1,73 @@
+name: Sync to Public Repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/**'
+      - 'src/pages/**'
+      - 'src/hooks/**'
+      - 'src/lib/**'
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/index.css'
+      - 'public/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'tailwind.config.ts'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync public files
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          # Clone public repo
+          git clone "https://${GH_TOKEN}@github.com/coinmax-ai/coinmax.git" /tmp/public-repo
+
+          # Copy public-safe files
+          rsync -av --delete \
+            --exclude='src/admin/' \
+            --exclude='src/provider/' \
+            --exclude='ai-engine/' \
+            --exclude='supabase/' \
+            --exclude='contracts/' \
+            --exclude='.github/' \
+            --exclude='.idea/' \
+            --exclude='node_modules/' \
+            --exclude='dist/' \
+            --exclude='.env*' \
+            --include='src/***' \
+            --include='public/***' \
+            --include='shared/***' \
+            --include='index.html' \
+            --include='package.json' \
+            --include='package-lock.json' \
+            --include='tsconfig.json' \
+            --include='vite.config.ts' \
+            --include='postcss.config.js' \
+            --include='tailwind.config.ts' \
+            --include='components.json' \
+            --include='netlify.toml' \
+            --exclude='*' \
+            ./ /tmp/public-repo/
+
+          cd /tmp/public-repo
+          git config user.name "coinmax-ai"
+          git config user.email "tech@coinmax-ai.com"
+
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "Sync from private repo $(date +%Y-%m-%d)"
+          git push origin main
