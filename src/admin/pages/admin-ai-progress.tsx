@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { supabase } from "@/lib/supabase";
-import { TrendingUp, RefreshCw, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { TrendingUp, RefreshCw, ArrowUpRight, ArrowDownRight, Minus, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo } from "react";
 import {
@@ -37,6 +37,208 @@ interface AdjustmentLog {
   models_adjusted: number;
   total_predictions: number;
   overall_accuracy: number;
+}
+
+// Calendar helper functions
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfWeek(year: number, month: number): number {
+  return new Date(year, month, 1).getDay(); // 0=Sun
+}
+
+function accColor(pct: number): string {
+  if (pct >= 60) return "bg-green-500/20 text-green-400 border-green-500/30";
+  if (pct >= 50) return "bg-primary/15 text-primary border-primary/25";
+  if (pct >= 40) return "bg-yellow-500/15 text-yellow-400 border-yellow-500/25";
+  return "bg-red-500/15 text-red-400 border-red-500/25";
+}
+
+function accBg(pct: number): string {
+  if (pct >= 60) return "bg-green-500";
+  if (pct >= 50) return "bg-primary";
+  if (pct >= 40) return "bg-yellow-500";
+  return "bg-red-500";
+}
+
+interface CalendarDayData {
+  avgAccuracy: number;
+  models: { model: string; accuracy: number; predictions: number; weight: number }[];
+  totalPredictions: number;
+}
+
+function AccuracyCalendar({ asset, adminUser }: { asset: string; adminUser: string | null }) {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-${String(getDaysInMonth(year, month)).padStart(2, "0")}`;
+
+  const { data: calSnapshots } = useQuery({
+    queryKey: ["admin", "ai-calendar", asset, year, month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("accuracy_daily_snapshots")
+        .select("*")
+        .eq("asset", asset)
+        .gte("snapshot_date", monthStart)
+        .lte("snapshot_date", monthEnd)
+        .order("snapshot_date", { ascending: true });
+      if (error) throw error;
+      return data as Snapshot[];
+    },
+    enabled: !!adminUser,
+  });
+
+  // Build per-day data
+  const dayMap = useMemo(() => {
+    if (!calSnapshots) return {};
+    const map: Record<string, CalendarDayData> = {};
+    for (const s of calSnapshots) {
+      if (!map[s.snapshot_date]) {
+        map[s.snapshot_date] = { avgAccuracy: 0, models: [], totalPredictions: 0 };
+      }
+      map[s.snapshot_date].models.push({
+        model: s.model,
+        accuracy: s.accuracy_pct,
+        predictions: s.total_predictions,
+        weight: s.computed_weight,
+      });
+      map[s.snapshot_date].totalPredictions += s.total_predictions;
+    }
+    // Calculate average accuracy per day
+    for (const [date, d] of Object.entries(map)) {
+      const total = d.models.reduce((s, m) => s + m.predictions, 0);
+      if (total > 0) {
+        d.avgAccuracy = d.models.reduce((s, m) => s + m.accuracy * m.predictions, 0) / total;
+      } else {
+        d.avgAccuracy = d.models.reduce((s, m) => s + m.accuracy, 0) / d.models.length;
+      }
+    }
+    return map;
+  }, [calSnapshots]);
+
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfWeek(year, month);
+  const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+  const monthLabel = `${year}年${month + 1}月`;
+
+  const prevMonth = () => {
+    if (month === 0) { setYear(y => y - 1); setMonth(11); }
+    else setMonth(m => m - 1);
+    setSelectedDay(null);
+  };
+  const nextMonth = () => {
+    if (month === 11) { setYear(y => y + 1); setMonth(0); }
+    else setMonth(m => m + 1);
+    setSelectedDay(null);
+  };
+
+  const selectedData = selectedDay ? dayMap[selectedDay] : null;
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary/60" />
+          <h2 className="text-sm font-bold text-foreground/60">每日准确率日历 — {asset}</h2>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={prevMonth} className="h-7 w-7 rounded-lg flex items-center justify-center text-foreground/40 hover:text-foreground/70 hover:bg-white/[0.05] transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-xs font-bold text-foreground/50 w-20 text-center">{monthLabel}</span>
+          <button onClick={nextMonth} className="h-7 w-7 rounded-lg flex items-center justify-center text-foreground/40 hover:text-foreground/70 hover:bg-white/[0.05] transition-colors">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Weekday Headers */}
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS.map(w => (
+          <div key={w} className="text-center text-[10px] text-foreground/25 font-medium py-1">{w}</div>
+        ))}
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {/* Empty cells before first day */}
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square" />
+        ))}
+        {/* Day cells */}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const data = dayMap[dateStr];
+          const isSelected = selectedDay === dateStr;
+          const isToday = dateStr === now.toISOString().slice(0, 10);
+
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(isSelected ? null : dateStr)}
+              className={`aspect-square rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 relative ${
+                isSelected
+                  ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20"
+                  : data
+                    ? `${accColor(data.avgAccuracy)} hover:brightness-110 cursor-pointer`
+                    : "border-white/[0.04] bg-white/[0.01] text-foreground/15"
+              } ${isToday ? "ring-1 ring-foreground/15" : ""}`}
+            >
+              <span className={`text-[10px] lg:text-xs font-bold ${data ? "" : "text-foreground/15"}`}>{day}</span>
+              {data && (
+                <span className="text-[8px] lg:text-[10px] font-bold opacity-80">{data.avgAccuracy.toFixed(0)}%</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-3 mt-3 text-[10px] text-foreground/30">
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-500/30" />{"<40%"}</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-yellow-500/30" />40-49%</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary/30" />50-59%</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-green-500/30" />{"≥60%"}</span>
+      </div>
+
+      {/* Selected Day Detail */}
+      {selectedData && (
+        <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-foreground/50">
+              {selectedDay} — 平均准确率 <span className={selectedData.avgAccuracy >= 50 ? "text-green-400" : "text-red-400"}>{selectedData.avgAccuracy.toFixed(1)}%</span>
+            </h3>
+            <span className="text-[10px] text-foreground/20">{selectedData.totalPredictions} 次预测</span>
+          </div>
+          <div className="space-y-2">
+            {selectedData.models
+              .sort((a, b) => b.accuracy - a.accuracy)
+              .map(m => (
+                <div key={m.model} className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 w-20 shrink-0">
+                    <div className="w-2 h-2 rounded-full" style={{ background: MODEL_COLORS[m.model] || "#888" }} />
+                    <span className="text-[11px] font-bold text-foreground/50 truncate">{m.model}</span>
+                  </div>
+                  <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className={`h-full rounded-full ${accBg(m.accuracy)} transition-all`} style={{ width: `${Math.min(m.accuracy, 100)}%`, opacity: 0.6 }} />
+                  </div>
+                  <span className={`text-[11px] font-bold w-10 text-right ${m.accuracy >= 50 ? "text-green-400" : "text-red-400"}`}>{m.accuracy.toFixed(1)}%</span>
+                  <span className="text-[10px] text-foreground/20 w-8 text-right">{m.predictions}次</span>
+                  <span className="text-[10px] text-foreground/15 w-10 text-right">W:{m.weight.toFixed(2)}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminAIProgress() {
@@ -225,6 +427,9 @@ export default function AdminAIProgress() {
           ))}
         </div>
       )}
+
+      {/* Accuracy Calendar */}
+      <AccuracyCalendar asset={selectedAsset} adminUser={adminUser} />
 
       {isLoading ? (
         <div className="space-y-4">
