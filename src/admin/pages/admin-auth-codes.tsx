@@ -156,7 +156,7 @@ export default function AdminAuthCodes() {
     try {
       let query = supabase
         .from("node_auth_codes")
-        .select("code, node_type, status, created_by, used_by, used_at, created_at")
+        .select("code, node_type, status, created_by, used_by_wallet, used_at, created_at")
         .order("created_at", { ascending: false });
 
       if (statusFilter !== "ALL") query = query.eq("status", statusFilter);
@@ -168,7 +168,7 @@ export default function AdminAuthCodes() {
       const headers = ["授权码", "节点类型", "状态", "创建人", "使用者", "使用时间", "创建时间"];
       const rows = allCodes.map((c: any) => [
         c.code, c.node_type, c.status, c.created_by || "",
-        c.used_by || "",
+        c.used_by_wallet || "",
         c.used_at ? new Date(c.used_at).toLocaleString("zh-CN") : "",
         new Date(c.created_at).toLocaleString("zh-CN"),
       ]);
@@ -268,7 +268,7 @@ export default function AdminAuthCodes() {
                 fields={[
                   { label: "节点类型", value: <Badge variant="outline" className="text-[10px] h-5 capitalize">{c.nodeType}</Badge> },
                   { label: "创建人", value: c.createdBy || "-" },
-                  { label: "使用者", value: c.usedBy ? shortenAddress(c.usedBy) : "-", mono: true },
+                  { label: "使用者", value: c.usedByWallet ? shortenAddress(c.usedByWallet) : "-", mono: true },
                   { label: "使用时间", value: c.usedAt ? new Date(c.usedAt).toLocaleDateString() : "-" },
                 ]}
                 actions={
@@ -308,7 +308,7 @@ export default function AdminAuthCodes() {
                     <TableCell><Badge variant="outline" className="text-xs capitalize">{c.nodeType}</Badge></TableCell>
                     <TableCell>{codeBadge(c.status)}</TableCell>
                     <TableCell className="text-foreground/50 text-xs">{c.createdBy}</TableCell>
-                    <TableCell className="font-mono text-xs text-foreground/40">{c.usedBy ? shortenAddress(c.usedBy) : "-"}</TableCell>
+                    <TableCell className="font-mono text-xs text-foreground/40">{c.usedByWallet ? shortenAddress(c.usedByWallet) : "-"}</TableCell>
                     <TableCell className="text-foreground/40 text-xs">{c.usedAt ? new Date(c.usedAt).toLocaleDateString() : "-"}</TableCell>
                     <TableCell>
                       {c.status?.toUpperCase() === "ACTIVE" && (
