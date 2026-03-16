@@ -70,13 +70,27 @@ export default function AdminAuthCodes() {
     enabled: !!adminUser,
   });
 
+  const [autoExport, setAutoExport] = useState(false);
+
   const batchCreateMutation = useMutation({
     mutationFn: () => adminBatchCreateAuthCodes(Number(batchCount), batchNodeType, batchPrefix, adminUser ?? "admin"),
-    onSuccess: () => {
+    onSuccess: (newCodes: any[]) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "auth-codes"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "auth-code-stats"] });
+
+      // Auto-export newly generated codes
+      if (autoExport && newCodes && newCodes.length > 0) {
+        const headers = ["授权码", "节点类型", "状态", "创建人", "创建时间"];
+        const rows = newCodes.map((c: any) => [
+          c.code, c.nodeType || batchNodeType, "ACTIVE", adminUser || "admin",
+          new Date().toLocaleString("zh-CN"),
+        ]);
+        const date = new Date().toISOString().slice(0, 10);
+        exportCSV(`新生成授权码_${newCodes.length}个_${date}.csv`, headers, rows);
+      }
+
       setDialogOpen(false);
-      setBatchCount("10"); setBatchPrefix(""); setBatchNodeType("MAX");
+      setBatchCount("10"); setBatchPrefix(""); setBatchNodeType("MAX"); setAutoExport(false);
     },
   });
 
@@ -306,10 +320,14 @@ export default function AdminAuthCodes() {
               </Select>
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={batchCreateMutation.isPending}>取消</Button>
-            <Button onClick={() => batchCreateMutation.mutate()} disabled={batchCreateMutation.isPending || !batchCount || Number(batchCount) < 1}>
-              {batchCreateMutation.isPending ? "生成中..." : "生成"}
+            <Button variant="outline" onClick={() => { setAutoExport(false); batchCreateMutation.mutate(); }} disabled={batchCreateMutation.isPending || !batchCount || Number(batchCount) < 1}>
+              {batchCreateMutation.isPending && !autoExport ? "生成中..." : "仅生成"}
+            </Button>
+            <Button onClick={() => { setAutoExport(true); batchCreateMutation.mutate(); }} disabled={batchCreateMutation.isPending || !batchCount || Number(batchCount) < 1}>
+              <Download className="h-3.5 w-3.5 mr-1" />
+              {batchCreateMutation.isPending && autoExport ? "生成导出中..." : "生成并导出"}
             </Button>
           </DialogFooter>
         </DialogContent>
