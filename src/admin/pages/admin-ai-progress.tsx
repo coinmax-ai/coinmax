@@ -342,32 +342,6 @@ export default function AdminAIProgress() {
         </div>
       )}
 
-      {/* Daily Details Table (Mobile-friendly) */}
-      {snapshots && snapshots.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/[0.06]">
-            <h2 className="text-sm font-bold text-foreground/60">每日明细</h2>
-          </div>
-          <div className="divide-y divide-white/[0.04] max-h-[400px] overflow-y-auto">
-            {[...snapshots].reverse().map((s, i) => (
-              <div key={i} className="px-4 py-2.5 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[s.model] || "#888" }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-foreground/60 truncate">{s.model}</span>
-                    <span className="text-[10px] text-foreground/20">{s.snapshot_date}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] shrink-0">
-                  <span className={`font-bold ${s.accuracy_pct >= 50 ? "text-green-400" : "text-red-400"}`}>{s.accuracy_pct.toFixed(1)}%</span>
-                  <span className="text-foreground/25">{s.correct_predictions}/{s.total_predictions}</span>
-                  <span className="text-foreground/20">w={Number(s.computed_weight).toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {/* Training Report */}
       {trainingReport && (
         <div className="space-y-4">
