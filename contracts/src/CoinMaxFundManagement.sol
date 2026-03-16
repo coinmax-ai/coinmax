@@ -8,40 +8,31 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /// @title CoinMax Fund Management
-/// @notice Unified fund management: collect USDC → deposit to HyperLiquid Vault
-///         → withdraw after 24h → distribute to 5 wallets by ratio.
+/// @notice Vault fund management: collect USDC → HL Vault → withdraw → Splitter
 ///
-///  Complete Flow:
+///  Flow:
 ///
-///   User USDT
+///   User USDT → SwapRouter → USDC
+///     │
+///     ├──▸ cUSD(1:1) → MA(1:1) → Lock (user staking)
 ///     │
 ///     ▼
-///   SwapRouter (USDT → USDC via PancakeSwap V3)
+///   VaultV2 ── safeTransfer USDC ──▸ FundManagement (this contract)
 ///     │
-///     ├──▸ cUSD mint (1:1) ──▸ MA mint (1:1) ──▸ Lock (user staking)
+///     ▼  Step 1: bridgeToHL()
+///   100% USDC ──▸ HL Bridge Wallet ──▸ HyperLiquid Vault
+///     │                                     │
+///     │                               24h lockup
+///     │                                     │
+///     ▼  Step 2: recordHLWithdrawal()       ▼
+///   USDC returns to FundManagement
 ///     │
-///     ▼
-///   FundManagement (this contract) ── collects 100% USDC
-///     │
-///     ▼
-///   100% deposit ──▸ HyperLiquid Vault (via bridge wallet)
-///     │                    │
-///     │              24h lockup
-///     │                    │
-///     ▼                    ▼
-///   Withdraw all back to FundManagement
-///     │
-///     ▼
-///   Distribute by ratio to 5 wallets:
-///     ├── Trading   (交易)   e.g. 30%
-///     ├── Ops       (运营)   e.g. 25%
-///     ├── Marketing (市场)   e.g. 20%
-///     ├── Investor  (资方)   e.g. 15%
-///     └── Withdraw  (提现)   e.g. 10%
-///
-///  Daily Interest:
-///   Backend calculates: principal × dailyRate
-///   Calls MA.mint(user, interestMA) → Release balance
+///     ▼  Step 3: forwardToSplitter()
+///   100% USDC ──▸ CoinMaxSplitter (private distribution)
+///                     │
+///                     └─ Splitter.flush() at irregular times
+///                        → private splits to N wallets
+///                        → no ratio/wallet info on-chain
 ///
 contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -52,60 +43,34 @@ contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
 
     IERC20 public immutable usdc;
 
-    /// @notice Authorized contracts that can deposit (VaultV2, NodesV2, SwapRouter)
-    mapping(address => bool) public authorizedSources;
-
-    /// @notice Wallet used to bridge USDC to HyperLiquid (Circle CCTP)
+    /// @notice Wallet used to bridge USDC to HyperLiquid
     address public hlBridgeWallet;
 
-    // ─── 5-Wallet Distribution ────────────────────────────────────────
-
-    enum WalletType { TRADING, OPS, MARKETING, INVESTOR, WITHDRAW }
-
-    struct WalletConfig {
-        address wallet;
-        uint256 share; // basis points (e.g. 3000 = 30%)
-    }
-
-    /// @notice 5 distribution wallets, indexed by WalletType
-    WalletConfig[5] public wallets;
-
-    uint256 public constant TOTAL_BASIS = 10_000;
+    /// @notice Splitter contract that handles private distribution
+    address public splitter;
 
     // ─── Accounting ───────────────────────────────────────────────────
 
-    uint256 public totalReceived;      // cumulative USDC received
-    uint256 public totalBridgedToHL;   // cumulative sent to HL
+    uint256 public totalReceived;        // cumulative USDC received (via transfer)
+    uint256 public totalBridgedToHL;     // cumulative sent to HL
     uint256 public totalWithdrawnFromHL; // cumulative returned from HL
-    uint256 public totalDistributed;   // cumulative distributed to wallets
-
-    struct DepositRecord {
-        address source;
-        uint256 amount;
-        uint256 timestamp;
-    }
-
-    /// @notice Last 100 deposit records (circular buffer)
-    DepositRecord[100] public depositLog;
-    uint256 public depositCount;
+    uint256 public totalForwarded;       // cumulative sent to Splitter
 
     // ─── HL Cycle Tracking ────────────────────────────────────────────
 
-    uint256 public lastBridgeTime;     // when funds were last sent to HL
-    uint256 public pendingInHL;        // amount currently in HL vault
+    uint256 public lastBridgeTime;
+    uint256 public pendingInHL;
     uint256 public constant HL_LOCKUP = 24 hours;
 
     // ═══════════════════════════════════════════════════════════════════
-    //  EVENTS
+    //  EVENTS (minimal — no distribution details)
     // ═══════════════════════════════════════════════════════════════════
 
-    event FundsReceived(address indexed source, uint256 amount, uint256 timestamp);
     event BridgedToHL(uint256 amount, uint256 timestamp);
     event WithdrawnFromHL(uint256 amount, uint256 timestamp);
-    event FundsDistributed(uint256 totalAmount, uint256[5] payouts);
-    event WalletsUpdated(address[5] addrs, uint256[5] shares);
+    event ForwardedToSplitter(uint256 amount, uint256 timestamp);
     event HLBridgeWalletUpdated(address indexed newWallet);
-    event SourceAuthorized(address indexed source, bool authorized);
+    event SplitterUpdated(address indexed newSplitter);
 
     // ═══════════════════════════════════════════════════════════════════
     //  CONSTRUCTOR
@@ -113,47 +78,35 @@ contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
 
     /// @param _usdc USDC token on BSC
     /// @param _hlBridgeWallet Wallet that bridges to HyperLiquid
+    /// @param _splitter Splitter contract for private distribution
     constructor(
         address _usdc,
-        address _hlBridgeWallet
+        address _hlBridgeWallet,
+        address _splitter
     ) Ownable(msg.sender) {
         require(_usdc != address(0), "Invalid USDC");
         require(_hlBridgeWallet != address(0), "Invalid bridge wallet");
+        require(_splitter != address(0), "Invalid splitter");
 
         usdc = IERC20(_usdc);
         hlBridgeWallet = _hlBridgeWallet;
+        splitter = _splitter;
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  STEP 1: RECEIVE USDC FROM PLATFORM
+    //  RECEIVE — VaultV2 sends USDC here via safeTransfer (no deposit())
     // ═══════════════════════════════════════════════════════════════════
-
-    /// @notice Authorized contracts deposit USDC here
-    /// @param amount USDC amount (6 decimals on BSC)
-    function deposit(uint256 amount) external whenNotPaused {
-        require(authorizedSources[msg.sender], "Not authorized");
-        require(amount > 0, "Zero amount");
-
-        usdc.safeTransferFrom(msg.sender, address(this), amount);
-
-        totalReceived += amount;
-
-        depositLog[depositCount % 100] = DepositRecord({
-            source: msg.sender,
-            amount: amount,
-            timestamp: block.timestamp
-        });
-        depositCount++;
-
-        emit FundsReceived(msg.sender, amount, block.timestamp);
-    }
+    //
+    //  VaultV2 does: usdc.safeTransfer(fundDistributor, usdcAmount)
+    //  This contract is set as fundDistributor in VaultV2.
+    //  Funds arrive as plain ERC20 transfers — no function call needed.
+    //  We track via balance changes, not deposit events.
 
     // ═══════════════════════════════════════════════════════════════════
-    //  STEP 2: BRIDGE 100% TO HYPERLIQUID VAULT
+    //  STEP 1: BRIDGE 100% TO HYPERLIQUID VAULT
     // ═══════════════════════════════════════════════════════════════════
 
     /// @notice Send all USDC to HL bridge wallet → HyperLiquid Vault
-    /// @dev Admin triggers this; off-chain bot then deposits into HL vault
     function bridgeToHL() external onlyOwner nonReentrant whenNotPaused {
         uint256 bal = usdc.balanceOf(address(this));
         require(bal > 0, "No USDC to bridge");
@@ -168,12 +121,11 @@ contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  STEP 3: RECEIVE BACK FROM HL (AFTER 24H LOCKUP)
+    //  STEP 2: RECORD HL WITHDRAWAL (after 24h)
     // ═══════════════════════════════════════════════════════════════════
 
     /// @notice Record funds returned from HyperLiquid vault
-    /// @dev Admin calls after withdrawing from HL and sending USDC back here
-    /// @param amount The USDC amount returned (may include profit or be less due to loss)
+    /// @param amount USDC returned (may differ from sent due to P&L)
     function recordHLWithdrawal(uint256 amount) external onlyOwner whenNotPaused {
         require(amount > 0, "Zero amount");
         require(pendingInHL > 0, "Nothing pending in HL");
@@ -185,78 +137,56 @@ contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  STEP 4: DISTRIBUTE TO 5 WALLETS BY RATIO
+    //  STEP 3: FORWARD TO SPLITTER (private distribution)
     // ═══════════════════════════════════════════════════════════════════
 
-    /// @notice Distribute all USDC in contract to 5 wallets by configured ratio
-    function distribute() external onlyOwner nonReentrant whenNotPaused {
+    /// @notice Forward all USDC to Splitter for private distribution
+    /// @dev Splitter handles the actual split to wallets — no details here
+    function forwardToSplitter() external onlyOwner nonReentrant whenNotPaused {
         uint256 bal = usdc.balanceOf(address(this));
-        require(bal > 0, "No USDC to distribute");
-        require(wallets[0].wallet != address(0), "Wallets not configured");
+        require(bal > 0, "No USDC to forward");
+        require(splitter != address(0), "Splitter not set");
 
-        uint256[5] memory payouts;
-        uint256 distributed;
+        usdc.safeTransfer(splitter, bal);
 
-        for (uint256 i = 0; i < 5; i++) {
-            if (i == 4) {
-                // Last wallet gets remainder to avoid dust from rounding
-                payouts[i] = bal - distributed;
-            } else {
-                payouts[i] = (bal * wallets[i].share) / TOTAL_BASIS;
-            }
+        totalForwarded += bal;
 
-            if (payouts[i] > 0) {
-                usdc.safeTransfer(wallets[i].wallet, payouts[i]);
-                distributed += payouts[i];
-            }
-        }
+        emit ForwardedToSplitter(bal, block.timestamp);
+    }
 
-        totalDistributed += distributed;
+    /// @notice Forward a specific amount to Splitter
+    function forwardAmount(uint256 amount) external onlyOwner nonReentrant whenNotPaused {
+        require(amount > 0, "Zero amount");
+        require(splitter != address(0), "Splitter not set");
+        uint256 bal = usdc.balanceOf(address(this));
+        require(amount <= bal, "Insufficient balance");
 
-        emit FundsDistributed(distributed, payouts);
+        usdc.safeTransfer(splitter, amount);
+
+        totalForwarded += amount;
+
+        emit ForwardedToSplitter(amount, block.timestamp);
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  ADMIN — WALLET CONFIGURATION
+    //  ADMIN
     // ═══════════════════════════════════════════════════════════════════
 
-    /// @notice Configure the 5 distribution wallets and their share ratios
-    /// @param _addrs [trading, ops, marketing, investor, withdraw]
-    /// @param _shares Basis points, must sum to 10000
-    function setWallets(
-        address[5] calldata _addrs,
-        uint256[5] calldata _shares
-    ) external onlyOwner {
-        uint256 totalShares;
-        for (uint256 i = 0; i < 5; i++) {
-            require(_addrs[i] != address(0), "Invalid wallet");
-            require(_shares[i] > 0, "Share must be > 0");
-            totalShares += _shares[i];
-            wallets[i] = WalletConfig(_addrs[i], _shares[i]);
-        }
-        require(totalShares == TOTAL_BASIS, "Shares must total 10000");
-
-        emit WalletsUpdated(_addrs, _shares);
-    }
-
-    /// @notice Authorize or revoke a deposit source
-    function setAuthorizedSource(address source, bool authorized) external onlyOwner {
-        require(source != address(0), "Invalid");
-        authorizedSources[source] = authorized;
-        emit SourceAuthorized(source, authorized);
-    }
-
-    /// @notice Update HL bridge wallet
     function setHLBridgeWallet(address _w) external onlyOwner {
         require(_w != address(0), "Invalid");
         hlBridgeWallet = _w;
         emit HLBridgeWalletUpdated(_w);
     }
 
+    function setSplitter(address _s) external onlyOwner {
+        require(_s != address(0), "Invalid");
+        splitter = _s;
+        emit SplitterUpdated(_s);
+    }
+
     function pause() external onlyOwner { _pause(); }
     function unpause() external onlyOwner { _unpause(); }
 
-    /// @notice Emergency: withdraw any stuck tokens
     function emergencyWithdraw(address token, address to, uint256 amount) external onlyOwner {
         require(to != address(0), "Invalid");
         IERC20(token).safeTransfer(to, amount);
@@ -266,48 +196,28 @@ contract CoinMaxFundManagement is Ownable, ReentrancyGuard, Pausable {
     //  VIEW
     // ═══════════════════════════════════════════════════════════════════
 
-    /// @notice Current USDC balance in this contract
     function balance() external view returns (uint256) {
         return usdc.balanceOf(address(this));
     }
 
-    /// @notice Check if 24h lockup has passed since last bridge
     function canWithdrawFromHL() external view returns (bool) {
         if (pendingInHL == 0) return false;
         return block.timestamp >= lastBridgeTime + HL_LOCKUP;
     }
 
-    /// @notice Get all wallet configs
-    function getWallets() external view returns (
-        address[5] memory addrs,
-        uint256[5] memory shares,
-        string[5] memory labels
-    ) {
-        labels = ["Trading", "Ops", "Marketing", "Investor", "Withdraw"];
-        for (uint256 i = 0; i < 5; i++) {
-            addrs[i] = wallets[i].wallet;
-            shares[i] = wallets[i].share;
-        }
-    }
-
-    /// @notice Get full accounting stats
     function getStats() external view returns (
         uint256 _balance,
-        uint256 _totalReceived,
         uint256 _totalBridgedToHL,
         uint256 _totalWithdrawnFromHL,
-        uint256 _totalDistributed,
-        uint256 _pendingInHL,
-        uint256 _depositCount
+        uint256 _totalForwarded,
+        uint256 _pendingInHL
     ) {
         return (
             usdc.balanceOf(address(this)),
-            totalReceived,
             totalBridgedToHL,
             totalWithdrawnFromHL,
-            totalDistributed,
-            pendingInHL,
-            depositCount
+            totalForwarded,
+            pendingInHL
         );
     }
 }
