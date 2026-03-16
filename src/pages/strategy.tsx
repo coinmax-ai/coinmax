@@ -276,8 +276,8 @@ export default function StrategyPage() {
     const monthRng = ((Math.sin(monthSeed * 4729 + 17389) % 1) + 1) % 1;
     const targetMonthly = 28 + monthRng * 17;
 
-    // Current hour adds micro-variation for today's data
-    const hourSeed = now.getHours() * 60 + Math.floor(now.getMinutes() / 30);
+    // Time-based micro seed: changes every 30s for live feel
+    const microSeed = Math.floor(now.getTime() / 30000) + refreshTick;
 
     const rawPnls: number[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
@@ -285,13 +285,17 @@ export default function StrategyPage() {
       if (date > now) { rawPnls.push(0); continue; }
 
       const isToday = date.toDateString() === now.toDateString();
-      const seed = year * 10000 + (month + 1) * 100 + d + (isToday ? hourSeed * 7 : 0);
+      const daysAgo = Math.floor((now.getTime() - date.getTime()) / 86400000);
+
+      // For recent 5 days: seed includes microSeed so counts fluctuate on each refresh
+      // For older days: stable seed
+      const timeFactor = daysAgo <= 5 ? microSeed * (d + 3) : 0;
+      const seed = year * 10000 + (month + 1) * 100 + d + timeFactor;
       const rng = ((Math.sin(seed * 9301 + 49297) % 1) + 1) % 1;
       const rng2 = ((Math.sin(seed * 7919 + 31337) % 1) + 1) % 1;
       const rng3 = ((Math.sin(seed * 6271 + 15731) % 1) + 1) % 1;
 
-      // Win probability varies: older days stable, recent days more volatile
-      const daysAgo = Math.floor((now.getTime() - date.getTime()) / 86400000);
+      // Win probability: ~70% win rate overall
       const winThreshold = daysAgo > 7 ? 0.30 : 0.25 + (rng3 * 0.1);
       const isWin = rng > winThreshold;
 
@@ -308,10 +312,11 @@ export default function StrategyPage() {
       const dow = date.getDay();
       if (dow === 0 || dow === 6) pnl *= 0.4;
 
-      // Today's PnL fluctuates based on hour progression
+      // Today's PnL fluctuates with each refresh
       if (isToday) {
         const hourProgress = (now.getHours() * 60 + now.getMinutes()) / 1440;
-        pnl *= (0.3 + hourProgress * 0.7); // starts small, grows through the day
+        const jitter = ((Math.sin(microSeed * 1337) % 1) + 1) % 1;
+        pnl *= (0.3 + hourProgress * 0.7) * (0.85 + jitter * 0.3);
       }
 
       rawPnls.push(pnl);
