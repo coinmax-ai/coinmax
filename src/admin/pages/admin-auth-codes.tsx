@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Copy, Check } from "lucide-react";
+import { Plus, Copy, Check, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +19,24 @@ import {
   adminGetAuthCodes, adminGetAuthCodeStats,
   adminBatchCreateAuthCodes, adminDeactivateAuthCode,
 } from "@/admin/admin-api";
+import { supabase } from "@/lib/supabase";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { shortenAddress } from "@/lib/constants";
 import { copyText } from "@/lib/copy";
 
 const PAGE_SIZE = 20;
+
+function exportCSV(filename: string, headers: string[], rows: string[][]) {
+  const bom = "\uFEFF"; // UTF-8 BOM for Excel compatibility
+  const csv = bom + [headers.join(","), ...rows.map(r => r.map(v => `"${(v ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function codeBadge(status: string) {
   const s = status.toUpperCase();
@@ -76,11 +89,48 @@ export default function AdminAuthCodes() {
   });
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportFilter, setExportFilter] = useState<"ALL" | "ACTIVE" | "USED" | "INACTIVE">("ALL");
 
   const copyCode = async (code: string, id: string) => {
     await copyText(code);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      let query = supabase
+        .from("node_auth_codes")
+        .select("code, node_type, status, created_by, used_by, used_at, created_at")
+        .order("created_at", { ascending: false });
+
+      if (exportFilter !== "ALL") query = query.eq("status", exportFilter);
+
+      const { data: allCodes, error } = await query;
+      if (error) throw error;
+      if (!allCodes || allCodes.length === 0) { alert("没有数据可导出"); return; }
+
+      const headers = ["授权码", "节点类型", "状态", "创建人", "使用者", "使用时间", "创建时间"];
+      const rows = allCodes.map((c: any) => [
+        c.code,
+        c.node_type,
+        c.status,
+        c.created_by || "",
+        c.used_by || "",
+        c.used_at ? new Date(c.used_at).toLocaleString("zh-CN") : "",
+        new Date(c.created_at).toLocaleString("zh-CN"),
+      ]);
+
+      const filterLabel = exportFilter === "ALL" ? "全部" : exportFilter;
+      const date = new Date().toISOString().slice(0, 10);
+      exportCSV(`授权码_${filterLabel}_${date}.csv`, headers, rows);
+    } catch (e: any) {
+      alert("导出失败: " + e.message);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const codes = data?.data ?? [];
@@ -94,9 +144,26 @@ export default function AdminAuthCodes() {
           授权码管理
           {total > 0 && <span className="text-sm font-normal text-foreground/40 ml-2">({total})</span>}
         </h1>
-        <Button size="sm" className="h-8 text-xs" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> 批量生成
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <select
+              value={exportFilter}
+              onChange={(e) => setExportFilter(e.target.value as any)}
+              className="h-8 text-xs rounded-lg bg-white/[0.04] border border-white/[0.08] text-foreground/60 px-2 outline-none"
+            >
+              <option value="ALL">全部</option>
+              <option value="ACTIVE">可用</option>
+              <option value="USED">已用</option>
+              <option value="INACTIVE">已停用</option>
+            </select>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleExport} disabled={exporting}>
+              <Download className="h-3.5 w-3.5 mr-1" /> {exporting ? "导出中..." : "导出"}
+            </Button>
+          </div>
+          <Button size="sm" className="h-8 text-xs" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> 批量生成
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
