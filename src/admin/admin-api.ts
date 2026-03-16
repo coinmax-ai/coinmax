@@ -460,15 +460,20 @@ export async function adminGetCommissions(page: number, pageSize: number) {
 // Auth Codes
 // ─────────────────────────────────────────────
 
-export async function adminGetAuthCodes(page: number, pageSize: number) {
+export async function adminGetAuthCodes(page: number, pageSize: number, statusFilter?: string) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("node_auth_codes")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    .order("created_at", { ascending: false });
+
+  if (statusFilter && statusFilter !== "ALL") {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data, error, count } = await query.range(from, to);
 
   if (error) throw error;
   return { data: toCamel(data ?? []), total: count ?? 0 };

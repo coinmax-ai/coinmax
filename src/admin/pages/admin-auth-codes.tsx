@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Copy, Check, Download } from "lucide-react";
+import { Plus, Copy, Check, Download, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,52 +26,41 @@ import { copyText } from "@/lib/copy";
 
 const PAGE_SIZE = 20;
 
-function exportCSV(filename: string, headers: string[], rows: string[][]) {
-  const bom = "\uFEFF"; // UTF-8 BOM for Excel compatibility
-  const csv = bom + [headers.join(","), ...rows.map(r => r.map(v => `"${(v ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+type StatusFilter = "ALL" | "ACTIVE" | "USED" | "INACTIVE";
 
-  // Mobile browsers often block programmatic a.click() downloads.
-  // Use window.open as primary method on mobile, with a.click() as fallback.
+function downloadFile(blob: Blob, filename: string) {
+  // Try navigator.share for mobile first
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    // Try opening in new tab — mobile Safari & Chrome handle blob URLs this way
-    const opened = window.open(url, "_blank");
-    if (!opened) {
-      // Fallback: use navigator.share if available (share sheet lets user save)
-      if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: "text/csv" })] })) {
-        navigator.share({
-          files: [new File([blob], filename, { type: "text/csv;charset=utf-8" })],
-          title: filename,
-        }).catch(() => {
-          // Last resort: prompt user to long-press
-          alert("请长按链接选择「下载」或「存储到文件」");
-        });
-      } else {
-        // Fallback anchor method
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-        return;
-      }
+  if (isMobile && navigator.share) {
+    const file = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file], title: filename }).catch(() => {
+        fallbackDownload(blob, filename);
+      });
+      return;
     }
-    // Delay revoke so the new tab can load the blob
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  } else {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
+  fallbackDownload(blob, filename);
+}
+
+function fallbackDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+}
+
+function buildCSV(headers: string[], rows: string[][]): Blob {
+  const bom = "\uFEFF";
+  const csv = bom + [
+    headers.join(","),
+    ...rows.map(r => r.map(v => `"${(v ?? "").replace(/"/g, '""')}"`).join(",")),
+  ].join("\n");
+  return new Blob([csv], { type: "text/csv;charset=utf-8" });
 }
 
 function codeBadge(status: string) {
@@ -84,19 +73,30 @@ function codeBadge(status: string) {
   return <Badge className={`text-[10px] h-5 ${map[s] || ""}`}>{s}</Badge>;
 }
 
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "ALL", label: "全部" },
+  { value: "ACTIVE", label: "可用" },
+  { value: "USED", label: "已用" },
+  { value: "INACTIVE", label: "已停用" },
+];
+
 export default function AdminAuthCodes() {
   const { adminUser } = useAdminAuth();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [batchCount, setBatchCount] = useState("10");
   const [batchPrefix, setBatchPrefix] = useState("");
   const [batchNodeType, setBatchNodeType] = useState("MAX");
+  const [exporting, setExporting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // List query — includes status filter
   const { data, isLoading } = useQuery({
-    queryKey: ["admin", "auth-codes", page],
-    queryFn: () => adminGetAuthCodes(page, PAGE_SIZE),
+    queryKey: ["admin", "auth-codes", page, statusFilter],
+    queryFn: () => adminGetAuthCodes(page, PAGE_SIZE, statusFilter),
     enabled: !!adminUser,
   });
 
@@ -106,15 +106,20 @@ export default function AdminAuthCodes() {
     enabled: !!adminUser,
   });
 
-  const [autoExport, setAutoExport] = useState(false);
+  // Reset page when filter changes
+  const handleFilterChange = (val: StatusFilter) => {
+    setStatusFilter(val);
+    setPage(1);
+  };
 
+  // Batch create
+  const [autoExport, setAutoExport] = useState(false);
   const batchCreateMutation = useMutation({
     mutationFn: () => adminBatchCreateAuthCodes(Number(batchCount), batchNodeType, batchPrefix, adminUser ?? "admin"),
     onSuccess: (newCodes: any[]) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "auth-codes"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "auth-code-stats"] });
 
-      // Auto-export newly generated codes
       if (autoExport && newCodes && newCodes.length > 0) {
         const headers = ["授权码", "节点类型", "状态", "创建人", "创建时间"];
         const rows = newCodes.map((c: any) => [
@@ -122,7 +127,8 @@ export default function AdminAuthCodes() {
           new Date().toLocaleString("zh-CN"),
         ]);
         const date = new Date().toISOString().slice(0, 10);
-        exportCSV(`新生成授权码_${newCodes.length}个_${date}.csv`, headers, rows);
+        const blob = buildCSV(headers, rows);
+        downloadFile(blob, `新生成授权码_${newCodes.length}个_${date}.csv`);
       }
 
       setDialogOpen(false);
@@ -138,16 +144,13 @@ export default function AdminAuthCodes() {
     },
   });
 
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [exportFilter, setExportFilter] = useState<"ALL" | "ACTIVE" | "USED" | "INACTIVE">("ALL");
-
   const copyCode = async (code: string, id: string) => {
     await copyText(code);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
   };
 
+  // Export all (respects current filter)
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -156,7 +159,7 @@ export default function AdminAuthCodes() {
         .select("code, node_type, status, created_by, used_by, used_at, created_at")
         .order("created_at", { ascending: false });
 
-      if (exportFilter !== "ALL") query = query.eq("status", exportFilter);
+      if (statusFilter !== "ALL") query = query.eq("status", statusFilter);
 
       const { data: allCodes, error } = await query;
       if (error) throw error;
@@ -164,18 +167,16 @@ export default function AdminAuthCodes() {
 
       const headers = ["授权码", "节点类型", "状态", "创建人", "使用者", "使用时间", "创建时间"];
       const rows = allCodes.map((c: any) => [
-        c.code,
-        c.node_type,
-        c.status,
-        c.created_by || "",
+        c.code, c.node_type, c.status, c.created_by || "",
         c.used_by || "",
         c.used_at ? new Date(c.used_at).toLocaleString("zh-CN") : "",
         new Date(c.created_at).toLocaleString("zh-CN"),
       ]);
 
-      const filterLabel = exportFilter === "ALL" ? "全部" : exportFilter;
+      const filterLabel = STATUS_OPTIONS.find(o => o.value === statusFilter)?.label || "全部";
       const date = new Date().toISOString().slice(0, 10);
-      exportCSV(`授权码_${filterLabel}_${date}.csv`, headers, rows);
+      const blob = buildCSV(headers, rows);
+      downloadFile(blob, `授权码_${filterLabel}_${allCodes.length}条_${date}.csv`);
     } catch (e: any) {
       alert("导出失败: " + e.message);
     } finally {
@@ -189,31 +190,15 @@ export default function AdminAuthCodes() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-lg lg:text-xl font-bold text-foreground">
           授权码管理
           {total > 0 && <span className="text-sm font-normal text-foreground/40 ml-2">({total})</span>}
         </h1>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <select
-              value={exportFilter}
-              onChange={(e) => setExportFilter(e.target.value as any)}
-              className="h-8 text-xs rounded-lg bg-white/[0.04] border border-white/[0.08] text-foreground/60 px-2 outline-none"
-            >
-              <option value="ALL">全部</option>
-              <option value="ACTIVE">可用</option>
-              <option value="USED">已用</option>
-              <option value="INACTIVE">已停用</option>
-            </select>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleExport} disabled={exporting}>
-              <Download className="h-3.5 w-3.5 mr-1" /> {exporting ? "导出中..." : "导出"}
-            </Button>
-          </div>
-          <Button size="sm" className="h-8 text-xs" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> 批量生成
-          </Button>
-        </div>
+        <Button size="sm" className="h-8 text-xs" onClick={() => setDialogOpen(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> 批量生成
+        </Button>
       </div>
 
       {/* Stats */}
@@ -236,6 +221,28 @@ export default function AdminAuthCodes() {
         </div>
       )}
 
+      {/* Filter + Export bar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-1">
+          <Filter className="h-3.5 w-3.5 text-foreground/30" />
+          <div className="flex rounded-lg border border-white/[0.06] overflow-hidden">
+            {STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleFilterChange(opt.value)}
+                className={`px-3 py-1.5 text-xs font-semibold transition-all ${statusFilter === opt.value ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleExport} disabled={exporting}>
+          <Download className="h-3.5 w-3.5 mr-1" /> {exporting ? "导出中..." : `导出${statusFilter !== "ALL" ? ` (${STATUS_OPTIONS.find(o => o.value === statusFilter)?.label})` : ""}`}
+        </Button>
+      </div>
+
+      {/* List */}
       {isLoading ? (
         <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 lg:h-10 w-full rounded-xl" />)}</div>
       ) : (
@@ -251,10 +258,7 @@ export default function AdminAuthCodes() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-mono text-xs font-semibold text-foreground/80 truncate">{c.code}</span>
-                      <button
-                        onClick={() => copyCode(c.code, c.id)}
-                        className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
-                      >
+                      <button onClick={() => copyCode(c.code, c.id)} className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors">
                         {copiedId === c.id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-foreground/40" />}
                       </button>
                     </div>
@@ -296,10 +300,7 @@ export default function AdminAuthCodes() {
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono text-xs text-foreground/70 font-semibold">{c.code}</span>
-                        <button
-                          onClick={() => copyCode(c.code, c.id)}
-                          className="p-1 rounded hover:bg-white/10 transition-colors"
-                        >
+                        <button onClick={() => copyCode(c.code, c.id)} className="p-1 rounded hover:bg-white/10 transition-colors">
                           {copiedId === c.id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-foreground/30 hover:text-foreground/60" />}
                         </button>
                       </div>
