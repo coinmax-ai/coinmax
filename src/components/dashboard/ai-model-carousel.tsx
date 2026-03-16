@@ -121,7 +121,7 @@ function FeaturedCard({
       onClick={onSelect}
       className="ai-featured-card w-full text-left relative overflow-hidden rounded-xl cursor-pointer active:scale-[0.985] transition-transform duration-200"
       style={{
-        minHeight: 170,
+        height: 196,
         background: `linear-gradient(160deg, rgba(${meta.glow},0.08) 0%, rgba(255,255,255,0.03) 40%, rgba(0,0,0,0.2) 100%)`,
         backdropFilter: 'blur(12px)',
         border: `1px solid rgba(255,255,255,${isActive ? '0.2' : '0.12'})`,
@@ -213,14 +213,16 @@ function FeaturedCard({
           <AnimatedGauge value={forecast.confidence} accent={meta.accent} glow={meta.glow} size={64} confLabel={t("dashboard.confLabel")} />
         </div>
 
-        {forecast.reasoning && (
-          <div className="mt-2.5 pt-2.5 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <p className="text-[11px] text-foreground/60 leading-relaxed line-clamp-2 h-[2.75rem]">
-              <Sparkles className="inline h-2.5 w-2.5 mr-1 text-amber-400/70 ai-sparkle-icon" />
-              {forecast.reasoning}
-            </p>
-          </div>
-        )}
+        <div className="mt-2.5 pt-2.5 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <p className="text-[11px] text-foreground/60 leading-relaxed line-clamp-2 h-[2.75rem] overflow-hidden">
+            {forecast.reasoning ? (
+              <>
+                <Sparkles className="inline h-2.5 w-2.5 mr-1 text-amber-400/70 ai-sparkle-icon" />
+                {forecast.reasoning}
+              </>
+            ) : "\u00A0"}
+          </p>
+        </div>
       </div>
 
       {isActive && (

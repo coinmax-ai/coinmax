@@ -52,10 +52,17 @@ async function fetchVaultData(): Promise<HLVaultData> {
 
     const accountValue = state
       ? parseFloat(state.marginSummary?.accountValue || "0")
-      : parseFloat(details?.portfolio?.accountValue || "0");
+      : 0;
 
-    const allTimePnl = parseFloat(details?.allTimePnl || "0");
-    const followers = details?.followerCount || 0;
+    // followers is an array of objects, not a count
+    const followerList: any[] = Array.isArray(details?.followers) ? details.followers : [];
+    const followerCount = followerList.length;
+
+    // Sum allTimePnl from all followers (including leader)
+    const allTimePnl = followerList.reduce(
+      (sum: number, f: any) => sum + parseFloat(f.allTimePnl || "0"), 0
+    );
+
     const apr = parseFloat(details?.apr || "0") * 100;
 
     // Count active positions
@@ -73,7 +80,7 @@ async function fetchVaultData(): Promise<HLVaultData> {
       pnl: allTimePnl,
       pnlPct,
       apr,
-      followers,
+      followers: followerCount,
       positions: activePositions,
       loaded: true,
     };
