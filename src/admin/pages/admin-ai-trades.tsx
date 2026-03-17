@@ -82,8 +82,8 @@ function pnlColor(v: number | null | undefined): string {
 }
 
 function SideBadge({ side }: { side: string }) {
-  if (side === "LONG") return <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded"><TrendingUp className="h-2.5 w-2.5" />做多</span>;
-  return <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded"><TrendingDown className="h-2.5 w-2.5" />做空</span>;
+  if (side === "LONG") return <span className="inline-flex items-center gap-0.5 text-xs font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded"><TrendingUp className="h-3 w-3" />做多</span>;
+  return <span className="inline-flex items-center gap-0.5 text-xs font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded"><TrendingDown className="h-3 w-3" />做空</span>;
 }
 
 function StrengthBadge({ strength }: { strength: string }) {
@@ -94,7 +94,7 @@ function StrengthBadge({ strength }: { strength: string }) {
 
 function StrategyBadge({ type }: { type: string | null }) {
   if (!type) return null;
-  return <span className="text-[9px] font-semibold text-foreground/35 bg-white/[0.05] px-1.5 py-0.5 rounded">{STRATEGY_LABELS[type] || type}</span>;
+  return <span className="text-[11px] font-semibold text-foreground/40 bg-white/[0.05] px-2 py-0.5 rounded">{STRATEGY_LABELS[type] || type}</span>;
 }
 
 function timeSince(dateStr: string): string {
@@ -302,25 +302,29 @@ export default function AdminAITrades() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] text-foreground/35 mb-1">持仓数</p>
+          <p className="text-xs text-foreground/35 mb-1">持仓数</p>
           <p className="text-xl font-bold">{summary.openCount}</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] text-foreground/35 mb-1">今日盈亏</p>
+          <p className="text-xs text-foreground/35 mb-1">持仓金额</p>
+          <p className="text-xl font-bold">${((openTrades?.reduce((s, t) => s + t.size * t.entry_price, 0) ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <p className="text-xs text-foreground/35 mb-1">今日盈亏</p>
           <p className={`text-xl font-bold ${pnlColor(summary.todayPnl)}`}>{formatPnl(summary.todayPnl)}</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] text-foreground/35 mb-1">累计盈亏</p>
+          <p className="text-xs text-foreground/35 mb-1">累计盈亏</p>
           <p className={`text-xl font-bold ${pnlColor(summary.totalPnl)}`}>{formatPnl(summary.totalPnl)}</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] text-foreground/35 mb-1">胜率</p>
+          <p className="text-xs text-foreground/35 mb-1">胜率</p>
           <p className="text-xl font-bold text-primary">{summary.winRate.toFixed(1)}%</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] text-foreground/35 mb-1">信号数</p>
+          <p className="text-xs text-foreground/35 mb-1">信号数</p>
           <p className="text-xl font-bold">{summary.signalCount}</p>
         </div>
       </div>
@@ -376,7 +380,7 @@ export default function AdminAITrades() {
                         </div>
                         <span className="text-[10px] text-foreground/20">{timeSince(t.opened_at)}</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-[10px]">
+                      <div className="grid grid-cols-3 gap-2 text-[11px]">
                         <div>
                           <p className="text-foreground/25">入场价</p>
                           <p className="text-foreground/50 font-mono">{formatPrice(t.entry_price)}</p>
@@ -394,6 +398,7 @@ export default function AdminAITrades() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-[10px] text-foreground/20">
+                        <span>金额: ${(t.size * t.entry_price).toFixed(0)}</span>
                         <span>SL: {formatPrice(t.stop_loss)}</span>
                         <span>TP: {formatPrice(t.take_profit)}</span>
                       </div>
@@ -404,12 +409,13 @@ export default function AdminAITrades() {
 
               {/* Desktop: table */}
               <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-foreground/30 border-b border-white/[0.04]">
                       <th className="text-left px-4 py-2 font-medium">资产</th>
                       <th className="text-left px-4 py-2 font-medium">方向</th>
                       <th className="text-left px-4 py-2 font-medium">策略</th>
+                      <th className="text-right px-4 py-2 font-medium">金额</th>
                       <th className="text-right px-4 py-2 font-medium">入场价</th>
                       <th className="text-right px-4 py-2 font-medium">现价</th>
                       <th className="text-right px-4 py-2 font-medium">未实现盈亏</th>
@@ -433,6 +439,7 @@ export default function AdminAITrades() {
                           <td className="px-4 py-2.5 font-bold text-foreground/70">{t.asset}</td>
                           <td className="px-4 py-2.5"><SideBadge side={t.side} /></td>
                           <td className="px-4 py-2.5"><StrategyBadge type={t.strategy_type} /></td>
+                          <td className="px-4 py-2.5 text-right font-mono text-foreground/60 font-bold">${(t.size * t.entry_price).toFixed(0)}</td>
                           <td className="px-4 py-2.5 text-right font-mono text-foreground/50">{formatPrice(t.entry_price)}</td>
                           <td className="px-4 py-2.5 text-right font-mono text-foreground/50">{currentPrice > 0 ? formatPrice(currentPrice) : "—"}</td>
                           <td className={`px-4 py-2.5 text-right font-mono font-bold ${pnlColor(unrealizedPnl)}`}>
@@ -485,7 +492,7 @@ export default function AdminAITrades() {
                       </div>
                       <span className={`text-sm font-bold ${pnlColor(t.pnl)}`}>{formatPnl(t.pnl)}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-[10px]">
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
                       <div>
                         <p className="text-foreground/25">入场</p>
                         <p className="text-foreground/50 font-mono">{formatPrice(t.entry_price)}</p>
@@ -509,7 +516,7 @@ export default function AdminAITrades() {
 
               {/* Desktop: table */}
               <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-foreground/30 border-b border-white/[0.04]">
                       <th className="text-left px-4 py-2 font-medium">资产</th>
@@ -589,7 +596,7 @@ export default function AdminAITrades() {
 
               {/* Desktop: table */}
               <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-foreground/30 border-b border-white/[0.04]">
                       <th className="text-left px-4 py-2 font-medium">资产</th>
