@@ -49,8 +49,8 @@ export const NODE_PLANS = {
 
 export const NODE_MILESTONES = {
   MINI: [
-    { rank: "V2", days: 15, unlocks: "earnings", desc: "Unlock daily 0.5% earnings", requiredHolding: 0, requiredReferrals: 0 },
-    { rank: "V4", days: 90, unlocks: "earnings_and_package", desc: "Withdraw 1000 USDT equivalent MA", requiredHolding: 0, requiredReferrals: 0 },
+    { rank: "V2", days: 0, unlocks: "earnings", desc: "Unlock daily 0.9% earnings + withdraw", requiredHolding: 0, requiredReferrals: 0 },
+    { rank: "V4", days: 90, unlocks: "earnings_and_package", desc: "Unlock rewards + 10x contribution release", requiredHolding: 0, requiredReferrals: 0 },
   ],
   MAX: [
     { rank: "V1", days: 15, unlocks: "none", desc: "Reach V1", requiredHolding: 0, requiredReferrals: 0 },

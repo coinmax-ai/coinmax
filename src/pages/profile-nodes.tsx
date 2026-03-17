@@ -154,7 +154,7 @@ export default function ProfileNodesPage() {
     const dbMilestone = firstNode?.milestones?.find((m: any) => m.requiredRank === ms.rank) ?? firstNode?.milestones?.[idx];
     const isAchieved = dbMilestone?.status === "ACHIEVED";
     const isFailed = dbMilestone?.status === "FAILED";
-    const isExpired = !isAchieved && daysLeft === 0;
+    const isExpired = !isAchieved && ms.days > 0 && daysLeft === 0;
     const prevMs = idx > 0 ? milestones[idx - 1] : null;
     const prevDbMilestone = prevMs ? (firstNode?.milestones?.find((m: any) => m.requiredRank === prevMs.rank) ?? firstNode?.milestones?.[idx - 1]) : null;
     const isCurrent = !isAchieved && !isFailed && !isExpired && (idx === 0 || prevDbMilestone?.status === "ACHIEVED");
@@ -298,7 +298,11 @@ export default function ProfileNodesPage() {
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0 animate-pulse" style={{ boxShadow: "0 0 6px rgba(250,204,21,0.5)" }} />
                     <span className="text-xs text-white/60 truncate font-medium flex-1">{getMilestoneDesc(currentMilestone)}</span>
-                    <span className="text-xs font-bold text-yellow-400 shrink-0">{currentMilestone.daysLeft}{t("profile.daysLeft")}</span>
+                    {currentMilestone.days > 0 ? (
+                      <span className="text-xs font-bold text-yellow-400 shrink-0">{currentMilestone.daysLeft}{t("profile.daysLeft")}</span>
+                    ) : (
+                      <span className="text-xs font-bold text-white/30 shrink-0">{t("profile.noTimeLimit", "无限期")}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -569,7 +573,7 @@ export default function ProfileNodesPage() {
                       </div>
                       <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="text-[10px] text-white/30 mb-0.5">{t("profile.dailyRelease")}</div>
-                        <div className="text-[13px] font-bold" style={{ color: accentGreen }}>{m.nodeType === "MAX" ? "0.9%" : "0.5%"}</div>
+                        <div className="text-[13px] font-bold" style={{ color: accentGreen }}>0.9%</div>
                       </div>
                       <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="text-[10px] text-white/30 mb-0.5">{t("profile.nodeStatus")}</div>
