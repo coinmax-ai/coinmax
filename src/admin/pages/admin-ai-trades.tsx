@@ -114,8 +114,9 @@ export default function AdminAITrades() {
   const [historyPage, setHistoryPage] = useState(0);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [simRunning, setSimRunning] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
 
-  // Simulation config
+  // Simulation config from DB
   const [simConfig, setSimConfig] = useState({
     positionSize: 1000,
     maxPositions: 15,
@@ -126,14 +127,61 @@ export default function AdminAITrades() {
     assets: ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"] as string[],
   });
 
+  // Load config from DB
+  const { refetch: refetchConfig } = useQuery({
+    queryKey: ["admin", "simulation-config"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("simulation_config")
+        .select("*")
+        .eq("id", 1)
+        .single();
+      if (error) throw error;
+      if (data) {
+        setSimConfig({
+          positionSize: data.position_size_usd ?? 1000,
+          maxPositions: data.max_positions ?? 15,
+          maxLeverage: data.max_leverage ?? 5,
+          maxDrawdownPct: data.max_drawdown_pct ?? 10,
+          cooldownMin: data.cooldown_min ?? 5,
+          strategies: data.enabled_strategies ?? [],
+          assets: data.enabled_assets ?? [],
+        });
+      }
+      return data;
+    },
+    enabled: !!adminUser,
+  });
+
+  const handleSaveConfig = async () => {
+    setConfigSaving(true);
+    try {
+      const { error } = await supabase.from("simulation_config").update({
+        position_size_usd: simConfig.positionSize,
+        max_positions: simConfig.maxPositions,
+        max_leverage: simConfig.maxLeverage,
+        max_drawdown_pct: simConfig.maxDrawdownPct,
+        cooldown_min: simConfig.cooldownMin,
+        enabled_strategies: simConfig.strategies,
+        enabled_assets: simConfig.assets,
+        updated_at: new Date().toISOString(),
+      }).eq("id", 1);
+      if (error) throw error;
+      alert("配置已保存");
+    } catch (err: any) {
+      alert(`保存失败: ${err.message}`);
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
   const handleRunSimulation = async () => {
     setSimRunning(true);
     try {
-      const { data, error } = await supabase.functions.invoke("simulate-trading", {
-        body: simConfig,
-      });
+      const { data, error } = await supabase.functions.invoke("simulate-trading");
       if (error) throw error;
       refetchOpen();
+      refetchConfig();
       alert(`模拟完成: ${data.signals_generated}个信号, ${data.paper_trades_opened}个开仓, ${data.paper_trades_closed}个平仓`);
     } catch (err: any) {
       alert(`模拟失败: ${err.message}`);
@@ -709,19 +757,29 @@ export default function AdminAITrades() {
             </div>
           </div>
 
-          {/* Run Button */}
-          <button
-            onClick={handleRunSimulation}
-            disabled={simRunning || simConfig.strategies.length === 0 || simConfig.assets.length === 0}
-            className="w-full h-12 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{
-              background: "linear-gradient(135deg, #0abab5, #34d399)",
-              boxShadow: "0 4px 15px rgba(10,186,181,0.3)",
-            }}
-          >
-            <Play className="h-4 w-4" />
-            {simRunning ? "模拟运行中..." : "手动触发模拟交易"}
-          </button>
+          {/* Save + Run Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleSaveConfig}
+              disabled={configSaving}
+              className="flex-1 h-12 rounded-xl text-sm font-bold text-foreground border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08] transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              <Settings2 className="h-4 w-4" />
+              {configSaving ? "保存中..." : "保存配置"}
+            </button>
+            <button
+              onClick={handleRunSimulation}
+              disabled={simRunning || simConfig.strategies.length === 0 || simConfig.assets.length === 0}
+              className="flex-1 h-12 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+              style={{
+                background: "linear-gradient(135deg, #0abab5, #34d399)",
+                boxShadow: "0 4px 15px rgba(10,186,181,0.3)",
+              }}
+            >
+              <Play className="h-4 w-4" />
+              {simRunning ? "模拟运行中..." : "手动触发模拟"}
+            </button>
+          </div>
 
           {/* Config Summary */}
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">

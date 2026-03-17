@@ -21,9 +21,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
-const POSITION_SIZE_USD = 1000;
-const MAX_OPEN_POSITIONS = 15;
+const DEFAULT_ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
+const DEFAULT_POSITION_SIZE_USD = 1000;
+const DEFAULT_MAX_POSITIONS = 15;
+const DEFAULT_MAX_LEVERAGE = 5;
+const DEFAULT_COOLDOWN_MIN = 5;
+const DEFAULT_STRATEGIES = ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing"];
+
+interface SimConfig {
+  positionSize: number;
+  maxPositions: number;
+  maxLeverage: number;
+  maxDrawdownPct: number;
+  cooldownMin: number;
+  strategies: string[];
+  assets: string[];
+}
 
 const AI_MODELS = [
   { name: "GPT-4o",    defaultWeight: 0.5 },
@@ -474,10 +487,24 @@ serve(async (req) => {
   const results = {
     signals_generated: 0, paper_trades_opened: 0, paper_trades_closed: 0,
     predictions_recorded: 0, strategies_evaluated: 0,
-    prices: {} as Record<string, number>, errors: [] as string[],
+    prices: {} as Record<string, number>, errors: [] as string[], config: {} as SimConfig,
   };
 
   try {
+    // Load simulation config from DB
+    const { data: cfgRow } = await supabase.from("simulation_config").select("*").eq("id", 1).single();
+    const cfg: SimConfig = {
+      positionSize: cfgRow?.position_size_usd ?? DEFAULT_POSITION_SIZE_USD,
+      maxPositions: cfgRow?.max_positions ?? DEFAULT_MAX_POSITIONS,
+      maxLeverage: cfgRow?.max_leverage ?? DEFAULT_MAX_LEVERAGE,
+      maxDrawdownPct: cfgRow?.max_drawdown_pct ?? 10,
+      cooldownMin: cfgRow?.cooldown_min ?? DEFAULT_COOLDOWN_MIN,
+      strategies: cfgRow?.enabled_strategies ?? DEFAULT_STRATEGIES,
+      assets: cfgRow?.enabled_assets ?? DEFAULT_ASSETS,
+    };
+    results.config = cfg;
+
+    const ASSETS = cfg.assets;
     const prices = await fetchPrices();
     results.prices = prices;
     if (Object.keys(prices).length === 0) return new Response(JSON.stringify({ error: "No prices" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -582,14 +609,20 @@ serve(async (req) => {
       const techCtx = `RSI=${ind5m.rsi.toFixed(1)},Mom=${ind5m.mom.toFixed(2)}%,MACD=${ind5m.macd.histogram.toFixed(4)},BB=${ind5m.bb.pctB.toFixed(2)},Vol=${ind5m.vol.toFixed(2)}%,ADX=${ind5m.adx.toFixed(0)},VolR=${ind5m.volRatio.toFixed(1)}`;
 
       // Determine dominant strategy from evaluated signals
+      // Evaluate only enabled strategies
       const stratSignals: StrategySignal[] = [];
-      const s1 = strategyTrendFollowing(ind5m);  if (s1) stratSignals.push(s1);
-      const s2 = strategyMeanReversion(ind5m);    if (s2) stratSignals.push(s2);
-      const s3 = strategyBreakout(ind5m);         if (s3) stratSignals.push(s3);
-      const s4 = strategyScalping(ind5m);         if (s4) stratSignals.push(s4);
-      const s5 = strategyMomentum(ind5m);         if (s5) stratSignals.push(s5);
-      const s6 = strategySwing(ind5m, ind1h);     if (s6) stratSignals.push(s6);
-      results.strategies_evaluated += 6;
+      if (cfg.strategies.includes("trend_following"))  { const s = strategyTrendFollowing(ind5m);  if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("mean_reversion"))   { const s = strategyMeanReversion(ind5m);   if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("breakout"))         { const s = strategyBreakout(ind5m);        if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("scalping"))         { const s = strategyScalping(ind5m);        if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("momentum"))         { const s = strategyMomentum(ind5m);        if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("swing"))            { const s = strategySwing(ind5m, ind1h);    if (s) stratSignals.push(s); }
+      results.strategies_evaluated += cfg.strategies.length;
+
+      // Cap leverage to config max
+      for (const sig of stratSignals) {
+        sig.leverage = Math.min(sig.leverage, cfg.maxLeverage);
+      }
 
       // Pick dominant strategy for the signal's strategy_type
       const dominantStrategy = stratSignals.length > 0
@@ -648,7 +681,7 @@ serve(async (req) => {
 
       // ── Open paper trades: one $1000 position per triggered strategy ──
       for (const sig of stratSignals) {
-        if (currentOpen + results.paper_trades_opened >= MAX_OPEN_POSITIONS) break;
+        if (currentOpen + results.paper_trades_opened >= cfg.maxPositions) break;
 
         // Skip if already have an open position for this asset+strategy
         const comboKey = `${asset}_${sig.strategy}`;
@@ -664,7 +697,7 @@ serve(async (req) => {
         const tp = side === "LONG"
           ? currentPrice * (1 + sig.tpPct)
           : currentPrice * (1 - sig.tpPct);
-        const size = parseFloat((POSITION_SIZE_USD / currentPrice).toFixed(8));
+        const size = parseFloat((cfg.positionSize / currentPrice).toFixed(8));
 
         const tradeId = crypto.randomUUID();
         const { error: tErr } = await supabase.from("paper_trades").insert({
