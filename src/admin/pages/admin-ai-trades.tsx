@@ -19,6 +19,10 @@ const STRATEGY_LABELS: Record<string, string> = {
   directional: "方向",
   grid: "网格",
   dca: "定投",
+  pattern: "K线形态",
+  avellaneda: "做市",
+  twap: "TWAP",
+  funding_rate: "资金费率",
 };
 
 const PAGE_SIZE = 20;
@@ -742,7 +746,7 @@ export default function AdminAITrades() {
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
             <h3 className="text-xs font-bold text-foreground/40 mb-3">启用策略</h3>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-              {Object.entries(STRATEGY_LABELS).filter(([k]) => ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing"].includes(k)).map(([key, label]) => (
+              {Object.entries(STRATEGY_LABELS).filter(([k]) => ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing", "grid", "dca", "pattern", "avellaneda"].includes(k)).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setSimConfig(c => ({

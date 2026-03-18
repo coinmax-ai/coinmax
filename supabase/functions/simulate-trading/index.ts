@@ -26,7 +26,7 @@ const DEFAULT_POSITION_SIZE_USD = 1000;
 const DEFAULT_MAX_POSITIONS = 15;
 const DEFAULT_MAX_LEVERAGE = 5;
 const DEFAULT_COOLDOWN_MIN = 5;
-const DEFAULT_STRATEGIES = ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing"];
+const DEFAULT_STRATEGIES = ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing", "grid", "dca", "pattern", "avellaneda"];
 
 interface SimConfig {
   positionSize: number;
@@ -408,6 +408,188 @@ function strategySwing(ind: TechIndicators, ind1h: TechIndicators | null): Strat
   return null;
 }
 
+// 7. Grid: Low volatility range-bound — place both sides (Hummingbot Grid Executor)
+function strategyGrid(ind: TechIndicators): StrategySignal | null {
+  const { bb, vol, adx, rsi, price } = ind;
+  if (vol > 1.2 || adx > 30) return null; // Need low vol + no strong trend
+
+  // BB width narrow = ranging market, ideal for grid
+  if (bb.width < 3 && bb.pctB > 0.35 && bb.pctB < 0.65) {
+    // Buy near lower BB, sell near upper BB
+    const side = bb.pctB < 0.5 ? "LONG" : "SHORT";
+    const conf = Math.min(80, 55 + (3 - bb.width) * 8 + (30 - adx) * 0.5);
+    return {
+      strategy: "grid", side, confidence: conf,
+      leverage: 1,
+      slPct: Math.max(0.025, bb.width / 100 * 1.2),
+      tpPct: Math.max(0.015, bb.width / 100 * 0.6),
+      timeLimit: 4,
+      reason: `网格: BB宽度=${bb.width.toFixed(1)}%, ADX=${adx.toFixed(0)}, %B=${bb.pctB.toFixed(2)}`,
+    };
+  }
+  return null;
+}
+
+// 8. DCA: Dollar-cost average on dips (Hummingbot DCA Executor)
+function strategyDCA(ind: TechIndicators): StrategySignal | null {
+  const { rsi, mom, mom10, bb, vol } = ind;
+
+  // Oversold conditions → accumulate long
+  if (rsi < 35 && mom < -0.1 && bb.pctB < 0.25) {
+    const conf = Math.min(82, 55 + (35 - rsi) * 1.0 + Math.abs(mom) * 5);
+    return {
+      strategy: "dca", side: "LONG", confidence: conf,
+      leverage: 1, // DCA is always 1x
+      slPct: Math.max(0.04, vol * 0.04), // Wider SL for DCA
+      tpPct: Math.max(0.02, vol * 0.025),
+      timeLimit: 48, // DCA holds longer
+      reason: `DCA抄底: RSI=${rsi.toFixed(0)}, Mom=${mom.toFixed(2)}%, BB%B=${bb.pctB.toFixed(2)}`,
+    };
+  }
+  // Overbought conditions → accumulate short
+  if (rsi > 65 && mom > 0.1 && bb.pctB > 0.75) {
+    const conf = Math.min(82, 55 + (rsi - 65) * 1.0 + Math.abs(mom) * 5);
+    return {
+      strategy: "dca", side: "SHORT", confidence: conf,
+      leverage: 1,
+      slPct: Math.max(0.04, vol * 0.04),
+      tpPct: Math.max(0.02, vol * 0.025),
+      timeLimit: 48,
+      reason: `DCA做空: RSI=${rsi.toFixed(0)}, Mom=${mom.toFixed(2)}%, BB%B=${bb.pctB.toFixed(2)}`,
+    };
+  }
+  return null;
+}
+
+// 9. Pattern: K-line candle pattern recognition (from ai-engine/src/patterns.ts)
+function detectPatterns(candles: Candle[]): { name: string; direction: "BULLISH" | "BEARISH"; strength: number }[] {
+  const patterns: { name: string; direction: "BULLISH" | "BEARISH"; strength: number }[] = [];
+  if (candles.length < 4) return patterns;
+
+  const c = candles[candles.length - 1];
+  const p = candles[candles.length - 2];
+  const pp = candles[candles.length - 3];
+
+  const bodySize = (c2: Candle) => Math.abs(c2.close - c2.open);
+  const range = (c2: Candle) => c2.high - c2.low;
+  const isGreen = (c2: Candle) => c2.close > c2.open;
+  const isRed = (c2: Candle) => c2.close < c2.open;
+  const upperWick = (c2: Candle) => c2.high - Math.max(c2.open, c2.close);
+  const lowerWick = (c2: Candle) => Math.min(c2.open, c2.close) - c2.low;
+
+  // Hammer (bullish) — small body at top, long lower wick
+  if (range(c) > 0 && bodySize(c) / range(c) < 0.35 && lowerWick(c) >= bodySize(c) * 2 && isRed(p)) {
+    patterns.push({ name: "锤子线", direction: "BULLISH", strength: 2 });
+  }
+
+  // Shooting Star (bearish) — small body at bottom, long upper wick
+  if (range(c) > 0 && bodySize(c) / range(c) < 0.35 && upperWick(c) >= bodySize(c) * 2 && isGreen(p)) {
+    patterns.push({ name: "射击之星", direction: "BEARISH", strength: 2 });
+  }
+
+  // Bullish Engulfing
+  if (isRed(p) && isGreen(c) && c.open <= p.close && c.close >= p.open && bodySize(c) > bodySize(p)) {
+    patterns.push({ name: "看涨吞没", direction: "BULLISH", strength: 2 });
+  }
+
+  // Bearish Engulfing
+  if (isGreen(p) && isRed(c) && c.open >= p.close && c.close <= p.open && bodySize(c) > bodySize(p)) {
+    patterns.push({ name: "看跌吞没", direction: "BEARISH", strength: 2 });
+  }
+
+  // Morning Star (3-candle bullish reversal)
+  if (isRed(pp) && bodySize(p) < range(pp) * 0.3 && isGreen(c) && c.close > (pp.open + pp.close) / 2) {
+    patterns.push({ name: "早晨之星", direction: "BULLISH", strength: 3 });
+  }
+
+  // Evening Star (3-candle bearish reversal)
+  if (isGreen(pp) && bodySize(p) < range(pp) * 0.3 && isRed(c) && c.close < (pp.open + pp.close) / 2) {
+    patterns.push({ name: "黄昏之星", direction: "BEARISH", strength: 3 });
+  }
+
+  // Three White Soldiers
+  if (isGreen(pp) && isGreen(p) && isGreen(c) && p.close > pp.close && c.close > p.close && bodySize(p) > range(p) * 0.5 && bodySize(c) > range(c) * 0.5) {
+    patterns.push({ name: "三白兵", direction: "BULLISH", strength: 3 });
+  }
+
+  // Three Black Crows
+  if (isRed(pp) && isRed(p) && isRed(c) && p.close < pp.close && c.close < p.close && bodySize(p) > range(p) * 0.5 && bodySize(c) > range(c) * 0.5) {
+    patterns.push({ name: "三黑鸦", direction: "BEARISH", strength: 3 });
+  }
+
+  // Doji (indecision)
+  if (range(c) > 0 && bodySize(c) / range(c) < 0.1) {
+    // Doji after trend = reversal signal
+    if (isGreen(p) && isGreen(pp)) patterns.push({ name: "十字星(顶)", direction: "BEARISH", strength: 1 });
+    else if (isRed(p) && isRed(pp)) patterns.push({ name: "十字星(底)", direction: "BULLISH", strength: 1 });
+  }
+
+  return patterns;
+}
+
+function strategyPattern(ind: TechIndicators, candles: Candle[]): StrategySignal | null {
+  const patterns = detectPatterns(candles);
+  if (patterns.length === 0) return null;
+
+  // Use strongest pattern
+  const best = patterns.sort((a, b) => b.strength - a.strength)[0];
+  const { rsi, vol, macd } = ind;
+
+  // Confirm with indicators
+  const bullConfirm = best.direction === "BULLISH" && (rsi < 55 || macd.histogram > 0);
+  const bearConfirm = best.direction === "BEARISH" && (rsi > 45 || macd.histogram < 0);
+
+  if (!bullConfirm && !bearConfirm) return null;
+
+  const conf = Math.min(85, 50 + best.strength * 8 + (bullConfirm ? (55 - rsi) * 0.3 : (rsi - 45) * 0.3));
+  return {
+    strategy: "pattern", side: best.direction === "BULLISH" ? "LONG" : "SHORT",
+    confidence: conf,
+    leverage: best.strength >= 3 ? 3 : 2,
+    slPct: Math.max(0.015, vol * 0.018),
+    tpPct: Math.max(0.02, vol * 0.03),
+    timeLimit: 6,
+    reason: `K线形态: ${best.name}(强度${best.strength}), RSI=${rsi.toFixed(0)}`,
+  };
+}
+
+// 10. Avellaneda: Volatility-adaptive spread strategy (Hummingbot Avellaneda MM)
+function strategyAvellaneda(ind: TechIndicators): StrategySignal | null {
+  const { rsi, vol, atr, bb, adx, price, ema9, ema21 } = ind;
+
+  // Avellaneda-Stoikov: optimal spread = gamma * sigma^2 * T + (2/gamma) * ln(1 + gamma/k)
+  // Simplified: trade when price deviates from fair value by > optimal spread
+  const fairValue = (ema9 + ema21) / 2;
+  const deviation = (price - fairValue) / fairValue * 100;
+  const optimalSpread = vol * 0.8; // Simplified spread based on volatility
+
+  if (Math.abs(deviation) < optimalSpread * 0.5) return null; // Not enough deviation
+
+  if (deviation < -optimalSpread && rsi < 50) {
+    const conf = Math.min(80, 55 + Math.abs(deviation) * 5 + (50 - rsi) * 0.3);
+    return {
+      strategy: "avellaneda", side: "LONG", confidence: conf,
+      leverage: 2,
+      slPct: Math.max(0.015, optimalSpread / 100 * 1.5),
+      tpPct: Math.max(0.01, optimalSpread / 100),
+      timeLimit: 4,
+      reason: `Avellaneda: 偏差=${deviation.toFixed(2)}%, 最优价差=${optimalSpread.toFixed(2)}%, RSI=${rsi.toFixed(0)}`,
+    };
+  }
+  if (deviation > optimalSpread && rsi > 50) {
+    const conf = Math.min(80, 55 + Math.abs(deviation) * 5 + (rsi - 50) * 0.3);
+    return {
+      strategy: "avellaneda", side: "SHORT", confidence: conf,
+      leverage: 2,
+      slPct: Math.max(0.015, optimalSpread / 100 * 1.5),
+      tpPct: Math.max(0.01, optimalSpread / 100),
+      timeLimit: 4,
+      reason: `Avellaneda: 偏差=${deviation.toFixed(2)}%, 最优价差=${optimalSpread.toFixed(2)}%, RSI=${rsi.toFixed(0)}`,
+    };
+  }
+  return null;
+}
+
 // ── Model vote simulation (kept for predictions) ────────────
 
 interface ModelVote { model: string; direction: "BULLISH" | "BEARISH" | "NEUTRAL"; confidence: number; weight: number; }
@@ -609,6 +791,10 @@ serve(async (req) => {
       if (cfg.strategies.includes("scalping"))         { const s = strategyScalping(ind5m);        if (s) stratSignals.push(s); }
       if (cfg.strategies.includes("momentum"))         { const s = strategyMomentum(ind5m);        if (s) stratSignals.push(s); }
       if (cfg.strategies.includes("swing"))            { const s = strategySwing(ind5m, ind1h);    if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("grid"))             { const s = strategyGrid(ind5m);            if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("dca"))              { const s = strategyDCA(ind5m);             if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("pattern"))          { const s = strategyPattern(ind5m, candles5m); if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("avellaneda"))       { const s = strategyAvellaneda(ind5m);      if (s) stratSignals.push(s); }
       results.strategies_evaluated += cfg.strategies.length;
 
       // Cap leverage to config max
