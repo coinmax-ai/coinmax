@@ -381,107 +381,7 @@ export default function AdminAIProgress() {
         </div>
       )}
 
-      {/* Model Improvement Cards */}
-      {improvementStats && Object.keys(improvementStats).length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {Object.entries(improvementStats).map(([model, stat]) => (
-            <div key={model} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 lg:p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-2 h-2 rounded-full" style={{ background: MODEL_COLORS[model] || "#888" }} />
-                <p className="text-[11px] text-foreground/40 font-semibold truncate">{model}</p>
-              </div>
-              <p className="text-lg lg:text-xl font-bold text-foreground/80">{stat.last.toFixed(1)}%</p>
-              <div className="flex items-center gap-1 mt-1">
-                {stat.change > 0 ? <ArrowUpRight className="h-3 w-3 text-green-400" /> : stat.change < 0 ? <ArrowDownRight className="h-3 w-3 text-red-400" /> : <Minus className="h-3 w-3 text-foreground/25" />}
-                <span className={`text-[11px] font-bold ${stat.change > 0 ? "text-green-400" : stat.change < 0 ? "text-red-400" : "text-foreground/25"}`}>{stat.change > 0 ? "+" : ""}{stat.change.toFixed(1)}%</span>
-                <span className="text-[10px] text-foreground/20 ml-1">{stat.total}次</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Calendar */}
-      <AccuracyCalendar asset={selectedAsset} adminUser={adminUser} />
-
-      {/* Charts */}
-      {isLoading ? (
-        <div className="space-y-4"><Skeleton className="h-[300px] rounded-2xl" /><Skeleton className="h-[250px] rounded-2xl" /></div>
-      ) : !chartData || chartData.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
-          <p className="text-foreground/25 text-sm">暂无趋势数据 — 每小时权重调整后自动记录</p>
-        </div>
-      ) : (
-        <>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
-            <h2 className="text-sm font-bold text-foreground/60 mb-4">准确率趋势 — {selectedAsset}</h2>
-            <div className="h-[280px] lg:h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} tickFormatter={v => `${v}%`} />
-                  <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v.toFixed(1)}%`, ""]} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
-                  {allModels.map(model => (<Line key={model} type="monotone" dataKey={`${model}_acc`} name={model} stroke={MODEL_COLORS[model] || "#888"} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls />))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
-            <h2 className="text-sm font-bold text-foreground/60 mb-4">模型权重变化 — {selectedAsset}</h2>
-            <div className="h-[250px] lg:h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                  <Tooltip {...tooltipStyle} formatter={(v: number) => [v.toFixed(3), ""]} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
-                  {allModels.map(model => (<Area key={model} type="monotone" dataKey={`${model}_weight`} name={`${model} 权重`} stroke={MODEL_COLORS[model] || "#888"} fill={MODEL_COLORS[model] || "#888"} fillOpacity={0.1} strokeWidth={1.5} connectNulls />))}
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
-            <h2 className="text-sm font-bold text-foreground/60 mb-4">每日预测量 — {selectedAsset}</h2>
-            <div className="h-[220px] lg:h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                  <Tooltip {...tooltipStyle} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
-                  {allModels.map(model => (<Bar key={model} dataKey={`${model}_total`} name={model} fill={MODEL_COLORS[model] || "#888"} opacity={0.7} radius={[2, 2, 0, 0]} />))}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Overall Accuracy Trend */}
-      {overallTrendData && overallTrendData.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
-          <h2 className="text-sm font-bold text-foreground/60 mb-4">全局准确率趋势（每次权重调整）</h2>
-          <div className="h-[220px] lg:h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={overallTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} tickFormatter={v => `${v}%`} />
-                <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [name === "accuracy" ? `${v.toFixed(1)}%` : v, name === "accuracy" ? "准确率" : "预测数"]} />
-                <Area type="monotone" dataKey="accuracy" name="准确率" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Training Report */}
+      {/* Training Report — prominent since it has rich data */}
       {trainingReport && (
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
           <div className="flex items-center justify-between mb-4">
@@ -564,6 +464,71 @@ export default function AdminAIProgress() {
           )}
         </div>
       )}
+
+      {/* Model Improvement Cards */}
+      {improvementStats && Object.keys(improvementStats).length > 0 && (
+        <>
+          <h2 className="text-sm font-bold text-foreground/50 mt-2">模型进步趋势</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            {Object.entries(improvementStats).map(([model, stat]) => (
+              <div key={model} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 lg:p-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: MODEL_COLORS[model] || "#888" }} />
+                  <p className="text-[11px] text-foreground/40 font-semibold truncate">{model}</p>
+                </div>
+                <p className="text-lg lg:text-xl font-bold text-foreground/80">{stat.last.toFixed(1)}%</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {stat.change > 0 ? <ArrowUpRight className="h-3 w-3 text-green-400" /> : stat.change < 0 ? <ArrowDownRight className="h-3 w-3 text-red-400" /> : <Minus className="h-3 w-3 text-foreground/25" />}
+                  <span className={`text-[11px] font-bold ${stat.change > 0 ? "text-green-400" : stat.change < 0 ? "text-red-400" : "text-foreground/25"}`}>{stat.change > 0 ? "+" : ""}{stat.change.toFixed(1)}%</span>
+                  <span className="text-[10px] text-foreground/20 ml-1">{stat.total}次</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Calendar */}
+      <AccuracyCalendar asset={selectedAsset} adminUser={adminUser} />
+
+      {/* Trend Charts — only when >1 day of data */}
+      {chartData && chartData.length > 1 && (
+        <>
+          <h2 className="text-sm font-bold text-foreground/50 mt-2">历史趋势图表</h2>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
+            <h2 className="text-sm font-bold text-foreground/60 mb-4">准确率趋势 — {selectedAsset}</h2>
+            <div className="h-[280px] lg:h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} tickFormatter={v => `${v}%`} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v.toFixed(1)}%`, ""]} />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
+                  {allModels.map(model => (<Line key={model} type="monotone" dataKey={`${model}_acc`} name={model} stroke={MODEL_COLORS[model] || "#888"} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls />))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
+            <h2 className="text-sm font-bold text-foreground/60 mb-4">模型权重变化 — {selectedAsset}</h2>
+            <div className="h-[250px] lg:h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number) => [v.toFixed(3), ""]} />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
+                  {allModels.map(model => (<Area key={model} type="monotone" dataKey={`${model}_weight`} name={`${model} 权重`} stroke={MODEL_COLORS[model] || "#888"} fill={MODEL_COLORS[model] || "#888"} fillOpacity={0.1} strokeWidth={1.5} connectNulls />))}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
+
+      {isLoading && <div className="space-y-4"><Skeleton className="h-[200px] rounded-2xl" /></div>}
     </div>
   );
 }
