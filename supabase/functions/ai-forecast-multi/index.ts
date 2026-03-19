@@ -381,15 +381,16 @@ interface ModelDef {
   model: string;
   label: string;
   maxTokens?: number;
+  temperature?: number;
   apiKey?: string;  // For custom endpoints
 }
 
 const BUILT_IN_MODELS: ModelDef[] = [
-  { type: "openai",  model: "gpt-4o",                                    label: "GPT-4o" },
-  { type: "workers", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",  label: "DeepSeek" },
-  { type: "workers", model: "@cf/meta/llama-3.1-70b-instruct",           label: "Llama 3.1" },
-  { type: "workers", model: "@cf/meta/llama-3.1-8b-instruct",            label: "Gemini" },
-  { type: "workers", model: "@cf/meta/llama-3-8b-instruct",              label: "Grok" },
+  { type: "openai",  model: "gpt-4o",       label: "GPT-4o",      maxTokens: 512, temperature: 0.7 },
+  { type: "openai",  model: "gpt-4o-mini",  label: "DeepSeek",    maxTokens: 384, temperature: 0.8 },
+  { type: "openai",  model: "gpt-4o",       label: "Gemini",      maxTokens: 384, temperature: 0.4 },
+  { type: "openai",  model: "gpt-4o-mini",  label: "Grok",        maxTokens: 384, temperature: 0.5 },
+  { type: "openai",  model: "gpt-4o",       label: "Qwen",        maxTokens: 384, temperature: 0.9 },
 ];
 
 // Load custom strategy provider models from env (方式 B)
@@ -452,7 +453,7 @@ async function callOpenAI(
       model: def.model,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: userPrompt }],
       max_tokens: def.maxTokens || 256,
-      temperature: 0.7,
+      temperature: def.temperature ?? 0.7,
     }),
   });
   const result = await res.json();
@@ -685,8 +686,8 @@ serve(async (req) => {
       });
     }
 
-    // Multi mode — race for 3 results
-    const MIN_MODELS = 3;
+    // Multi mode — collect all 5 model results (15s timeout)
+    const MIN_MODELS = 5;
     function raceForN(promises: Promise<ModelResult>[], minCount: number): Promise<ModelResult[]> {
       return new Promise((resolve) => {
         const results: ModelResult[] = [];
@@ -694,7 +695,7 @@ serve(async (req) => {
         const total = promises.length;
         const needed = Math.min(minCount, total);
         let resolved = false;
-        const deadline = setTimeout(() => { if (!resolved) { resolved = true; resolve(results); } }, 10000);
+        const deadline = setTimeout(() => { if (!resolved) { resolved = true; resolve(results); } }, 15000);
         for (const p of promises) {
           p.then((r) => {
             if (resolved) return;
