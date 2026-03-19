@@ -264,12 +264,29 @@ export default function AdminAITrades() {
       ]);
       const totalPnl = pnlData?.reduce((s: number, t: any) => s + (t.pnl ?? 0), 0) ?? 0;
       const todayPnl = todayData?.reduce((s: number, t: any) => s + (t.pnl ?? 0), 0) ?? 0;
+
+      // Calculate daily average PnL
+      const { data: dateRange } = await supabase
+        .from("paper_trades")
+        .select("closed_at")
+        .eq("status", "CLOSED")
+        .order("closed_at", { ascending: true })
+        .limit(1);
+      let tradingDays = 1;
+      if (dateRange && dateRange.length > 0 && dateRange[0].closed_at) {
+        const firstDay = new Date(dateRange[0].closed_at).getTime();
+        tradingDays = Math.max(1, Math.ceil((Date.now() - firstDay) / 86400000));
+      }
+      const dailyAvgPnl = totalPnl / tradingDays;
+
       return {
         totalClosed: totalClosed ?? 0,
         wins: wins ?? 0,
         winRate: (totalClosed ?? 0) > 0 ? ((wins ?? 0) / (totalClosed ?? 1)) * 100 : 0,
         totalPnl,
         todayPnl,
+        dailyAvgPnl,
+        tradingDays,
       };
     },
     enabled: !!adminUser,
@@ -303,6 +320,8 @@ export default function AdminAITrades() {
       winRate: globalStats?.winRate ?? 0,
       totalClosed: globalStats?.totalClosed ?? 0,
       wins: globalStats?.wins ?? 0,
+      dailyAvgPnl: globalStats?.dailyAvgPnl ?? 0,
+      tradingDays: globalStats?.tradingDays ?? 0,
     };
   }, [openTrades, signals, globalStats]);
 
@@ -329,14 +348,10 @@ export default function AdminAITrades() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">持仓数</p>
-          <p className="text-xl font-bold">{summary.openCount}</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">持仓金额</p>
-          <p className="text-xl font-bold">${((openTrades?.reduce((s, t) => s + t.size * t.entry_price, 0) ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-foreground/35 mb-1">持仓数 / 金额</p>
+          <p className="text-xl font-bold">{summary.openCount}<span className="text-sm text-foreground/40 ml-1">${((openTrades?.reduce((s, t) => s + t.size * t.entry_price, 0) ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <p className="text-xs text-foreground/35 mb-1">今日盈亏</p>
@@ -345,11 +360,26 @@ export default function AdminAITrades() {
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <p className="text-xs text-foreground/35 mb-1">累计盈亏</p>
           <p className={`text-xl font-bold ${pnlColor(summary.totalPnl)}`}>{formatPnl(summary.totalPnl)}</p>
+          <p className="text-[11px] text-foreground/25 mt-0.5">{summary.totalClosed}笔 · {summary.tradingDays}天</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <p className="text-xs text-foreground/35 mb-1">胜率</p>
           <p className="text-xl font-bold text-primary">{summary.winRate.toFixed(1)}%</p>
           <p className="text-[11px] text-foreground/25 mt-0.5">{summary.wins}胜/{summary.totalClosed}总</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
+          <p className="text-xs text-foreground/35 mb-1">日均收益</p>
+          <p className={`text-xl font-bold ${pnlColor(summary.dailyAvgPnl)}`}>{formatPnl(summary.dailyAvgPnl)}</p>
+          <p className="text-[11px] text-foreground/25 mt-0.5">≈ 月均 {formatPnl(summary.dailyAvgPnl * 30)}</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <p className="text-xs text-foreground/35 mb-1">日均收益率</p>
+          <p className={`text-xl font-bold ${pnlColor(summary.dailyAvgPnl)}`}>
+            {summary.totalClosed > 0 ? `${(summary.dailyAvgPnl / 1000 * 100).toFixed(2)}%` : "—"}
+          </p>
+          <p className="text-[11px] text-foreground/25 mt-0.5">基于 $1000 仓位</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <p className="text-xs text-foreground/35 mb-1">信号数</p>
