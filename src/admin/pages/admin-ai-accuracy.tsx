@@ -113,6 +113,39 @@ export default function AdminAIAccuracy() {
     enabled: !!adminUser,
   });
 
+  // Per-timeframe accuracy for selected asset
+  const { data: tfAccuracy } = useQuery({
+    queryKey: ["admin", "ai-tf-accuracy", selectedAsset, selectedPeriod],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_model_accuracy")
+        .select("timeframe, accuracy_pct, total_predictions, correct_predictions")
+        .eq("asset", selectedAsset)
+        .eq("period", selectedPeriod);
+      if (error) throw error;
+      // Aggregate by timeframe
+      const byTf: Record<string, { total: number; correct: number; accSum: number; models: number }> = {};
+      for (const row of (data || [])) {
+        if (!byTf[row.timeframe]) byTf[row.timeframe] = { total: 0, correct: 0, accSum: 0, models: 0 };
+        byTf[row.timeframe].total += row.total_predictions;
+        byTf[row.timeframe].correct += row.correct_predictions;
+        byTf[row.timeframe].accSum += row.accuracy_pct;
+        byTf[row.timeframe].models += 1;
+      }
+      const order = ["5m", "15m", "30m", "1H", "4H", "1D"];
+      return order
+        .filter(tf => byTf[tf])
+        .map(tf => ({
+          timeframe: tf,
+          accuracy: byTf[tf].total > 0 ? (byTf[tf].correct / byTf[tf].total) * 100 : 0,
+          avgModelAcc: byTf[tf].models > 0 ? byTf[tf].accSum / byTf[tf].models : 0,
+          total: byTf[tf].total,
+          correct: byTf[tf].correct,
+        }));
+    },
+    enabled: !!adminUser,
+  });
+
   const overallAccuracy = summary && summary.resolved > 0
     ? ((summary.correct / summary.resolved) * 100).toFixed(1)
     : "—";
@@ -149,6 +182,35 @@ export default function AdminAIAccuracy() {
           <p className="text-xl font-bold text-green-400">{overallAccuracy}%</p>
         </div>
       </div>
+
+      {/* Per-timeframe accuracy */}
+      {tfAccuracy && tfAccuracy.length > 0 && (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <h2 className="text-sm font-bold text-foreground/60 mb-3">{selectedAsset} · {PERIOD_LABELS[selectedPeriod]} — 各时间段准确率</h2>
+          <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+            {tfAccuracy.map(tf => {
+              const color = tf.accuracy >= 60 ? "text-green-400" : tf.accuracy >= 50 ? "text-primary" : tf.accuracy >= 40 ? "text-yellow-400" : "text-red-400";
+              const bgColor = tf.accuracy >= 60 ? "bg-green-500" : tf.accuracy >= 50 ? "bg-primary" : tf.accuracy >= 40 ? "bg-yellow-500" : "bg-red-500";
+              const isSelected = tf.timeframe === selectedTimeframe;
+              return (
+                <button
+                  key={tf.timeframe}
+                  onClick={() => setSelectedTimeframe(tf.timeframe)}
+                  className={`rounded-xl p-3 text-center transition-all ${isSelected ? "ring-1 ring-primary/30 bg-primary/[0.06]" : "bg-white/[0.02] hover:bg-white/[0.04]"}`}
+                  style={{ border: isSelected ? "1px solid rgba(10,186,181,0.2)" : "1px solid rgba(255,255,255,0.04)" }}
+                >
+                  <div className="text-xs font-bold text-foreground/50 mb-1.5">{tf.timeframe}</div>
+                  <div className={`text-lg font-black ${color}`}>{tf.accuracy.toFixed(1)}%</div>
+                  <div className="w-full h-1.5 rounded-full bg-white/[0.06] mt-2 overflow-hidden">
+                    <div className={`h-full rounded-full ${bgColor} transition-all`} style={{ width: `${Math.min(tf.accuracy, 100)}%`, opacity: 0.6 }} />
+                  </div>
+                  <div className="text-[10px] text-foreground/25 mt-1.5">{tf.correct}/{tf.total}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="space-y-2">
