@@ -273,17 +273,18 @@ function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-4 lg:px-8 py-2.5 lg:py-3 border-b border-border/40 bg-background/90 backdrop-blur-xl">
-      <Link href="/" className="flex items-center cursor-pointer" data-testid="link-logo-home">
-        <img src="/logo-glass-pure.png" alt="Logo" className="h-8 lg:h-9" />
-        <span className="font-display text-sm lg:text-base font-bold tracking-widest text-foreground ml-1.5">
+    <header className="sticky top-0 z-50 flex items-center justify-between px-3 sm:px-4 lg:px-8 py-2 lg:py-3 border-b border-border/40 bg-background/90 backdrop-blur-xl">
+      <Link href="/" className="flex items-center cursor-pointer shrink-0" data-testid="link-logo-home">
+        <img src="/logo-glass-pure.png" alt="Logo" className="h-7 sm:h-8 lg:h-9" />
+        <span className="font-display text-[13px] sm:text-sm lg:text-base font-bold tracking-widest text-foreground ml-1">
           Coin<span className="text-primary">Max</span>
         </span>
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <LangSwitcher />
         {isLoading || !client ? (
-          <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-9 w-20 sm:w-24 animate-pulse rounded-md bg-muted" />
         ) : (
           <ConnectButton
           client={client}
@@ -294,11 +295,11 @@ function Header() {
             style: {
               background: "linear-gradient(135deg, hsl(174, 72%, 46%), hsl(170, 60%, 36%))",
               color: "#ffffff",
-              borderRadius: "6px",
-              fontSize: "13px",
+              borderRadius: "8px",
+              fontSize: "12px",
               fontWeight: "600",
               height: "36px",
-              padding: "0 16px",
+              padding: "0 14px",
               border: "none",
               boxShadow: "0 0 12px rgba(0, 188, 165, 0.3), 0 0 4px rgba(0, 188, 165, 0.2)",
             },
@@ -307,11 +308,11 @@ function Header() {
             style: {
               background: "hsl(170, 18%, 10%)",
               color: "hsl(165, 15%, 93%)",
-              borderRadius: "6px",
-              fontSize: "13px",
+              borderRadius: "8px",
+              fontSize: "12px",
               fontWeight: "500",
               height: "36px",
-              padding: "0 12px",
+              padding: "0 10px",
               border: "1px solid rgba(0, 188, 165, 0.2)",
               boxShadow: "0 0 8px rgba(0, 188, 165, 0.06)",
             },
@@ -320,7 +321,6 @@ function Header() {
           showThirdwebBranding={false}
         />
       )}
-        <LangSwitcher />
       </div>
     </header>
   );
