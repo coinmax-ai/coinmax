@@ -282,7 +282,6 @@ function Header() {
       </Link>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
-        <LangSwitcher />
         {isLoading || !client ? (
           <div className="h-9 w-20 sm:w-24 animate-pulse rounded-md bg-muted" />
         ) : (
@@ -321,6 +320,7 @@ function Header() {
           showThirdwebBranding={false}
         />
       )}
+        <LangSwitcher />
       </div>
     </header>
   );
