@@ -377,20 +377,22 @@ const TF_MAX_MOVE_PCT: Record<string, number> = {
 // ── Model definitions ───────────────────────────────
 
 interface ModelDef {
-  type: "openai" | "workers" | "custom";
+  type: "openai" | "openrouter" | "workers" | "custom";
   model: string;
   label: string;
   maxTokens?: number;
   temperature?: number;
-  apiKey?: string;  // For custom endpoints
+  apiKey?: string;
 }
 
+const OPENROUTER_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
+
 const BUILT_IN_MODELS: ModelDef[] = [
-  { type: "openai",  model: "gpt-4o",       label: "GPT-4o",      maxTokens: 512, temperature: 0.7 },
-  { type: "openai",  model: "gpt-4o-mini",  label: "DeepSeek",    maxTokens: 384, temperature: 0.8 },
-  { type: "openai",  model: "gpt-4o",       label: "Gemini",      maxTokens: 384, temperature: 0.4 },
-  { type: "openai",  model: "gpt-4o-mini",  label: "Grok",        maxTokens: 384, temperature: 0.5 },
-  { type: "openai",  model: "gpt-4o",       label: "Qwen",        maxTokens: 384, temperature: 0.9 },
+  { type: "openai",      model: "gpt-4o",                      label: "GPT-4o",    maxTokens: 400 },
+  { type: "openrouter",  model: "deepseek/deepseek-chat",      label: "DeepSeek",  maxTokens: 400 },
+  { type: "openrouter",  model: "google/gemini-2.0-flash-001", label: "Gemini",    maxTokens: 400 },
+  { type: "openrouter",  model: "x-ai/grok-3-mini-beta",        label: "Grok",      maxTokens: 400 },
+  { type: "openrouter",  model: "qwen/qwen3-30b-a3b",          label: "Qwen",      maxTokens: 400 },
 ];
 
 // Load custom strategy provider models from env (方式 B)
@@ -459,6 +461,44 @@ async function callOpenAI(
   const result = await res.json();
   const raw = result?.choices?.[0]?.message?.content || "{}";
   const parsed = parseJsonSafe(raw);
+  return {
+    model: def.label,
+    prediction: parsed.prediction || "NEUTRAL",
+    confidence: Number(parsed.confidence) || 50,
+    targetPrice: Number(parsed.targetPrice) || 0,
+    reasoning: parsed.reasoning || "",
+  };
+}
+
+async function callOpenRouter(
+  def: ModelDef, userPrompt: string,
+): Promise<ModelResult> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENROUTER_KEY}`,
+      "HTTP-Referer": "https://coinmax.dev",
+      "X-Title": "CoinMax AI Trading",
+    },
+    body: JSON.stringify({
+      model: def.model,
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: userPrompt }],
+      max_tokens: def.maxTokens || 512,
+      temperature: def.temperature ?? 0.7,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`OpenRouter ${def.label} (${def.model}) error: ${res.status} ${err}`);
+    throw new Error(`OpenRouter ${def.label} error: ${res.status}`);
+  }
+  const result = await res.json();
+  const raw = result?.choices?.[0]?.message?.content || "{}";
+  // Strip markdown code fences if present
+  const cleaned = raw.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "").trim();
+  const parsed = parseJsonSafe(cleaned);
+  console.log(`OpenRouter ${def.label} OK: ${parsed.prediction} conf=${parsed.confidence}`);
   return {
     model: def.label,
     prediction: parsed.prediction || "NEUTRAL",
@@ -623,8 +663,8 @@ serve(async (req) => {
 
     // Single model mode — call one model and return immediately
     const targetModels = singleMode
-      ? MODELS.filter(m => m.label === modelLabel && (m.type !== "openai" || openaiKey))
-      : MODELS.filter(m => m.type === "custom" || m.type === "workers" || (m.type === "openai" && openaiKey));
+      ? MODELS.filter(m => m.label === modelLabel)
+      : MODELS.filter(m => m.type === "custom" || m.type === "workers" || (m.type === "openai" && openaiKey) || (m.type === "openrouter" && OPENROUTER_KEY));
 
     if (targetModels.length === 0) throw new Error(`Model "${modelLabel}" not found`);
 
@@ -664,11 +704,12 @@ serve(async (req) => {
 
     function callModel(def: ModelDef): Promise<ModelResult> {
       if (def.type === "openai") return callOpenAI(gatewayBase, cfToken, openaiKey, def, userPrompt);
+      if (def.type === "openrouter") return callOpenRouter(def, userPrompt);
       if (def.type === "custom") return callCustomAPI(def, userPrompt, customContext);
-      // Workers AI: if CF token not set, fallback to OpenAI with same prompt
+      // Workers AI: if CF token not set, fallback to OpenRouter or OpenAI
       if (!cfToken || !gatewayBase) {
-        const fallbackDef = { ...def, type: "openai" as const, model: "gpt-4o-mini" };
-        return callOpenAI("", "", openaiKey, fallbackDef, userPrompt);
+        if (OPENROUTER_KEY) return callOpenRouter({ ...def, model: "deepseek/deepseek-r1" }, userPrompt);
+        return callOpenAI("", "", openaiKey, { ...def, model: "gpt-4o-mini" }, userPrompt);
       }
       return callWorkersAI(gatewayBase, cfToken, def, userPrompt);
     }
@@ -695,19 +736,25 @@ serve(async (req) => {
         const total = promises.length;
         const needed = Math.min(minCount, total);
         let resolved = false;
-        const deadline = setTimeout(() => { if (!resolved) { resolved = true; resolve(results); } }, 15000);
+        const deadline = setTimeout(() => { if (!resolved) { resolved = true; resolve(results); } }, 25000);
         for (const p of promises) {
           p.then((r) => {
             if (resolved) return;
             if (r.reasoning && !(r.prediction === "NEUTRAL" && r.confidence === 50)) results.push(r);
             settled++;
             if (results.length >= needed || settled >= total) { resolved = true; clearTimeout(deadline); resolve(results); }
-          }).catch(() => { settled++; if (!resolved && settled >= total) { resolved = true; clearTimeout(deadline); resolve(results); } });
+          }).catch((err) => { console.error("Model failed:", err?.message || err); settled++; if (!resolved && settled >= total) { resolved = true; clearTimeout(deadline); resolve(results); } });
         }
       });
     }
 
-    const modelPromises = targetModels.map(def => callModel(def));
+    const modelErrors: string[] = [];
+    const modelPromises = targetModels.map(def =>
+      callModel(def).catch(err => {
+        modelErrors.push(`${def.label}(${def.model}): ${err?.message || err}`);
+        throw err;
+      })
+    );
     const successResults = await raceForN(modelPromises, MIN_MODELS);
     const forecasts = successResults.map(buildForecast);
 
