@@ -262,8 +262,8 @@ function strategyMeanReversion(ind: TechIndicators): StrategySignal | null {
     return {
       strategy: "mean_reversion", side: "LONG", confidence: conf,
       leverage: 2,
-      slPct: Math.max(0.02, vol * 0.025),
-      tpPct: Math.max(0.02, vol * 0.02),
+      slPct: Math.max(0.015, vol * 0.02),
+      tpPct: Math.max(0.04, vol * 0.05),
       timeLimit: 6,
       reason: `RSI=${rsi.toFixed(0)}偏低, BB%B=${bb.pctB.toFixed(2)}, 均值回归做多`,
     };
@@ -273,8 +273,8 @@ function strategyMeanReversion(ind: TechIndicators): StrategySignal | null {
     return {
       strategy: "mean_reversion", side: "SHORT", confidence: conf,
       leverage: 2,
-      slPct: Math.max(0.02, vol * 0.025),
-      tpPct: Math.max(0.02, vol * 0.02),
+      slPct: Math.max(0.015, vol * 0.02),
+      tpPct: Math.max(0.04, vol * 0.05),
       timeLimit: 6,
       reason: `RSI=${rsi.toFixed(0)}偏高, BB%B=${bb.pctB.toFixed(2)}, 均值回归做空`,
     };
@@ -321,8 +321,8 @@ function strategyScalping(ind: TechIndicators): StrategySignal | null {
     return {
       strategy: "scalping", side: "LONG", confidence: conf,
       leverage: Math.min(5, Math.round(conf / 20)),
-      slPct: Math.max(0.005, vol * 0.008),
-      tpPct: Math.max(0.008, vol * 0.012),
+      slPct: Math.max(0.008, vol * 0.01),
+      tpPct: Math.max(0.02, vol * 0.03),
       timeLimit: 2,
       reason: `RSI=${rsi.toFixed(0)}+MACD+, 短线做多`,
     };
@@ -333,8 +333,8 @@ function strategyScalping(ind: TechIndicators): StrategySignal | null {
     return {
       strategy: "scalping", side: "SHORT", confidence: conf,
       leverage: Math.min(5, Math.round(conf / 20)),
-      slPct: Math.max(0.005, vol * 0.008),
-      tpPct: Math.max(0.008, vol * 0.012),
+      slPct: Math.max(0.008, vol * 0.01),
+      tpPct: Math.max(0.02, vol * 0.03),
       timeLimit: 2,
       reason: `RSI=${rsi.toFixed(0)}+MACD-, 短线做空`,
     };
@@ -696,7 +696,8 @@ serve(async (req) => {
         if (!cp) continue;
 
         // Determine time limit based on strategy
-        const stratTimeLimit = t.strategy_type === "scalping" ? 2 : t.strategy_type === "grid" ? 4 : t.strategy_type === "avellaneda" ? 4 : t.strategy_type === "mean_reversion" ? 6 : t.strategy_type === "pattern" ? 6 : t.strategy_type === "breakout" ? 8 : t.strategy_type === "momentum" ? 8 : t.strategy_type === "swing" ? 24 : t.strategy_type === "dca" ? 48 : 12;
+        // Generous time limits — let strategies play out
+        const stratTimeLimit = t.strategy_type === "scalping" ? 8 : t.strategy_type === "grid" ? 24 : t.strategy_type === "avellaneda" ? 24 : t.strategy_type === "mean_reversion" ? 24 : t.strategy_type === "pattern" ? 24 : t.strategy_type === "breakout" ? 48 : t.strategy_type === "momentum" ? 48 : t.strategy_type === "swing" ? 72 : t.strategy_type === "dca" ? 168 : 48;
         const timeLimitMs = stratTimeLimit * 3600_000;
 
         let cr: string | null = null;
