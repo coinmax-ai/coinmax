@@ -176,7 +176,7 @@ export function usePayment() {
     [client, _executePayment],
   );
 
-  // ── VIP subscribe (cross-chain: BSC USDT → Arb USDC via thirdweb Bridge) ──
+  // ── VIP subscribe (BSC USDT → server wallet → splitter → distribution) ──
   const payVIPSubscribe = useCallback(
     async (planKey: keyof typeof VIP_PLANS): Promise<{ txHash?: string; profile?: any }> => {
       if (!client) throw new Error("Thirdweb client not ready");
@@ -185,50 +185,33 @@ export function usePayment() {
       const plan = VIP_PLANS[planKey];
       if (!plan) throw new Error("Invalid VIP plan");
 
-      const receiverAddress = import.meta.env.VITE_VIP_RECEIVER_ADDRESS;
-      if (!receiverAddress) throw new Error("VIP receiver address not configured");
+      const receiverAddress = import.meta.env.VITE_VIP_RECEIVER_ADDRESS || "0x93F655C3C6B595600fc735118dcEE10cd63d4C8f";
 
       setStatus("paying");
       setError(null);
       setTxHash(null);
 
       try {
-        const { Bridge } = await import("thirdweb/bridge");
-        const { defineChain } = await import("thirdweb/chains");
+        // Transfer BSC USDT to server wallet VIP address
+        const usdtContract = getUsdtContract(client);
+        const tx = transfer({
+          contract: usdtContract,
+          to: receiverAddress,
+          amount: plan.price,
+        });
+        const payResult = await sendTransaction(tx);
 
-        // Cross-chain: BSC USDT → Arb USDC
-        const quote = await Bridge.Transfer.prepare({
+        setStatus("confirming");
+        const receipt = await waitForReceipt({
           client,
-          originChainId: 56,
-          originTokenAddress: USDT_ADDRESS,
-          destinationChainId: 42161,
-          destinationTokenAddress: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-          amount: BigInt(plan.price) * BigInt(10n ** 6n), // USDC 6 decimals dest
-          sender: account.address,
-          receiver: receiverAddress,
+          chain: BSC_CHAIN,
+          transactionHash: payResult.transactionHash,
         });
 
-        // Execute all transactions from the quote
-        let lastTxHash = "";
-        for (const step of quote.steps) {
-          for (const preparedTx of step.transactions) {
-            setStatus("approving");
-            const result = await sendTransaction(preparedTx as any);
+        if (receipt.status === "reverted") throw new Error("Transaction reverted");
 
-            setStatus("confirming");
-            const txChain = defineChain((preparedTx as any).chainId || 56);
-            const receipt = await waitForReceipt({
-              client,
-              chain: txChain,
-              transactionHash: result.transactionHash,
-            });
-
-            if (receipt.status === "reverted") throw new Error("Transaction reverted");
-            lastTxHash = receipt.transactionHash;
-          }
-        }
-
-        setTxHash(lastTxHash);
+        const confirmedHash = receipt.transactionHash;
+        setTxHash(confirmedHash);
 
         // Activate VIP via edge function
         setStatus("recording");
@@ -237,7 +220,7 @@ export function usePayment() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-payment": JSON.stringify({ txHash: lastTxHash, settled: true }),
+            "x-payment": JSON.stringify({ txHash: confirmedHash, settled: true }),
           },
           body: JSON.stringify({ planKey, walletAddress: account.address }),
         });
@@ -245,7 +228,7 @@ export function usePayment() {
         const result = await resp.json();
         if (!resp.ok) throw new Error(result.error || "VIP activation failed");
 
-        return { txHash: lastTxHash, profile: result.profile };
+        return { txHash: confirmedHash, profile: result.profile };
       } catch (err: any) {
         const message = err?.message || "Payment failed";
         setError(message);
