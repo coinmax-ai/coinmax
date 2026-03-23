@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAdminAuth } from "@/admin/admin-auth";
 import { supabase } from "@/lib/supabase";
-import { Activity, TrendingUp, TrendingDown, RefreshCw, Settings2, Play } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, RefreshCw, Settings2, Play, Key } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useMemo } from "react";
+import { AICoinPicker } from "@/components/strategy/ai-coin-picker";
+import { ApiKeyBind } from "@/components/strategy/api-key-bind";
 
-const ASSETS = ["全部", "BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
-const TABS = ["持仓中", "历史记录", "信号流", "模拟设置"] as const;
+const ASSETS = ["全部", "BTC", "ETH", "SOL", "BNB", "DOGE", "XRP", "ADA", "AVAX", "LINK", "DOT"];
+const TABS = ["持仓中", "历史记录", "信号流", "AI选币", "模拟设置", "交易所绑定"] as const;
 type Tab = typeof TABS[number];
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -22,6 +24,15 @@ const STRATEGY_LABELS: Record<string, string> = {
   pattern: "K线形态",
   avellaneda: "做市",
   twap: "TWAP",
+  market_making: "做市商",
+  arbitrage: "套利",
+  position_executor: "仓位执行",
+  stochastic: "随机指标",
+  ichimoku: "一目均衡",
+  vwap_reversion: "VWAP回归",
+  rsi_divergence: "RSI背离",
+  donchian: "唐奇安",
+  bb_squeeze: "布林挤压",
   funding_rate: "资金费率",
 };
 
@@ -197,7 +208,7 @@ export default function AdminAITrades() {
   // Fetch live prices from Binance
   useEffect(() => {
     async function fetchPrices() {
-      const assets = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
+      const assets = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP", "ADA", "AVAX", "LINK", "DOT"];
       const results: Record<string, number> = {};
       await Promise.all(assets.map(async (a) => {
         try {
@@ -700,6 +711,55 @@ export default function AdminAITrades() {
         </div>
       )}
 
+      {tab === "AI选币" && (
+        <AICoinPicker />
+      )}
+
+      {tab === "交易所绑定" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="h-4 w-4 text-primary/60" />
+              <h2 className="text-sm font-bold text-foreground/60">交易所 API 绑定</h2>
+            </div>
+            <p className="text-[11px] text-foreground/30 mb-4">
+              绑定交易所 API Key 后，AI 模拟下单可连接真实交易所执行。支持 6 大交易所：Binance、Bybit、OKX、Bitget、HyperLiquid、dYdX v4。
+              密钥使用 AES-256-GCM 加密存储，仅开启交易权限，禁用提币。
+            </p>
+            <ApiKeyBind userId="admin" />
+          </div>
+
+          {/* Exchange API Documentation */}
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
+            <h3 className="text-xs font-bold text-foreground/40 mb-3">交易所 API 文档</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {[
+                { name: "Binance", url: "https://www.binance.com/en/support/faq/how-to-create-api-keys-on-binance-360002502072", icon: "₿", desc: "合约交易 HMAC-SHA256 签名, /fapi/v2/account" },
+                { name: "Bybit", url: "https://www.bybit.com/en/help-center/article/How-to-create-your-API-key", icon: "▲", desc: "统一账户 V5 API, /v5/account/wallet-balance" },
+                { name: "OKX", url: "https://www.okx.com/help/how-do-i-create-an-api-key", icon: "◎", desc: "需要 Passphrase, /api/v5/account/balance" },
+                { name: "Bitget", url: "https://www.bitget.com/academy/how-to-create-an-api-key", icon: "◆", desc: "需要 Passphrase, /api/v2/mix/account/account" },
+                { name: "HyperLiquid", url: "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api", icon: "H", desc: "DEX EIP-712 签名, POST /info & /exchange" },
+                { name: "dYdX v4", url: "https://docs.dydx.exchange/api_integration-guides/how_to_trade_on_dydx_v4", icon: "D", desc: "Cosmos SDK 助记词, 去中心化订单簿" },
+              ].map(ex => (
+                <a
+                  key={ex.name}
+                  href={ex.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 px-3 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-primary/20 hover:bg-primary/[0.02] transition-all group"
+                >
+                  <span className="text-lg mt-0.5">{ex.icon}</span>
+                  <div>
+                    <p className="text-xs font-bold text-foreground/60 group-hover:text-primary transition-colors">{ex.name}</p>
+                    <p className="text-[10px] text-foreground/25 mt-0.5">{ex.desc}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === "模拟设置" && (
         <div className="space-y-4">
           {/* Config Panel */}
@@ -776,7 +836,7 @@ export default function AdminAITrades() {
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
             <h3 className="text-xs font-bold text-foreground/40 mb-3">启用策略</h3>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-              {Object.entries(STRATEGY_LABELS).filter(([k]) => ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing", "grid", "dca", "pattern", "avellaneda"].includes(k)).map(([key, label]) => (
+              {Object.entries(STRATEGY_LABELS).filter(([k]) => k !== "directional" && k !== "funding_rate").map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setSimConfig(c => ({
@@ -801,7 +861,7 @@ export default function AdminAITrades() {
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 lg:p-5">
             <h3 className="text-xs font-bold text-foreground/40 mb-3">交易资产</h3>
             <div className="flex flex-wrap gap-2">
-              {["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"].map((a) => (
+              {["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP", "ADA", "AVAX", "LINK", "DOT"].map((a) => (
                 <button
                   key={a}
                   onClick={() => setSimConfig(c => ({

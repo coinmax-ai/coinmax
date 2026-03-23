@@ -9,6 +9,7 @@ import { useState } from "react";
 import { LiveTradingPanel } from "@/components/strategy/live-trading-panel";
 import { RiskControlPanel } from "@/components/strategy/risk-control";
 import { ApiKeyBind } from "@/components/strategy/api-key-bind";
+import { AICoinPicker } from "@/components/strategy/ai-coin-picker";
 
 type Tab = "signals" | "risk" | "keys";
 
@@ -54,7 +55,14 @@ export default function CopyTradingPage() {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-4 py-4">
-        {activeTab === "signals" && <LiveTradingPanel />}
+        {activeTab === "signals" && (
+          <>
+            <AICoinPicker compact />
+            <div className="mt-3">
+              <LiveTradingPanel />
+            </div>
+          </>
+        )}
         {activeTab === "risk" && <RiskControlPanel userId="guest" />}
         {activeTab === "keys" && <ApiKeyBind userId="guest" />}
       </div>

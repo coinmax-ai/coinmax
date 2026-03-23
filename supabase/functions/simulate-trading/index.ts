@@ -21,12 +21,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEFAULT_ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
+const DEFAULT_ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP", "ADA", "AVAX", "LINK", "DOT"];
 const DEFAULT_POSITION_SIZE_USD = 1000;
-const DEFAULT_MAX_POSITIONS = 15;
+const DEFAULT_MAX_POSITIONS = 30;
 const DEFAULT_MAX_LEVERAGE = 5;
 const DEFAULT_COOLDOWN_MIN = 5;
-const DEFAULT_STRATEGIES = ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing", "grid", "dca", "pattern", "avellaneda", "position_executor", "twap", "market_making", "arbitrage"];
+const DEFAULT_STRATEGIES = ["trend_following", "mean_reversion", "breakout", "scalping", "momentum", "swing", "grid", "dca", "pattern", "avellaneda", "position_executor", "twap", "market_making", "arbitrage", "stochastic", "ichimoku", "vwap_reversion", "rsi_divergence", "donchian", "bb_squeeze"];
 
 interface SimConfig {
   positionSize: number;
@@ -54,33 +54,101 @@ const PREDICTION_TIMEFRAMES = [
   { tf: "4H",  interval: "1h",  expiresMin: 240,  candleLimit: 30 },
 ];
 
-// ── Price & candle fetching ─────────────────────────────────
+// ── Price & candle fetching (multi-source fallback) ─────────
+
+const BINANCE_ENDPOINTS = [
+  "https://api.binance.com",
+  "https://api1.binance.com",
+  "https://api2.binance.com",
+  "https://api3.binance.com",
+  "https://api4.binance.com",
+];
+
+// CoinGecko ID mapping
+const CG_IDS: Record<string, string> = {
+  BTC: "bitcoin", ETH: "ethereum", SOL: "solana",
+  BNB: "binancecoin", DOGE: "dogecoin", XRP: "ripple",
+  ADA: "cardano", AVAX: "avalanche-2", LINK: "chainlink", DOT: "polkadot",
+};
 
 async function fetchPrices(assets: string[] = DEFAULT_ASSETS): Promise<Record<string, number>> {
-  const prices: Record<string, number> = {};
-  await Promise.all(
-    assets.map(async (asset) => {
-      try {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${asset}USDT`);
-        if (res.ok) { const d = await res.json(); const p = parseFloat(d.price); if (p > 0) prices[asset] = p; }
-      } catch {}
-    })
-  );
-  return prices;
+  // Try Binance first (multiple endpoints)
+  for (const base of BINANCE_ENDPOINTS) {
+    try {
+      const prices: Record<string, number> = {};
+      const symbols = assets.map(a => `"${a}USDT"`).join(",");
+      const res = await fetch(`${base}/api/v3/ticker/price?symbols=[${symbols}]`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        for (const d of data) {
+          const asset = d.symbol.replace("USDT", "");
+          const p = parseFloat(d.price);
+          if (p > 0) prices[asset] = p;
+        }
+        if (Object.keys(prices).length >= assets.length * 0.5) return prices;
+      }
+    } catch {}
+  }
+
+  // Fallback: CoinGecko (no API key needed, 30 req/min)
+  try {
+    const ids = assets.map(a => CG_IDS[a]).filter(Boolean).join(",");
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      const prices: Record<string, number> = {};
+      for (const asset of assets) {
+        const cgId = CG_IDS[asset];
+        if (cgId && data[cgId]?.usd) prices[asset] = data[cgId].usd;
+      }
+      if (Object.keys(prices).length > 0) return prices;
+    }
+  } catch {}
+
+  return {};
 }
 
 interface Candle { open: number; high: number; low: number; close: number; volume: number; }
 
+// Binance interval → CoinGecko days mapping
+const CG_INTERVAL_DAYS: Record<string, number> = {
+  "1m": 1, "5m": 1, "15m": 1, "1h": 2, "4h": 7,
+};
+
 async function fetchCandles(asset: string, interval: string, limit: number): Promise<Candle[]> {
+  // Try Binance endpoints
+  for (const base of BINANCE_ENDPOINTS) {
+    try {
+      const res = await fetch(`${base}/api/v3/klines?symbol=${asset}USDT&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data.map((k: any[]) => ({
+            open: parseFloat(k[1]), high: parseFloat(k[2]),
+            low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]),
+          }));
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback: CoinGecko OHLC (limited intervals: 1/7/14/30/90/180/365 days)
   try {
-    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${asset}USDT&interval=${interval}&limit=${limit}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.map((k: any[]) => ({
-      open: parseFloat(k[1]), high: parseFloat(k[2]),
-      low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]),
-    }));
-  } catch { return []; }
+    const cgId = CG_IDS[asset];
+    if (!cgId) return [];
+    const days = CG_INTERVAL_DAYS[interval] ?? 1;
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${cgId}/ohlc?vs_currency=usd&days=${days}`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.slice(-limit).map((k: number[]) => ({
+          open: k[1], high: k[2], low: k[3], close: k[4], volume: 0,
+        }));
+      }
+    }
+  } catch {}
+
+  return [];
 }
 
 // ── Technical indicators ────────────────────────────────────
@@ -172,6 +240,45 @@ function calcADX(candles: Candle[], period = 14): number {
   return dx;
 }
 
+// ── New indicators: Stochastic, Donchian, VWAP ──────────────
+
+function calcStochastic(candles: Candle[], kPeriod = 14, dPeriod = 3): { k: number; d: number } {
+  if (candles.length < kPeriod) return { k: 50, d: 50 };
+  const slice = candles.slice(-kPeriod);
+  const high = Math.max(...slice.map(c => c.high));
+  const low = Math.min(...slice.map(c => c.low));
+  const k = high !== low ? ((slice[slice.length - 1].close - low) / (high - low)) * 100 : 50;
+  // Simple %D as SMA of last dPeriod %K values
+  const kValues: number[] = [];
+  for (let i = Math.max(0, candles.length - dPeriod); i < candles.length; i++) {
+    const s = candles.slice(Math.max(0, i - kPeriod + 1), i + 1);
+    const h = Math.max(...s.map(c => c.high));
+    const l = Math.min(...s.map(c => c.low));
+    kValues.push(h !== l ? ((s[s.length - 1].close - l) / (h - l)) * 100 : 50);
+  }
+  const d = kValues.reduce((s, v) => s + v, 0) / kValues.length;
+  return { k, d };
+}
+
+function calcDonchian(candles: Candle[], period = 20): { upper: number; lower: number; mid: number } {
+  const slice = candles.slice(-period);
+  if (slice.length === 0) return { upper: 0, lower: 0, mid: 0 };
+  const upper = Math.max(...slice.map(c => c.high));
+  const lower = Math.min(...slice.map(c => c.low));
+  return { upper, lower, mid: (upper + lower) / 2 };
+}
+
+function calcVWAP(candles: Candle[]): number {
+  if (candles.length === 0) return 0;
+  let cumTPV = 0, cumVol = 0;
+  for (const c of candles) {
+    const tp = (c.high + c.low + c.close) / 3;
+    cumTPV += tp * (c.volume || 1);
+    cumVol += (c.volume || 1);
+  }
+  return cumVol > 0 ? cumTPV / cumVol : candles[candles.length - 1].close;
+}
+
 // ── Multi-timeframe data ────────────────────────────────────
 
 interface TechIndicators {
@@ -188,6 +295,9 @@ interface TechIndicators {
   ema21: number;
   sma50: number;
   price: number;
+  stoch: { k: number; d: number };
+  donchian: { upper: number; lower: number; mid: number };
+  vwap: number;
 }
 
 function computeIndicators(candles: Candle[], price: number): TechIndicators {
@@ -205,6 +315,9 @@ function computeIndicators(candles: Candle[], price: number): TechIndicators {
     ema21: calcEMA(candles, 21),
     sma50: calcSMA(candles, Math.min(50, candles.length)),
     price,
+    stoch: calcStochastic(candles),
+    donchian: calcDonchian(candles),
+    vwap: calcVWAP(candles),
   };
 }
 
@@ -727,6 +840,299 @@ function strategyArbitrage(ind: TechIndicators, ind1h: TechIndicators | null): S
   return null;
 }
 
+// 15. Stochastic: %K/%D crossover with overbought/oversold zones
+function strategyStochastic(ind: TechIndicators): StrategySignal | null {
+  const { stoch, rsi, mom, vol, macd } = ind;
+
+  // %K crosses above %D in oversold zone
+  if (stoch.k < 30 && stoch.k > stoch.d && rsi < 45) {
+    const conf = Math.min(82, 52 + (30 - stoch.k) * 0.8 + Math.abs(stoch.k - stoch.d) * 2);
+    return {
+      strategy: "stochastic", side: "LONG", confidence: conf,
+      leverage: 2, slPct: Math.max(0.012, vol * 0.015),
+      tpPct: Math.max(0.025, vol * 0.035), timeLimit: 6,
+      reason: `随机指标: %K=${stoch.k.toFixed(0)}穿越%D=${stoch.d.toFixed(0)}, 超卖反弹`,
+    };
+  }
+  // %K crosses below %D in overbought zone
+  if (stoch.k > 70 && stoch.k < stoch.d && rsi > 55) {
+    const conf = Math.min(82, 52 + (stoch.k - 70) * 0.8 + Math.abs(stoch.k - stoch.d) * 2);
+    return {
+      strategy: "stochastic", side: "SHORT", confidence: conf,
+      leverage: 2, slPct: Math.max(0.012, vol * 0.015),
+      tpPct: Math.max(0.025, vol * 0.035), timeLimit: 6,
+      reason: `随机指标: %K=${stoch.k.toFixed(0)}下穿%D=${stoch.d.toFixed(0)}, 超买回调`,
+    };
+  }
+  return null;
+}
+
+// 16. Ichimoku Cloud (simplified): EMA9/21 as Tenkan/Kijun + SMA50 as cloud
+function strategyIchimoku(ind: TechIndicators): StrategySignal | null {
+  const { ema9, ema21, sma50, price, adx, mom, vol, rsi } = ind;
+  // Tenkan (ema9) > Kijun (ema21), price above cloud (sma50), bullish
+  if (ema9 > ema21 && price > sma50 && price > ema9 && mom > 0.05 && rsi > 40 && rsi < 75) {
+    const conf = Math.min(88, 55 + adx * 0.3 + Math.abs(mom) * 4 + ((price - sma50) / sma50 * 200));
+    return {
+      strategy: "ichimoku", side: "LONG", confidence: conf,
+      leverage: Math.min(3, Math.round(conf / 30)),
+      slPct: Math.max(0.015, vol * 0.02), tpPct: Math.max(0.035, vol * 0.05),
+      timeLimit: 16,
+      reason: `一目均衡: 价格在云上, 转换>基准线, ADX=${adx.toFixed(0)}, Mom=${mom.toFixed(2)}%`,
+    };
+  }
+  // Bearish: below cloud, tenkan < kijun
+  if (ema9 < ema21 && price < sma50 && price < ema9 && mom < -0.05 && rsi > 25 && rsi < 60) {
+    const conf = Math.min(88, 55 + adx * 0.3 + Math.abs(mom) * 4 + ((sma50 - price) / sma50 * 200));
+    return {
+      strategy: "ichimoku", side: "SHORT", confidence: conf,
+      leverage: Math.min(3, Math.round(conf / 30)),
+      slPct: Math.max(0.015, vol * 0.02), tpPct: Math.max(0.035, vol * 0.05),
+      timeLimit: 16,
+      reason: `一目均衡: 价格在云下, 转换<基准线, ADX=${adx.toFixed(0)}, Mom=${mom.toFixed(2)}%`,
+    };
+  }
+  return null;
+}
+
+// 17. VWAP Reversion: Price deviation from VWAP for mean reversion
+function strategyVWAPReversion(ind: TechIndicators): StrategySignal | null {
+  const { vwap, price, rsi, vol, bb } = ind;
+  if (vwap === 0 || price === 0) return null;
+  const deviation = (price - vwap) / vwap * 100;
+
+  // Price below VWAP by significant amount → long reversion
+  if (deviation < -0.3 && rsi < 48 && bb.pctB < 0.4) {
+    const conf = Math.min(80, 52 + Math.abs(deviation) * 8 + (48 - rsi) * 0.3);
+    return {
+      strategy: "vwap_reversion", side: "LONG", confidence: conf,
+      leverage: 2, slPct: Math.max(0.012, vol * 0.015),
+      tpPct: Math.max(0.015, Math.abs(deviation) / 100 * 0.8), timeLimit: 4,
+      reason: `VWAP回归做多: 偏差=${deviation.toFixed(2)}%, RSI=${rsi.toFixed(0)}`,
+    };
+  }
+  // Price above VWAP by significant amount → short reversion
+  if (deviation > 0.3 && rsi > 52 && bb.pctB > 0.6) {
+    const conf = Math.min(80, 52 + Math.abs(deviation) * 8 + (rsi - 52) * 0.3);
+    return {
+      strategy: "vwap_reversion", side: "SHORT", confidence: conf,
+      leverage: 2, slPct: Math.max(0.012, vol * 0.015),
+      tpPct: Math.max(0.015, Math.abs(deviation) / 100 * 0.8), timeLimit: 4,
+      reason: `VWAP回归做空: 偏差=${deviation.toFixed(2)}%, RSI=${rsi.toFixed(0)}`,
+    };
+  }
+  return null;
+}
+
+// 18. RSI Divergence: RSI direction vs price direction divergence
+function strategyRSIDivergence(ind: TechIndicators, candles: Candle[]): StrategySignal | null {
+  if (candles.length < 20) return null;
+  const { rsi, vol, macd, mom } = ind;
+
+  // Compare RSI 10 bars ago vs now, and price 10 bars ago vs now
+  const oldCandles = candles.slice(0, -10);
+  const oldRsi = calcRSI(oldCandles);
+  const oldPrice = oldCandles[oldCandles.length - 1]?.close ?? 0;
+  const curPrice = candles[candles.length - 1].close;
+  if (oldPrice === 0) return null;
+
+  const priceDelta = (curPrice - oldPrice) / oldPrice * 100;
+  const rsiDelta = rsi - oldRsi;
+
+  // Bullish divergence: price making lower lows but RSI making higher lows
+  if (priceDelta < -0.5 && rsiDelta > 3 && rsi < 45) {
+    const conf = Math.min(82, 52 + Math.abs(rsiDelta) * 1.5 + (45 - rsi) * 0.5);
+    return {
+      strategy: "rsi_divergence", side: "LONG", confidence: conf,
+      leverage: 2, slPct: Math.max(0.015, vol * 0.02),
+      tpPct: Math.max(0.025, vol * 0.035), timeLimit: 8,
+      reason: `RSI看涨背离: 价格${priceDelta.toFixed(2)}% RSI+${rsiDelta.toFixed(0)}, 底背离做多`,
+    };
+  }
+  // Bearish divergence: price making higher highs but RSI making lower highs
+  if (priceDelta > 0.5 && rsiDelta < -3 && rsi > 55) {
+    const conf = Math.min(82, 52 + Math.abs(rsiDelta) * 1.5 + (rsi - 55) * 0.5);
+    return {
+      strategy: "rsi_divergence", side: "SHORT", confidence: conf,
+      leverage: 2, slPct: Math.max(0.015, vol * 0.02),
+      tpPct: Math.max(0.025, vol * 0.035), timeLimit: 8,
+      reason: `RSI看跌背离: 价格+${priceDelta.toFixed(2)}% RSI${rsiDelta.toFixed(0)}, 顶背离做空`,
+    };
+  }
+  return null;
+}
+
+// 19. Donchian Channel Breakout: Price breaking N-period high/low
+function strategyDonchian(ind: TechIndicators): StrategySignal | null {
+  const { donchian, price, adx, mom, vol, volRatio } = ind;
+  if (donchian.upper === 0) return null;
+  const range = donchian.upper - donchian.lower;
+  if (range === 0) return null;
+  const position = (price - donchian.lower) / range; // 0=at low, 1=at high
+
+  // Breakout above channel high
+  if (position > 0.95 && mom > 0.1 && adx > 18) {
+    const conf = Math.min(85, 55 + adx * 0.3 + volRatio * 3 + Math.abs(mom) * 4);
+    return {
+      strategy: "donchian", side: "LONG", confidence: conf,
+      leverage: Math.min(3, Math.round(conf / 28)),
+      slPct: Math.max(0.01, (range / price) * 0.3),
+      tpPct: Math.max(0.02, (range / price) * 0.6), timeLimit: 12,
+      reason: `唐奇安突破: 价格在通道${(position * 100).toFixed(0)}%, ADX=${adx.toFixed(0)}, Mom=${mom.toFixed(2)}%`,
+    };
+  }
+  // Breakdown below channel low
+  if (position < 0.05 && mom < -0.1 && adx > 18) {
+    const conf = Math.min(85, 55 + adx * 0.3 + volRatio * 3 + Math.abs(mom) * 4);
+    return {
+      strategy: "donchian", side: "SHORT", confidence: conf,
+      leverage: Math.min(3, Math.round(conf / 28)),
+      slPct: Math.max(0.01, (range / price) * 0.3),
+      tpPct: Math.max(0.02, (range / price) * 0.6), timeLimit: 12,
+      reason: `唐奇安跌破: 价格在通道${(position * 100).toFixed(0)}%, ADX=${adx.toFixed(0)}, Mom=${mom.toFixed(2)}%`,
+    };
+  }
+  return null;
+}
+
+// 20. Bollinger Squeeze: BB width contracts then expands with direction
+function strategyBBSqueeze(ind: TechIndicators): StrategySignal | null {
+  const { bb, vol, mom, macd, adx, rsi } = ind;
+
+  // Squeeze: very narrow BB width + starting to expand with momentum
+  if (bb.width < 2.5 && Math.abs(mom) > 0.08 && adx > 15) {
+    if (mom > 0 && macd.histogram > 0 && rsi > 45 && rsi < 70) {
+      const conf = Math.min(84, 54 + (2.5 - bb.width) * 6 + Math.abs(mom) * 8 + adx * 0.2);
+      return {
+        strategy: "bb_squeeze", side: "LONG", confidence: conf,
+        leverage: Math.min(3, Math.round(conf / 28)),
+        slPct: Math.max(0.01, vol * 0.012), tpPct: Math.max(0.025, vol * 0.04),
+        timeLimit: 8,
+        reason: `布林挤压突破多: BB宽度=${bb.width.toFixed(1)}%, Mom=${mom.toFixed(2)}%, ADX=${adx.toFixed(0)}`,
+      };
+    }
+    if (mom < 0 && macd.histogram < 0 && rsi > 30 && rsi < 55) {
+      const conf = Math.min(84, 54 + (2.5 - bb.width) * 6 + Math.abs(mom) * 8 + adx * 0.2);
+      return {
+        strategy: "bb_squeeze", side: "SHORT", confidence: conf,
+        leverage: Math.min(3, Math.round(conf / 28)),
+        slPct: Math.max(0.01, vol * 0.012), tpPct: Math.max(0.025, vol * 0.04),
+        timeLimit: 8,
+        reason: `布林挤压突破空: BB宽度=${bb.width.toFixed(1)}%, Mom=${mom.toFixed(2)}%, ADX=${adx.toFixed(0)}`,
+      };
+    }
+  }
+  return null;
+}
+
+// ── Market state normalization + random projection embedding ─
+
+function normalizeMarketState(ind: TechIndicators): Record<string, number> {
+  return {
+    rsi: ind.rsi / 100,                              // 0-1
+    mom: Math.tanh(ind.mom / 2),                      // -1 to 1
+    mom10: Math.tanh((ind.mom10 ?? ind.mom) / 2),     // -1 to 1
+    macd_hist: Math.tanh(ind.macd.histogram * 100),   // -1 to 1
+    bb_pctB: ind.bb.pctB,                             // 0-1
+    bb_width: Math.min(ind.bb.width / 10, 1),         // 0-1
+    vol: Math.min(ind.vol / 5, 1),                    // 0-1
+    atr_pct: ind.price > 0 ? Math.min((ind.atr / ind.price) * 100, 1) : 0, // 0-1
+    volRatio: Math.min(ind.volRatio / 5, 1),          // 0-1
+    adx: ind.adx / 100,                               // 0-1
+    ema_cross: ind.ema9 > 0 && ind.ema21 > 0 ? Math.tanh((ind.ema9 - ind.ema21) / ind.ema21 * 50) : 0, // -1 to 1
+    ema9_dist: ind.price > 0 ? Math.tanh((ind.price - ind.ema9) / ind.price * 100) : 0, // -1 to 1
+    sma50_dist: ind.price > 0 && ind.sma50 > 0 ? Math.tanh((ind.price - ind.sma50) / ind.price * 50) : 0, // -1 to 1
+    macd_signal: Math.tanh(ind.macd.signal * 100),    // -1 to 1
+    macd_line: Math.tanh(ind.macd.macd * 100),        // -1 to 1
+    stoch_k: (ind.stoch?.k ?? 50) / 100,              // 0-1
+    stoch_d: (ind.stoch?.d ?? 50) / 100,              // 0-1
+    donchian_pos: ind.donchian && ind.donchian.upper !== ind.donchian.lower
+      ? (ind.price - ind.donchian.lower) / (ind.donchian.upper - ind.donchian.lower) : 0.5, // 0-1
+    vwap_dist: ind.vwap > 0 ? Math.tanh((ind.price - ind.vwap) / ind.vwap * 50) : 0, // -1 to 1
+  };
+}
+
+// Deterministic random projection: 16 features → 1536 dims (no API call, <1ms)
+// Uses seeded PRNG for reproducibility
+function randomProjectionEmbedding(state: Record<string, number>): number[] {
+  const features = Object.values(state);
+  const dim = 1536;
+  const embedding = new Array(dim).fill(0);
+
+  // Seeded pseudo-random using simple LCG
+  let seed = 42;
+  const nextRand = () => {
+    seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
+    return (seed / 0x7fffffff) * 2 - 1; // -1 to 1
+  };
+
+  // Project each feature into high-dimensional space
+  for (let f = 0; f < features.length; f++) {
+    seed = 42 + f * 7919; // Reset seed per feature for determinism
+    for (let d = 0; d < dim; d++) {
+      embedding[d] += features[f] * nextRand();
+    }
+  }
+
+  // L2 normalize
+  const norm = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0)) || 1;
+  for (let d = 0; d < dim; d++) embedding[d] /= norm;
+
+  return embedding;
+}
+
+// Record embedding on trade open
+async function recordTradeEmbedding(
+  supabase: any,
+  strategyName: string,
+  asset: string,
+  ind: TechIndicators,
+  tradeId: string
+): Promise<void> {
+  try {
+    const marketState = normalizeMarketState(ind);
+    const embedding = randomProjectionEmbedding(marketState);
+    await supabase.from("strategy_embeddings").insert({
+      strategy_name: strategyName,
+      asset,
+      timeframe: "5m",
+      market_state: marketState,
+      embedding: JSON.stringify(embedding),
+      trade_id: tradeId,
+    });
+  } catch (e) {
+    // Non-critical — don't block trading
+  }
+}
+
+// Update embedding with trade result on close + refresh performance
+async function recordTradeResult(
+  supabase: any,
+  tradeId: string,
+  strategyName: string,
+  asset: string,
+  pnlPct: number
+): Promise<void> {
+  try {
+    // Update the embedding record with trade result
+    await supabase
+      .from("strategy_embeddings")
+      .update({
+        trade_pnl_pct: pnlPct,
+        trade_won: pnlPct > 0,
+      })
+      .eq("trade_id", tradeId);
+
+    // Refresh rolling performance stats
+    await supabase.rpc("upsert_strategy_performance", {
+      p_strategy_name: strategyName,
+      p_asset: asset,
+    });
+  } catch (e) {
+    // Non-critical
+  }
+}
+
 // ── Model vote simulation (kept for predictions) ────────────
 
 interface ModelVote { model: string; direction: "BULLISH" | "BEARISH" | "NEUTRAL"; confidence: number; weight: number; }
@@ -875,6 +1281,10 @@ serve(async (req) => {
             close_reason: cr, closed_at: new Date().toISOString(),
           }).eq("id", t.id);
           if (t.signal_id) await supabase.from("trade_signals").update({ status: "executed", result_pnl: parseFloat(pnl.toFixed(4)), close_reason: cr, resolved_at: new Date().toISOString() }).eq("id", t.signal_id);
+          // Record trade result into strategy learning system
+          if (t.strategy_type) {
+            await recordTradeResult(supabase, t.id, t.strategy_type, t.asset, parseFloat(pnlPct.toFixed(4)));
+          }
           results.paper_trades_closed++;
         }
       }
@@ -937,6 +1347,12 @@ serve(async (req) => {
       if (cfg.strategies.includes("twap"))             { const s = strategyTWAP(ind5m);            if (s) stratSignals.push(s); }
       if (cfg.strategies.includes("market_making"))    { const s = strategyMarketMaking(ind5m);    if (s) stratSignals.push(s); }
       if (cfg.strategies.includes("arbitrage"))        { const s = strategyArbitrage(ind5m, ind1h); if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("stochastic"))       { const s = strategyStochastic(ind5m);       if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("ichimoku"))          { const s = strategyIchimoku(ind5m);         if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("vwap_reversion"))    { const s = strategyVWAPReversion(ind5m);    if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("rsi_divergence"))    { const s = strategyRSIDivergence(ind5m, candles5m); if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("donchian"))          { const s = strategyDonchian(ind5m);         if (s) stratSignals.push(s); }
+      if (cfg.strategies.includes("bb_squeeze"))        { const s = strategyBBSqueeze(ind5m);        if (s) stratSignals.push(s); }
       results.strategies_evaluated += cfg.strategies.length;
 
       // Cap leverage to config max
@@ -1034,6 +1450,8 @@ serve(async (req) => {
         } else {
           results.paper_trades_opened++;
           openCombos.add(comboKey);
+          // Record market state embedding for strategy learning
+          await recordTradeEmbedding(supabase, sig.strategy, asset, ind5m, tradeId);
         }
       }
     }
