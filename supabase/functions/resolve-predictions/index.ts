@@ -19,29 +19,60 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const CG_IDS: Record<string, string> = {
+  BTC: "bitcoin", ETH: "ethereum", SOL: "solana", BNB: "binancecoin",
+  DOGE: "dogecoin", XRP: "ripple", ADA: "cardano", AVAX: "avalanche-2",
+  LINK: "chainlink", DOT: "polkadot",
+};
+
 async function fetchCurrentPrice(asset: string): Promise<number> {
   const pair = `${asset}USDT`;
-  try {
-    const result = await Promise.any([
-      fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${pair}`).then(async (r) => {
-        if (!r.ok) throw new Error();
-        const d = await r.json();
-        const p = parseFloat(d.price);
-        if (p <= 0) throw new Error();
-        return p;
-      }),
-      fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${pair}`).then(async (r) => {
-        if (!r.ok) throw new Error();
-        const d = await r.json();
-        const p = parseFloat(d.result?.list?.[0]?.lastPrice);
-        if (!p) throw new Error();
-        return p;
-      }),
-    ]);
-    return result;
-  } catch {
-    return 0;
+  // Try Binance endpoints
+  for (const base of ["https://api.binance.com", "https://api1.binance.com", "https://api2.binance.com"]) {
+    try {
+      const r = await fetch(`${base}/api/v3/ticker/price?symbol=${pair}`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) { const d = await r.json(); const p = parseFloat(d.price); if (p > 0) return p; }
+    } catch {}
   }
+  // Try Bybit
+  try {
+    const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${pair}`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) { const d = await r.json(); const p = parseFloat(d.result?.list?.[0]?.lastPrice); if (p > 0) return p; }
+  } catch {}
+  // Fallback: CoinGecko
+  try {
+    const cgId = CG_IDS[asset];
+    if (cgId) {
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`, { signal: AbortSignal.timeout(5000) });
+      if (r.ok) { const d = await r.json(); if (d[cgId]?.usd > 0) return d[cgId].usd; }
+    }
+  } catch {}
+  return 0;
+}
+
+// Batch fetch prices for all assets at once (more efficient)
+async function fetchAllPrices(assets: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  // Try Binance batch
+  try {
+    const symbols = assets.map(a => `"${a}USDT"`).join(",");
+    const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=[${symbols}]`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const data = await r.json();
+      for (const d of data) { const a = d.symbol.replace("USDT", ""); const p = parseFloat(d.price); if (p > 0) prices[a] = p; }
+      if (Object.keys(prices).length >= assets.length * 0.5) return prices;
+    }
+  } catch {}
+  // Fallback: CoinGecko batch
+  try {
+    const ids = assets.map(a => CG_IDS[a]).filter(Boolean).join(",");
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const data = await r.json();
+      for (const a of assets) { const cg = CG_IDS[a]; if (cg && data[cg]?.usd > 0) prices[a] = data[cg].usd; }
+    }
+  } catch {}
+  return prices;
 }
 
 serve(async (req) => {
@@ -72,14 +103,15 @@ serve(async (req) => {
     });
   }
 
-  // 2. Fetch current prices for unique assets
+  // 2. Fetch current prices for unique assets (batch)
   const uniqueAssets = [...new Set(pending.map((p) => p.asset))];
-  const priceMap: Record<string, number> = {};
-  await Promise.all(
-    uniqueAssets.map(async (asset) => {
+  const priceMap = await fetchAllPrices(uniqueAssets);
+  // Fill missing with individual fetches
+  for (const asset of uniqueAssets) {
+    if (!priceMap[asset] || priceMap[asset] <= 0) {
       priceMap[asset] = await fetchCurrentPrice(asset);
-    })
-  );
+    }
+  }
 
   // 3. Resolve each prediction
   let resolvedCount = 0;
