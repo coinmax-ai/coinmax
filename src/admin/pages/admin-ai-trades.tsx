@@ -395,71 +395,53 @@ export default function AdminAITrades() {
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">持仓数 / 金额</p>
-          <p className="text-xl font-bold">{summary.openCount}<span className="text-sm text-foreground/40 ml-1">${((openTrades?.reduce((s, t) => s + t.size * t.entry_price, 0) ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></p>
+      {/* Summary Cards — mobile 2 cols, desktop 4 cols */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[10px] text-foreground/35 mb-0.5">持仓 / 金额</p>
+          <p className="text-lg font-bold">{summary.openCount}<span className="text-xs text-foreground/40 ml-1">${((openTrades?.reduce((s, t) => s + t.size * t.entry_price, 0) ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></p>
         </div>
-        <div className={`rounded-2xl border p-4 ${summary.unrealizedPnl >= 0 ? "border-green-500/15 bg-green-500/[0.03]" : "border-red-500/15 bg-red-500/[0.03]"}`}>
-          <p className="text-xs text-foreground/35 mb-1">当前未实现盈亏</p>
-          <p className={`text-xl font-bold ${pnlColor(summary.unrealizedPnl)}`}>{formatPnl(summary.unrealizedPnl)}</p>
-          <p className="text-[11px] text-foreground/25 mt-0.5">{summary.openCount}个持仓中</p>
+        <div className={`rounded-xl border p-3 ${summary.unrealizedPnl >= 0 ? "border-green-500/15 bg-green-500/[0.03]" : "border-red-500/15 bg-red-500/[0.03]"}`}>
+          <p className="text-[10px] text-foreground/35 mb-0.5">未实现盈亏</p>
+          <p className={`text-lg font-bold ${pnlColor(summary.unrealizedPnl)}`}>{formatPnl(summary.unrealizedPnl)}</p>
         </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">今日已实现</p>
-          <p className={`text-xl font-bold ${pnlColor(summary.todayPnl)}`}>{formatPnl(summary.todayPnl)}</p>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[10px] text-foreground/35 mb-0.5">今日已实现</p>
+          <p className={`text-lg font-bold ${pnlColor(summary.todayPnl)}`}>{formatPnl(summary.todayPnl)}</p>
         </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">累计盈亏</p>
-          <p className={`text-xl font-bold ${pnlColor(summary.totalPnl)}`}>{formatPnl(summary.totalPnl)}</p>
-          <p className="text-[11px] text-foreground/25 mt-0.5">{summary.totalClosed}笔 · {summary.tradingDays}天</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">胜率</p>
-          <p className="text-xl font-bold text-primary">{summary.winRate.toFixed(1)}%</p>
-          <p className="text-[11px] text-foreground/25 mt-0.5">{summary.wins}胜/{summary.totalClosed}总</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
-          <p className="text-xs text-foreground/35 mb-1">日均收益</p>
-          <p className={`text-xl font-bold ${pnlColor(summary.dailyAvgPnl)}`}>{formatPnl(summary.dailyAvgPnl)}</p>
-          <p className="text-[11px] text-foreground/25 mt-0.5">≈ 月均 {formatPnl(summary.dailyAvgPnl * 30)}</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">日均收益率</p>
-          <p className={`text-xl font-bold ${pnlColor(summary.dailyAvgPnl)}`}>
-            {summary.totalClosed > 0 ? `${(summary.dailyAvgPnl / 1000 * 100).toFixed(2)}%` : "—"}
-          </p>
-          <p className="text-[11px] text-foreground/25 mt-0.5">基于 $1000 仓位</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs text-foreground/35 mb-1">信号数</p>
-          <p className="text-xl font-bold">{summary.signalCount}</p>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[10px] text-foreground/35 mb-0.5">累计盈亏</p>
+          <p className={`text-lg font-bold ${pnlColor(summary.totalPnl)}`}>{formatPnl(summary.totalPnl)}</p>
+          <p className="text-[9px] text-foreground/20">{summary.totalClosed}笔 · 胜率{summary.winRate.toFixed(0)}%</p>
         </div>
       </div>
 
-      {/* Asset Filter + Model Filter + Tabs */}
-      <div className="space-y-2">
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
+      {/* Filters */}
+      <div className="space-y-1.5">
+        {/* Asset filter — scrollable */}
+        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
           {ASSETS.map((a) => (
             <button key={a} onClick={() => { setAssetFilter(a); setHistoryPage(0); }}
-              className={`px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${assetFilter === a ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg shrink-0 transition-all ${assetFilter === a ? "bg-primary/15 text-primary" : "text-foreground/30 hover:text-foreground/50"}`}
             >{a}</button>
           ))}
         </div>
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
-          {["全部", "GPT-4o", "Claude", "Gemini", "DeepSeek", "Llama", "openclaw-agent"].map((m) => (
-            <button key={m} onClick={() => setModelFilter(m)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${modelFilter === m ? "bg-purple-500/15 text-purple-400" : "text-foreground/35 hover:text-foreground/60"}`}
-            >{m === "全部" ? "全部模型" : m}</button>
+        {/* Model filter — scrollable */}
+        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+          {["全部", "GPT-4o", "Claude", "Gemini", "DeepSeek", "Llama", "Agent"].map((m) => (
+            <button key={m} onClick={() => setModelFilter(m === "Agent" ? "openclaw-agent" : m === "全部" ? "全部" : m)}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg shrink-0 transition-all ${
+                (m === "Agent" ? modelFilter === "openclaw-agent" : m === "全部" ? modelFilter === "全部" : modelFilter === m)
+                  ? "bg-purple-500/15 text-purple-400" : "text-foreground/30 hover:text-foreground/50"
+              }`}
+            >🤖 {m}</button>
           ))}
         </div>
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
+        {/* Tabs — scrollable */}
+        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
           {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-semibold transition-all shrink-0 ${tab === t ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg shrink-0 transition-all ${tab === t ? "bg-primary/15 text-primary border border-primary/20" : "text-foreground/30 hover:text-foreground/50"}`}
             >{t}</button>
           ))}
         </div>
