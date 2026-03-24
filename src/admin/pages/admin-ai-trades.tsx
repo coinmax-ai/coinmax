@@ -128,8 +128,10 @@ export default function AdminAITrades() {
   const { adminUser } = useAdminAuth();
   const [tab, setTab] = useState<Tab>("持仓中");
   const [assetFilter, setAssetFilter] = useState("全部");
+  const [modelFilter, setModelFilter] = useState("全部");
   const [historyPage, setHistoryPage] = useState(0);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
   const [simRunning, setSimRunning] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
 
@@ -338,12 +340,20 @@ export default function AdminAITrades() {
     };
   }, [openTrades, signals, globalStats]);
 
-  // Filter open trades by asset
+  // Filter open trades by asset + model
   const filteredOpen = useMemo(() => {
     if (!openTrades) return [];
-    if (assetFilter === "全部") return openTrades;
-    return openTrades.filter(t => t.asset === assetFilter);
-  }, [openTrades, assetFilter]);
+    let filtered = openTrades;
+    if (assetFilter !== "全部") filtered = filtered.filter(t => t.asset === assetFilter);
+    if (modelFilter !== "全部") {
+      filtered = filtered.filter(t => {
+        const consensus = t.ai_models_consensus as any[] | null;
+        if (!consensus) return false;
+        return consensus.some((m: any) => m.model === modelFilter);
+      });
+    }
+    return filtered;
+  }, [openTrades, assetFilter, modelFilter]);
 
   const totalHistoryPages = Math.ceil((closedTrades?.count ?? 0) / PAGE_SIZE);
 
@@ -400,7 +410,7 @@ export default function AdminAITrades() {
         </div>
       </div>
 
-      {/* Asset Filter + Tabs */}
+      {/* Asset Filter + Model Filter + Tabs */}
       <div className="space-y-2">
         <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
           {ASSETS.map((a) => (
@@ -409,10 +419,17 @@ export default function AdminAITrades() {
             >{a}</button>
           ))}
         </div>
-        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden">
+        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
+          {["全部", "GPT-4o", "Claude", "Gemini", "DeepSeek", "Llama", "openclaw-agent"].map((m) => (
+            <button key={m} onClick={() => setModelFilter(m)}
+              className={`px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${modelFilter === m ? "bg-purple-500/15 text-purple-400" : "text-foreground/35 hover:text-foreground/60"}`}
+            >{m === "全部" ? "全部模型" : m}</button>
+          ))}
+        </div>
+        <div className="flex rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
           {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-semibold transition-all ${tab === t ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
+              className={`px-4 py-2 text-xs font-semibold transition-all shrink-0 ${tab === t ? "bg-primary/15 text-primary" : "text-foreground/35 hover:text-foreground/60"}`}
             >{t}</button>
           ))}
         </div>
@@ -441,13 +458,14 @@ export default function AdminAITrades() {
                     ? ((t.side === "LONG" ? (currentPrice - t.entry_price) : (t.entry_price - currentPrice)) / t.entry_price) * 100 * t.leverage
                     : null;
                   return (
-                    <div key={t.id} className="px-4 py-3 space-y-2">
+                    <div key={t.id} className="px-4 py-3 space-y-2 cursor-pointer" onClick={() => setExpandedTrade(expandedTrade === t.id ? null : t.id)}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-foreground/80">{t.asset}</span>
                           <SideBadge side={t.side} />
                           <span className="text-[10px] text-foreground/25">{t.leverage}x</span>
                           <StrategyBadge type={t.strategy_type} />
+                          {t.ai_reasoning && <span className="text-[9px] text-purple-400/60">🤖</span>}
                         </div>
                         <span className="text-[10px] text-foreground/20">{timeSince(t.opened_at)}</span>
                       </div>
@@ -473,21 +491,33 @@ export default function AdminAITrades() {
                         <span>SL: {formatPrice(t.stop_loss)}</span>
                         <span>TP: {formatPrice(t.take_profit)}</span>
                       </div>
-                      {/* AI Reasoning */}
-                      {t.ai_reasoning && (
-                        <div className="mt-1.5 px-2 py-1.5 rounded-lg bg-primary/[0.04] border border-primary/10">
-                          <p className="text-[10px] text-foreground/35 mb-0.5 font-semibold">🤖 AI 分析</p>
-                          <p className="text-[10px] text-foreground/50 leading-relaxed">{t.ai_reasoning.slice(0, 200)}</p>
+                      {/* AI Reasoning — click to expand */}
+                      {expandedTrade === t.id && t.ai_reasoning && (
+                        <div className="mt-1.5 px-2 py-2 rounded-lg bg-primary/[0.04] border border-primary/10 space-y-2">
+                          <p className="text-[10px] text-foreground/35 font-semibold">🤖 AI 开仓理由</p>
+                          <p className="text-[11px] text-foreground/60 leading-relaxed">{t.ai_reasoning}</p>
                           {t.ai_models_consensus && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {(t.ai_models_consensus as any[]).filter((m: any) => m.reasoning).map((m: any, i: number) => (
-                                <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded ${m.direction === "BULLISH" ? "text-green-400/60 bg-green-500/8" : m.direction === "BEARISH" ? "text-red-400/60 bg-red-500/8" : "text-foreground/30 bg-white/[0.04]"}`}>
-                                  {m.model} {m.direction === "BULLISH" ? "↑" : m.direction === "BEARISH" ? "↓" : "—"} {m.confidence}%
-                                </span>
-                              ))}
-                            </div>
+                            <>
+                              <p className="text-[10px] text-foreground/35 font-semibold mt-2">模型共识</p>
+                              <div className="space-y-1.5">
+                                {(t.ai_models_consensus as any[]).map((m: any, i: number) => (
+                                  <div key={i} className={`px-2 py-1.5 rounded-lg border ${m.direction === "BULLISH" ? "border-green-500/15 bg-green-500/[0.04]" : m.direction === "BEARISH" ? "border-red-500/15 bg-red-500/[0.04]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[11px] font-bold text-foreground/60">{m.model}</span>
+                                      <span className={`text-[10px] font-bold ${m.direction === "BULLISH" ? "text-green-400" : m.direction === "BEARISH" ? "text-red-400" : "text-foreground/40"}`}>
+                                        {m.direction === "BULLISH" ? "↑ 看涨" : m.direction === "BEARISH" ? "↓ 看跌" : "— 中性"} {m.confidence}%
+                                      </span>
+                                    </div>
+                                    {m.reasoning && <p className="text-[10px] text-foreground/40 mt-1">{m.reasoning}</p>}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
                           )}
                         </div>
+                      )}
+                      {expandedTrade !== t.id && t.ai_reasoning && (
+                        <p className="text-[9px] text-purple-400/40 mt-0.5">点击查看 AI 分析详情</p>
                       )}
                     </div>
                   );
