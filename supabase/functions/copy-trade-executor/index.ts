@@ -551,6 +551,78 @@ async function dydxOpenPosition(
   };
 }
 
+// ─── Aster DEX Futures (Binance-compatible API) ─────────────
+
+const ASTER_FUTURES_BASE = "https://fapi.asterdex.com";
+
+async function asterFuturesRequest(
+  method: string, path: string, params: Record<string, string>,
+  apiKey: string, apiSecret: string
+): Promise<any> {
+  params.timestamp = Date.now().toString();
+  params.recvWindow = "5000";
+  const qs = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
+  const signature = await binanceSign(qs, apiSecret); // same HMAC-SHA256
+  const url = `${ASTER_FUTURES_BASE}${path}?${qs}&signature=${signature}`;
+
+  const res = await fetch(url, {
+    method,
+    headers: { "X-MBX-APIKEY": apiKey },
+  });
+  const data = await res.json();
+  if (data.code && data.code !== 200) {
+    throw new Error(`Aster error ${data.code}: ${data.msg}`);
+  }
+  return data;
+}
+
+async function asterOpenPosition(
+  apiKey: string, apiSecret: string,
+  symbol: string, side: "LONG" | "SHORT", sizeUsd: number,
+  leverage: number, stopLoss: number, takeProfit: number, price: number
+): Promise<ExchangeOrder> {
+  const sym = symbol.replace("-", "");
+
+  // Set leverage
+  try {
+    await asterFuturesRequest("POST", "/fapi/v1/leverage", {
+      symbol: sym, leverage: leverage.toString(),
+    }, apiKey, apiSecret);
+  } catch { /* may already be set */ }
+
+  const qty = (sizeUsd / price).toFixed(getDecimalPlaces(symbol));
+  const asterSide = side === "LONG" ? "BUY" : "SELL";
+
+  // Open market order
+  const order = await asterFuturesRequest("POST", "/fapi/v1/order", {
+    symbol: sym, side: asterSide, type: "MARKET", quantity: qty,
+  }, apiKey, apiSecret);
+
+  // Set SL
+  try {
+    await asterFuturesRequest("POST", "/fapi/v1/order", {
+      symbol: sym, side: side === "LONG" ? "SELL" : "BUY",
+      type: "STOP_MARKET", stopPrice: stopLoss.toFixed(2), closePosition: "true",
+    }, apiKey, apiSecret);
+  } catch { /* skip */ }
+
+  // Set TP
+  try {
+    await asterFuturesRequest("POST", "/fapi/v1/order", {
+      symbol: sym, side: side === "LONG" ? "SELL" : "BUY",
+      type: "TAKE_PROFIT_MARKET", stopPrice: takeProfit.toFixed(2), closePosition: "true",
+    }, apiKey, apiSecret);
+  } catch { /* skip */ }
+
+  return {
+    orderId: String(order.orderId),
+    status: order.status || "FILLED",
+    filledPrice: parseFloat(order.avgPrice || order.price || "0"),
+    filledQty: parseFloat(order.executedQty || "0"),
+    raw: order,
+  };
+}
+
 function getDecimalPlaces(symbol: string): number {
   const m: Record<string, number> = {
     "BTCUSDT": 3, "ETHUSDT": 3, "SOLUSDT": 1, "BNBUSDT": 2,
@@ -580,6 +652,8 @@ async function executeOnExchange(
       return hyperliquidOpenPosition(apiKey, apiSecret, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     case "dydx":
       return dydxOpenPosition(apiKey, apiSecret, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
+    case "aster":
+      return asterOpenPosition(apiKey, apiSecret, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     default:
       throw new Error(`Unknown exchange: ${exchange}`);
   }

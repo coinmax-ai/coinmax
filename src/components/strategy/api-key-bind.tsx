@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-type SupportedExchange = "binance" | "bybit" | "okx" | "bitget" | "hyperliquid" | "dydx";
+type SupportedExchange = "binance" | "bybit" | "okx" | "bitget" | "hyperliquid" | "dydx" | "aster";
 
 interface StoredKey {
   id: string;
@@ -35,6 +35,7 @@ const EXCHANGES: Array<{
   { id: "bitget", name: "Bitget", icon: "◆", needsPassphrase: true, hasTestnet: false },
   { id: "hyperliquid", name: "HyperLiquid", icon: "H", needsPassphrase: false, hasTestnet: true },
   { id: "dydx", name: "dYdX v4", icon: "D", needsPassphrase: false, hasTestnet: true },
+  { id: "aster", name: "Aster DEX", icon: "✦", needsPassphrase: false, hasTestnet: true },
 ];
 
 export function ApiKeyBind({ userId }: { userId?: string }) {
