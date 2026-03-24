@@ -359,6 +359,13 @@ export default function AdminAITrades() {
     };
   }, [openTrades, signals, globalStats, prices]);
 
+  // Parse ai_models_consensus (may be string or array)
+  const parseConsensus = (t: PaperTrade): any[] => {
+    if (!t.ai_models_consensus) return [];
+    if (Array.isArray(t.ai_models_consensus)) return t.ai_models_consensus;
+    try { return JSON.parse(t.ai_models_consensus as any); } catch { return []; }
+  };
+
   // Filter open trades by asset + model
   const filteredOpen = useMemo(() => {
     if (!openTrades) return [];
@@ -366,8 +373,7 @@ export default function AdminAITrades() {
     if (assetFilter !== "全部") filtered = filtered.filter(t => t.asset === assetFilter);
     if (modelFilter !== "全部") {
       filtered = filtered.filter(t => {
-        const consensus = t.ai_models_consensus as any[] | null;
-        if (!consensus) return false;
+        const consensus = parseConsensus(t);
         return consensus.some((m: any) => m.model === modelFilter);
       });
     }
@@ -516,33 +522,47 @@ export default function AdminAITrades() {
                         <span>TP: {formatPrice(t.take_profit)}</span>
                       </div>
                       {/* AI Reasoning — click to expand */}
-                      {expandedTrade === t.id && t.ai_reasoning && (
-                        <div className="mt-1.5 px-2 py-2 rounded-lg bg-primary/[0.04] border border-primary/10 space-y-2">
-                          <p className="text-[10px] text-foreground/35 font-semibold">🤖 AI 开仓理由</p>
-                          <p className="text-[11px] text-foreground/60 leading-relaxed">{t.ai_reasoning}</p>
-                          {t.ai_models_consensus && (
-                            <>
-                              <p className="text-[10px] text-foreground/35 font-semibold mt-2">模型共识</p>
-                              <div className="space-y-1.5">
-                                {(t.ai_models_consensus as any[]).map((m: any, i: number) => (
-                                  <div key={i} className={`px-2 py-1.5 rounded-lg border ${m.direction === "BULLISH" ? "border-green-500/15 bg-green-500/[0.04]" : m.direction === "BEARISH" ? "border-red-500/15 bg-red-500/[0.04]" : "border-white/[0.06] bg-white/[0.02]"}`}>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[11px] font-bold text-foreground/60">{m.model}</span>
-                                      <span className={`text-[10px] font-bold ${m.direction === "BULLISH" ? "text-green-400" : m.direction === "BEARISH" ? "text-red-400" : "text-foreground/40"}`}>
-                                        {m.direction === "BULLISH" ? "↑ 看涨" : m.direction === "BEARISH" ? "↓ 看跌" : "— 中性"} {m.confidence}%
-                                      </span>
+                      {(() => {
+                        const models = parseConsensus(t);
+                        return (
+                          <>
+                            {expandedTrade === t.id && (t.ai_reasoning || models.length > 0) && (
+                              <div className="mt-1.5 px-2 py-2 rounded-lg bg-primary/[0.04] border border-primary/10 space-y-2" onClick={e => e.stopPropagation()}>
+                                <p className="text-[10px] text-foreground/35 font-semibold">🤖 AI 开仓理由</p>
+                                {t.ai_reasoning && <p className="text-[11px] text-foreground/60 leading-relaxed">{t.ai_reasoning}</p>}
+                                {models.length > 0 && (
+                                  <>
+                                    <p className="text-[10px] text-foreground/35 font-semibold mt-2">模型共识 ({models.filter((m: any) => m.direction === "BULLISH").length} 看涨 / {models.filter((m: any) => m.direction === "BEARISH").length} 看跌 / {models.filter((m: any) => m.direction === "NEUTRAL").length} 中性)</p>
+                                    <div className="space-y-1.5">
+                                      {models.map((m: any, i: number) => (
+                                        <div key={i} className={`px-2 py-1.5 rounded-lg border ${m.direction === "BULLISH" ? "border-green-500/15 bg-green-500/[0.04]" : m.direction === "BEARISH" ? "border-red-500/15 bg-red-500/[0.04]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-foreground/60">{m.model}</span>
+                                            <span className={`text-[10px] font-bold ${m.direction === "BULLISH" ? "text-green-400" : m.direction === "BEARISH" ? "text-red-400" : "text-foreground/40"}`}>
+                                              {m.direction === "BULLISH" ? "↑ 看涨" : m.direction === "BEARISH" ? "↓ 看跌" : "— 中性"} {m.confidence}%
+                                            </span>
+                                          </div>
+                                          {m.reasoning && <p className="text-[10px] text-foreground/40 mt-1 leading-relaxed">{m.reasoning}</p>}
+                                        </div>
+                                      ))}
                                     </div>
-                                    {m.reasoning && <p className="text-[10px] text-foreground/40 mt-1">{m.reasoning}</p>}
-                                  </div>
-                                ))}
+                                  </>
+                                )}
                               </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      {expandedTrade !== t.id && t.ai_reasoning && (
-                        <p className="text-[9px] text-purple-400/40 mt-0.5">点击查看 AI 分析详情</p>
-                      )}
+                            )}
+                            {expandedTrade !== t.id && (t.ai_reasoning || models.length > 0) && (
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-[9px] text-purple-400/40">点击查看 AI 分析详情</p>
+                                <div className="flex gap-0.5">
+                                  {models.slice(0, 5).map((m: any, i: number) => (
+                                    <span key={i} className={`w-1.5 h-1.5 rounded-full ${m.direction === "BULLISH" ? "bg-green-500/60" : m.direction === "BEARISH" ? "bg-red-500/60" : "bg-foreground/20"}`} title={`${m.model}: ${m.direction}`} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })}
