@@ -428,13 +428,20 @@ export default function AdminAITrades() {
         </div>
         {/* Model filter — scrollable */}
         <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-          {["全部", "GPT-4o", "Claude", "Gemini", "DeepSeek", "Llama", "Agent"].map((m) => (
-            <button key={m} onClick={() => setModelFilter(m === "Agent" ? "openclaw-agent" : m === "全部" ? "全部" : m)}
+          {[
+            { label: "全部模型", value: "全部" },
+            { label: "GPT-4o", value: "GPT-4o" },
+            { label: "Claude", value: "Claude" },
+            { label: "Gemini", value: "Gemini" },
+            { label: "DeepSeek", value: "DeepSeek" },
+            { label: "Llama", value: "Llama" },
+            { label: "Agent", value: "openclaw-agent" },
+          ].map((m) => (
+            <button key={m.value} onClick={() => setModelFilter(m.value)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg shrink-0 transition-all ${
-                (m === "Agent" ? modelFilter === "openclaw-agent" : m === "全部" ? modelFilter === "全部" : modelFilter === m)
-                  ? "bg-purple-500/15 text-purple-400" : "text-foreground/30 hover:text-foreground/50"
+                modelFilter === m.value ? "bg-purple-500/15 text-purple-400" : "text-foreground/30 hover:text-foreground/50"
               }`}
-            >🤖 {m}</button>
+            >{m.label}</button>
           ))}
         </div>
         {/* Tabs — scrollable */}
