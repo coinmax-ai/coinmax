@@ -7,6 +7,8 @@
  * 3. Live signals & positions
  * 4. Risk control settings
  * 5. Exchange API binding
+ *
+ * User identity: wallet_address → profiles.id (UUID) → user_risk_config / user_exchange_keys
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -31,8 +33,9 @@ interface RiskOverrides {
 
 export default function CopyTradingPage() {
   const account = useActiveAccount();
-  const userId = account?.address || "";
+  const walletAddress = account?.address || "";
 
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("config");
   const [selectedModels, setSelectedModels] = useState<string[]>(["gpt-4o", "claude-haiku", "gemini-flash"]);
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
@@ -42,13 +45,29 @@ export default function CopyTradingPage() {
   const [configLoaded, setConfigLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Resolve wallet_address → profiles.id (UUID)
+  useEffect(() => {
+    if (!walletAddress) {
+      setProfileId(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("id")
+      .eq("wallet_address", walletAddress)
+      .single()
+      .then(({ data }) => {
+        setProfileId(data?.id || null);
+      });
+  }, [walletAddress]);
+
   // Load persisted model/strategy selections from DB
   useEffect(() => {
-    if (!userId) return;
+    if (!profileId) return;
     supabase
       .from("user_risk_config")
       .select("selected_models, selected_strategies")
-      .eq("user_id", userId)
+      .eq("user_id", profileId)
       .single()
       .then(({ data }) => {
         if (data) {
@@ -57,15 +76,15 @@ export default function CopyTradingPage() {
         }
         setConfigLoaded(true);
       });
-  }, [userId]);
+  }, [profileId]);
 
   // Auto-save model/strategy selections when changed (debounced)
   useEffect(() => {
-    if (!userId || !configLoaded) return;
+    if (!profileId || !configLoaded) return;
     const timer = setTimeout(async () => {
       setSaving(true);
       await supabase.from("user_risk_config").upsert({
-        user_id: userId,
+        user_id: profileId,
         selected_models: selectedModels,
         selected_strategies: selectedStrategies,
         updated_at: new Date().toISOString(),
@@ -73,7 +92,7 @@ export default function CopyTradingPage() {
       setSaving(false);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [selectedModels, selectedStrategies, userId, configLoaded]);
+  }, [selectedModels, selectedStrategies, profileId, configLoaded]);
 
   const handleApplyParams = useCallback((params: {
     positionSizeUsd: number;
@@ -108,7 +127,7 @@ export default function CopyTradingPage() {
             <div>
               <h1 className="text-sm font-bold text-foreground/80">CoinMax 跟单交易</h1>
               <p className="text-[10px] text-foreground/40 mt-0.5">
-                {userId
+                {walletAddress
                   ? `${selectedModels.length} 个模型 · ${selectedStrategies.length} 个策略`
                   : "请先连接钱包"
                 }
@@ -118,20 +137,20 @@ export default function CopyTradingPage() {
               {saving && <span className="text-[9px] text-foreground/20 animate-pulse">保存中</span>}
               <div className={cn(
                 "px-2.5 py-1 rounded-lg text-[10px] font-bold",
-                !userId
+                !walletAddress
                   ? "bg-red-500/10 text-red-400"
                   : selectedModels.length > 0 && selectedStrategies.length > 0
                     ? "bg-green-500/10 text-green-400"
                     : "bg-yellow-500/10 text-yellow-400"
               )}>
-                {!userId ? "未连接" : selectedModels.length > 0 && selectedStrategies.length > 0 ? "已配置" : "待配置"}
+                {!walletAddress ? "未连接" : selectedModels.length > 0 && selectedStrategies.length > 0 ? "已配置" : "待配置"}
               </div>
             </div>
           </div>
 
           {/* Wallet address */}
-          {userId && (
-            <p className="text-[9px] text-foreground/15 font-mono mt-1 truncate">{userId}</p>
+          {walletAddress && (
+            <p className="text-[9px] text-foreground/15 font-mono mt-1 truncate">{walletAddress}</p>
           )}
 
           {/* Tabs */}
@@ -155,7 +174,7 @@ export default function CopyTradingPage() {
       </div>
 
       {/* Not connected warning */}
-      {!userId && (
+      {!walletAddress && (
         <div className="max-w-lg mx-auto px-4 pt-4">
           <div className="rounded-xl bg-yellow-500/8 border border-yellow-500/15 px-4 py-3">
             <p className="text-xs text-yellow-400/80">请先在首页连接钱包，才能保存跟单设置和绑定交易所。</p>
@@ -215,10 +234,10 @@ export default function CopyTradingPage() {
         )}
 
         {activeTab === "risk" && (
-          <RiskControlPanel userId={userId || undefined} initialOverrides={riskOverrides} />
+          <RiskControlPanel userId={profileId || undefined} initialOverrides={riskOverrides} />
         )}
         {activeTab === "keys" && (
-          <ApiKeyBind userId={userId || undefined} />
+          <ApiKeyBind userId={profileId || undefined} />
         )}
       </div>
     </div>
