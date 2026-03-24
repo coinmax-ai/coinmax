@@ -14,7 +14,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP"];
+// Top 4 assets only — 5 models × 4 assets = 20 calls fits in 55s
+const ASSETS = ["BTC", "ETH", "SOL", "BNB"];
 
 const CG_IDS: Record<string, string> = {
   BTC: "bitcoin", ETH: "ethereum", SOL: "solana", BNB: "binancecoin",
@@ -222,6 +223,36 @@ async function callDeepSeek(prompt: string): Promise<AIResponse | null> {
   } catch (e: any) { throw e; }
 }
 
+async function callLlama(prompt: string): Promise<AIResponse | null> {
+  const accountId = Deno.env.get("CF_ACCOUNT_ID");
+  const token = Deno.env.get("CF_AI_TOKEN");
+  if (!accountId || !token) return null;
+  try {
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }], max_tokens: 200, temperature: 0.3 }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!res.ok) throw new Error(`Llama ${res.status}: ${await res.text().catch(() => "")}`);
+    const data = await res.json();
+    const text = data.result?.response?.trim();
+    if (!text) throw new Error("empty response");
+    const json = JSON.parse(text.replace(/```json\n?|\n?```/g, ""));
+    return {
+      model: "Llama",
+      direction: json.direction || "NEUTRAL",
+      confidence: Math.min(100, Math.max(0, json.confidence || 50)),
+      reasoning: json.reasoning || "",
+      key_levels: { support: json.support, resistance: json.resistance },
+      sentiment: json.sentiment || "neutral",
+    };
+  } catch (e: any) { throw e; }
+}
+
 // ── Main ──────────────────────────────────────────
 
 serve(async (req) => {
@@ -245,16 +276,17 @@ serve(async (req) => {
       const prompt = buildPrompt(asset, marketData);
 
       // Call all 3 models in parallel
-      // Call all 4 models in parallel with error tracking
+      // Call all 5 models in parallel with error tracking
       const calls = await Promise.allSettled([
         callGPT4o(prompt),
         callClaude(prompt),
         callGemini(prompt),
         callDeepSeek(prompt),
+        callLlama(prompt),
       ]);
       const responses: AIResponse[] = [];
       calls.forEach((r, i) => {
-        const name = ["GPT-4o", "Claude", "Gemini", "DeepSeek"][i];
+        const name = ["GPT-4o", "Claude", "Gemini", "DeepSeek", "Llama"][i];
         if (r.status === "fulfilled" && r.value) {
           responses.push(r.value);
         } else {

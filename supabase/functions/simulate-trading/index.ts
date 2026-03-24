@@ -43,6 +43,7 @@ const AI_MODELS = [
   { name: "Claude",   defaultWeight: 0.8 },
   { name: "Gemini",   defaultWeight: 0.5 },
   { name: "DeepSeek", defaultWeight: 0.7 },
+  { name: "Llama",    defaultWeight: 0.5 },
 ];
 
 const PREDICTION_TIMEFRAMES = [
@@ -1471,6 +1472,16 @@ serve(async (req) => {
         const size = parseFloat((cfg.positionSize / currentPrice).toFixed(8));
 
         const tradeId = crypto.randomUUID();
+        // Build AI reasoning from real model analyses
+        const modelConsensus = votes.map(v => ({
+          model: v.model, direction: v.direction, confidence: v.confidence,
+          reasoning: aiAnalysisMap[`${asset}_${v.model}`]?.reasoning || null,
+        }));
+        const aiReasoning = modelConsensus
+          .filter(m => m.reasoning)
+          .map(m => `[${m.model}] ${m.direction} ${m.confidence}%: ${m.reasoning}`)
+          .join(" | ") || sig.reason;
+
         const { error: tErr } = await supabase.from("paper_trades").insert({
           id: tradeId, signal_id: signalId, asset, side,
           entry_price: currentPrice, size,
@@ -1478,6 +1489,8 @@ serve(async (req) => {
           stop_loss: parseFloat(sl.toFixed(2)),
           take_profit: parseFloat(tp.toFixed(2)),
           strategy_type: sig.strategy,
+          ai_reasoning: aiReasoning,
+          ai_models_consensus: modelConsensus,
           status: "OPEN", opened_at: new Date().toISOString(),
         });
         if (tErr) {
