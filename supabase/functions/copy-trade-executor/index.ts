@@ -162,6 +162,200 @@ async function binanceClosePosition(
   };
 }
 
+// ─── Bybit V5 Futures ───────────────────────────────────────
+
+async function bybitSign(timestamp: string, apiKey: string, secret: string, body: string): Promise<string> {
+  const payload = `${timestamp}${apiKey}5000${body}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function bybitRequest(method: string, path: string, body: any, apiKey: string, apiSecret: string): Promise<any> {
+  const timestamp = Date.now().toString();
+  const bodyStr = method === "GET" ? "" : JSON.stringify(body);
+  const sign = await bybitSign(timestamp, apiKey, apiSecret, bodyStr);
+
+  const url = `https://api.bybit.com${path}${method === "GET" && body ? "?" + new URLSearchParams(body).toString() : ""}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      "X-BAPI-API-KEY": apiKey,
+      "X-BAPI-SIGN": sign,
+      "X-BAPI-TIMESTAMP": timestamp,
+      "X-BAPI-RECV-WINDOW": "5000",
+      "Content-Type": "application/json",
+    },
+    body: method === "GET" ? undefined : bodyStr,
+  });
+  const data = await res.json();
+  if (data.retCode !== 0) throw new Error(`Bybit ${data.retCode}: ${data.retMsg}`);
+  return data.result;
+}
+
+async function bybitOpenPosition(
+  apiKey: string, apiSecret: string,
+  symbol: string, side: "LONG" | "SHORT", sizeUsd: number,
+  leverage: number, stopLoss: number, takeProfit: number, price: number
+): Promise<ExchangeOrder> {
+  const sym = symbol.replace("-", "");
+
+  // Set leverage
+  try {
+    await bybitRequest("POST", "/v5/position/set-leverage", {
+      category: "linear", symbol: sym,
+      buyLeverage: leverage.toString(), sellLeverage: leverage.toString(),
+    }, apiKey, apiSecret);
+  } catch { /* may already be set */ }
+
+  const qty = (sizeUsd / price).toFixed(getDecimalPlaces(symbol));
+  const order = await bybitRequest("POST", "/v5/order/create", {
+    category: "linear",
+    symbol: sym,
+    side: side === "LONG" ? "Buy" : "Sell",
+    orderType: "Market",
+    qty,
+    stopLoss: stopLoss.toFixed(2),
+    takeProfit: takeProfit.toFixed(2),
+    tpslMode: "Full",
+  }, apiKey, apiSecret);
+
+  return {
+    orderId: order.orderId,
+    status: "FILLED",
+    filledPrice: price,
+    filledQty: parseFloat(qty),
+    raw: order,
+  };
+}
+
+// ─── OKX V5 Futures ─────────────────────────────────────────
+
+async function okxSign(timestamp: string, method: string, path: string, body: string, secret: string): Promise<string> {
+  const payload = `${timestamp}${method}${path}${body}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function okxRequest(method: string, path: string, body: any, apiKey: string, apiSecret: string, passphrase: string): Promise<any> {
+  const timestamp = new Date().toISOString();
+  const bodyStr = body ? JSON.stringify(body) : "";
+  const sign = await okxSign(timestamp, method, path, bodyStr, apiSecret);
+
+  const res = await fetch(`https://www.okx.com${path}`, {
+    method,
+    headers: {
+      "OK-ACCESS-KEY": apiKey,
+      "OK-ACCESS-SIGN": sign,
+      "OK-ACCESS-TIMESTAMP": timestamp,
+      "OK-ACCESS-PASSPHRASE": passphrase,
+      "Content-Type": "application/json",
+    },
+    body: method === "GET" ? undefined : bodyStr,
+  });
+  const data = await res.json();
+  if (data.code !== "0") throw new Error(`OKX ${data.code}: ${data.msg}`);
+  return data.data;
+}
+
+async function okxOpenPosition(
+  apiKey: string, apiSecret: string, passphrase: string,
+  symbol: string, side: "LONG" | "SHORT", sizeUsd: number,
+  leverage: number, stopLoss: number, takeProfit: number, price: number
+): Promise<ExchangeOrder> {
+  const instId = symbol.replace("-", "-") + "-SWAP"; // e.g. BTC-USDT-SWAP
+
+  // Set leverage
+  try {
+    await okxRequest("POST", "/api/v5/account/set-leverage", {
+      instId, lever: leverage.toString(), mgnMode: "cross",
+      posSide: side === "LONG" ? "long" : "short",
+    }, apiKey, apiSecret, passphrase);
+  } catch { /* skip */ }
+
+  const sz = (sizeUsd / price).toFixed(getDecimalPlaces(symbol));
+  const result = await okxRequest("POST", "/api/v5/trade/order", {
+    instId,
+    tdMode: "cross",
+    side: side === "LONG" ? "buy" : "sell",
+    posSide: side === "LONG" ? "long" : "short",
+    ordType: "market",
+    sz,
+    slTriggerPx: stopLoss.toFixed(2),
+    slOrdPx: "-1",
+    tpTriggerPx: takeProfit.toFixed(2),
+    tpOrdPx: "-1",
+  }, apiKey, apiSecret, passphrase);
+
+  return {
+    orderId: result?.[0]?.ordId || "unknown",
+    status: "FILLED",
+    filledPrice: price,
+    filledQty: parseFloat(sz),
+    raw: result,
+  };
+}
+
+// ─── Bitget Futures ─────────────────────────────────────────
+
+async function bitgetSign(timestamp: string, method: string, path: string, body: string, secret: string): Promise<string> {
+  const payload = `${timestamp}${method}${path}${body}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function bitgetOpenPosition(
+  apiKey: string, apiSecret: string, passphrase: string,
+  symbol: string, side: "LONG" | "SHORT", sizeUsd: number,
+  leverage: number, stopLoss: number, takeProfit: number, price: number
+): Promise<ExchangeOrder> {
+  const sym = symbol.replace("-", "") + "_UMCBL"; // e.g. BTCUSDT_UMCBL
+  const timestamp = Date.now().toString();
+  const sz = (sizeUsd / price).toFixed(getDecimalPlaces(symbol));
+
+  const orderBody = {
+    symbol: sym,
+    marginCoin: "USDT",
+    side: side === "LONG" ? "open_long" : "open_short",
+    orderType: "market",
+    size: sz,
+    leverage: leverage.toString(),
+    presetStopLossPrice: stopLoss.toFixed(2),
+    presetTakeProfitPrice: takeProfit.toFixed(2),
+  };
+
+  const path = "/api/v2/mix/order/place-order";
+  const bodyStr = JSON.stringify(orderBody);
+  const sign = await bitgetSign(timestamp, "POST", path, bodyStr, apiSecret);
+
+  const res = await fetch(`https://api.bitget.com${path}`, {
+    method: "POST",
+    headers: {
+      "ACCESS-KEY": apiKey,
+      "ACCESS-SIGN": sign,
+      "ACCESS-TIMESTAMP": timestamp,
+      "ACCESS-PASSPHRASE": passphrase,
+      "Content-Type": "application/json",
+    },
+    body: bodyStr,
+  });
+  const data = await res.json();
+  if (data.code !== "00000") throw new Error(`Bitget ${data.code}: ${data.msg}`);
+
+  return {
+    orderId: data.data?.orderId || "unknown",
+    status: "FILLED",
+    filledPrice: price,
+    filledQty: parseFloat(sz),
+    raw: data.data,
+  };
+}
+
 function getDecimalPlaces(symbol: string): number {
   const m: Record<string, number> = {
     "BTCUSDT": 3, "ETHUSDT": 3, "SOLUSDT": 1, "BNBUSDT": 2,
@@ -182,10 +376,11 @@ async function executeOnExchange(
     case "binance":
       return binanceOpenPosition(apiKey, apiSecret, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     case "bybit":
+      return bybitOpenPosition(apiKey, apiSecret, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     case "okx":
+      return okxOpenPosition(apiKey, apiSecret, passphrase, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     case "bitget":
-      // Phase 3: implement these
-      throw new Error(`${exchange} not yet implemented`);
+      return bitgetOpenPosition(apiKey, apiSecret, passphrase, symbol, side, sizeUsd, leverage, stopLoss, takeProfit, price);
     case "hyperliquid":
     case "dydx":
       // Phase 4: on-chain exchanges
