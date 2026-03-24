@@ -37,12 +37,25 @@ print(f\"Fear & Greed Index: {v['value']} ({v['value_classification']})\")"
 ## Fetch Latest Crypto News
 
 ```bash
-curl -s "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=popular" | python3 -c "
+curl -s "https://api.coingecko.com/api/v3/status_updates?per_page=5" | python3 -c "
 import json, sys
-d = json.load(sys.stdin)
-for n in d.get('Data', [])[:5]:
-    print(f\"- {n['title']} ({n['source']})\")
+try:
+    d = json.load(sys.stdin)
+    for n in d.get('status_updates', [])[:5]:
+        print(f\"- {n.get('user_title','')}: {n.get('description','')[:80]}\")
+except: print('News unavailable')
 "
+```
+
+```bash
+curl -s "https://rss.app/feeds/v1.1/tbbTMVzfpYDVeSVG.json" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    for n in d.get('items', [])[:5]:
+        print(f\"- {n.get('title','')}\")
+except: print('RSS unavailable')
+" 2>/dev/null || curl -s "https://feeds.feedburner.com/CoinDesk" 2>/dev/null | head -20
 ```
 
 Run all three commands, then analyze the data to pick the best trading opportunities.
