@@ -21,6 +21,7 @@ import AdminProviders from "./pages/admin-providers";
 import AdminAIProgress from "./pages/admin-ai-progress";
 import AdminAITrades from "./pages/admin-ai-trades";
 import AdminHealth from "./pages/admin-health";
+import AdminCopyTrading from "./pages/admin-copy-trading";
 
 function NoPermission() {
   return (
@@ -142,6 +143,9 @@ function AdminLayout() {
               </Route>
               <Route path="/admin/health">
                 <ProtectedRoute permission="ai-accuracy"><AdminHealth /></ProtectedRoute>
+              </Route>
+              <Route path="/admin/copy-trading">
+                <ProtectedRoute permission="ai-accuracy"><AdminCopyTrading /></ProtectedRoute>
               </Route>
               <Route path="/admin/providers">
                 <ProtectedRoute permission="providers"><AdminProviders /></ProtectedRoute>

@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, GitBranch, Wallet, Server, TrendingUp, KeyRound, LogOut, Menu, X, ScrollText, FileCode2, ShieldCheck, Banknote, Brain, Radio, Activity, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Users, GitBranch, Wallet, Server, TrendingUp, KeyRound, LogOut, Menu, X, ScrollText, FileCode2, ShieldCheck, Banknote, Brain, Radio, Activity, HeartPulse, Link2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState, createContext, useContext } from "react";
 import { useAdminAuth } from "@/admin/admin-auth";
@@ -27,6 +27,7 @@ export const navItems: NavItem[] = [
   { path: "/admin/ai-progress", icon: TrendingUp, label: "AI训练进步", permission: "ai-accuracy" },
   { path: "/admin/ai-trades", icon: Activity, label: "AI模拟开单", permission: "ai-accuracy" },
   { path: "/admin/health", icon: HeartPulse, label: "环境健康", permission: "ai-accuracy" },
+  { path: "/admin/copy-trading", icon: Link2, label: "跟单管理", permission: "ai-accuracy" },
   { path: "/admin/providers", icon: Radio, label: "策略商", permission: "providers" },
   { path: "/admin/admins", icon: ShieldCheck, label: "管理员", permission: "admins" },
 ];
