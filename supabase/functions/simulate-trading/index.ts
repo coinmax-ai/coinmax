@@ -36,6 +36,13 @@ interface SimConfig {
   cooldownMin: number;
   strategies: string[];
   assets: string[];
+  maxSlPct: number;
+  minTpPct: number;
+  maxHoldHours: number;
+  tradingStyle: string;
+  trailingStopEnabled: boolean;
+  trailingStopTriggerPct: number;
+  minConsensusModels: number;
 }
 
 const AI_MODELS = [
@@ -1239,6 +1246,13 @@ serve(async (req) => {
       cooldownMin: cfgRow?.cooldown_min ?? DEFAULT_COOLDOWN_MIN,
       strategies: cfgRow?.enabled_strategies ?? DEFAULT_STRATEGIES,
       assets: cfgRow?.enabled_assets ?? DEFAULT_ASSETS,
+      maxSlPct: cfgRow?.max_sl_pct ?? 0.02,
+      minTpPct: cfgRow?.min_tp_pct ?? 0.03,
+      maxHoldHours: cfgRow?.max_hold_hours ?? 48,
+      tradingStyle: cfgRow?.trading_style ?? "balanced",
+      trailingStopEnabled: cfgRow?.trailing_stop_enabled ?? true,
+      trailingStopTriggerPct: cfgRow?.trailing_stop_trigger_pct ?? 0.5,
+      minConsensusModels: cfgRow?.min_consensus_models ?? 2,
     };
     results.config = cfg;
 
@@ -1277,7 +1291,8 @@ serve(async (req) => {
 
         // Determine time limit based on strategy
         // Generous time limits — let strategies play out
-        const stratTimeLimit = t.strategy_type === "scalping" ? 8 : t.strategy_type === "grid" ? 24 : t.strategy_type === "avellaneda" ? 24 : t.strategy_type === "mean_reversion" ? 24 : t.strategy_type === "pattern" ? 24 : t.strategy_type === "breakout" ? 48 : t.strategy_type === "momentum" ? 48 : t.strategy_type === "swing" ? 72 : t.strategy_type === "dca" ? 168 : 48;
+        // Use global maxHoldHours from config (adjustable by admin/Mac Mini)
+        const stratTimeLimit = cfg.maxHoldHours;
         const timeLimitMs = stratTimeLimit * 3600_000;
 
         let cr: string | null = null;
@@ -1290,19 +1305,21 @@ serve(async (req) => {
         }
         if (!cr && Date.now() - new Date(t.opened_at).getTime() > timeLimitMs) cr = "TIME_LIMIT";
 
-        // Trailing stop: if in profit > 50% of TP distance, tighten SL to breakeven
-        if (!cr && t.side === "LONG" && cp > t.entry_price) {
+        // Trailing stop: configurable trigger (default 50% → now from cfg.trailingStopTriggerPct)
+        const tsEnabled = cfg.trailingStopEnabled;
+        const tsTrigger = cfg.trailingStopTriggerPct;
+        if (!cr && tsEnabled && t.side === "LONG" && cp > t.entry_price) {
           const tpDist = t.take_profit - t.entry_price;
           const curProfit = cp - t.entry_price;
-          if (curProfit > tpDist * 0.5 && t.stop_loss < t.entry_price) {
+          if (curProfit > tpDist * tsTrigger && t.stop_loss < t.entry_price) {
             // Move SL to breakeven + small buffer
             const newSl = t.entry_price * 1.001;
             await supabase.from("paper_trades").update({ stop_loss: parseFloat(newSl.toFixed(2)) }).eq("id", t.id);
           }
-        } else if (!cr && t.side === "SHORT" && cp < t.entry_price) {
+        } else if (!cr && tsEnabled && t.side === "SHORT" && cp < t.entry_price) {
           const tpDist = t.entry_price - t.take_profit;
           const curProfit = t.entry_price - cp;
-          if (curProfit > tpDist * 0.5 && t.stop_loss > t.entry_price) {
+          if (curProfit > tpDist * tsTrigger && t.stop_loss > t.entry_price) {
             const newSl = t.entry_price * 0.999;
             await supabase.from("paper_trades").update({ stop_loss: parseFloat(newSl.toFixed(2)) }).eq("id", t.id);
           }
@@ -1528,10 +1545,9 @@ serve(async (req) => {
         else if (aiSupport === 2) sig.confidence *= 0.9;
 
         const side = sig.side;
-        // Hard cap: SL max 2%, TP min 3%, leverage max 5x
-        // This ensures per-trade max loss = 2% * 5x = 10% of position
-        const cappedSlPct = Math.min(sig.slPct, 0.02);
-        const cappedTpPct = Math.max(sig.tpPct, 0.03);
+        // Configurable caps from simulation_config (DB driven, adjustable by Mac Mini / admin)
+        const cappedSlPct = Math.min(sig.slPct, cfg.maxSlPct);
+        const cappedTpPct = Math.max(sig.tpPct, cfg.minTpPct);
         const cappedLeverage = Math.min(sig.leverage, cfg.maxLeverage);
 
         const sl = side === "LONG"
