@@ -26,8 +26,8 @@ export function useMaPrice() {
       }
     },
     enabled: !!client,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 0,
+    refetchInterval: 3_000,
   });
 
   // Fallback: DB config price
