@@ -7,8 +7,9 @@ import { readContract, prepareContractCall, waitForReceipt } from "thirdweb";
 import { approve } from "thirdweb/extensions/erc20";
 import { useQuery } from "@tanstack/react-query";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
-import { getMATokenContract, getPriceOracleContract, getUsdtContract, MA_TOKEN_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
+import { getMATokenContract, getUsdtContract, MA_TOKEN_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { transfer } from "thirdweb/extensions/erc20";
+import { useMaPrice } from "@/hooks/use-ma-price";
 import { createChart, ColorType, CrosshairMode, LineStyle, type UTCTimestamp } from "lightweight-charts";
 import { ProfileNav } from "@/components/profile-nav";
 import { queryClient } from "@/lib/queryClient";
@@ -244,20 +245,9 @@ function MASwap() {
     refetchInterval: 15000,
   });
 
-  const { data: maPriceRaw } = useQuery({
-    queryKey: ["ma-oracle-price"],
-    queryFn: async () => {
-      if (!client) return BigInt(300000);
-      try {
-        return await readContract({ contract: getPriceOracleContract(client), method: "function getPriceUnsafe() view returns (uint256)", params: [] });
-      } catch { return BigInt(300000); }
-    },
-    enabled: !!client,
-    refetchInterval: 30000,
-  });
+  const { price: maPrice } = useMaPrice();
 
   const maBalance = Number(maBalanceRaw || BigInt(0)) / 1e18;
-  const maPrice = Number(maPriceRaw || BigInt(300000)) / 1e6;
   const swapQuota = maBalance / 2;
   const inputAmount = parseFloat(maAmount) || 0;
   const outputAmount = isSwapped ? inputAmount / maPrice : inputAmount * maPrice;
@@ -491,20 +481,7 @@ function MASwap() {
 
 export default function ProfileMAPage() {
   const [, navigate] = useLocation();
-  const { client } = useThirdwebClient();
-
-  const { data: priceRaw } = useQuery({
-    queryKey: ["ma-price-header"],
-    queryFn: async () => {
-      if (!client) return BigInt(300000);
-      try { return await readContract({ contract: getPriceOracleContract(client), method: "function getPriceUnsafe() view returns (uint256)", params: [] }); }
-      catch { return BigInt(300000); }
-    },
-    enabled: !!client,
-    refetchInterval: 30000,
-  });
-
-  const price = Number(priceRaw || BigInt(300000)) / 1e6;
+  const { price } = useMaPrice();
 
   return (
     <div className="min-h-screen pb-24 lg:pb-8 lg:pt-4" style={{ background: "#0a0a0a" }}>
