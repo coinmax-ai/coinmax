@@ -25,6 +25,7 @@ function MAPriceChart() {
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
   const [tf, setTf] = useState<"1H" | "4H" | "1D">("1H");
   const [chartMode, setChartMode] = useState<"candle" | "area">("area");
+  const { price: livePrice } = useMaPrice();
 
   const buildData = useCallback(() => {
     const now = Math.floor(Date.now() / 1000);
@@ -91,8 +92,17 @@ function MAPriceChart() {
         close: +c.toFixed(4),
       });
     }
+
+    // Force last candle close = live oracle price (unified across all timeframes)
+    if (data.length > 0 && livePrice > 0) {
+      const last = data[data.length - 1];
+      last.close = +livePrice.toFixed(4);
+      last.high = +Math.max(last.high, livePrice).toFixed(4);
+      last.low = +Math.min(last.low, livePrice).toFixed(4);
+    }
+
     return data;
-  }, [tf]);
+  }, [tf, livePrice]);
 
   useEffect(() => {
     const el = containerRef.current;
