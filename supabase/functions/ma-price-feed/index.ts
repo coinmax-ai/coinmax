@@ -115,7 +115,7 @@ serve(async () => {
       from: RELAYER_WALLET,
       calls: [{
         contractAddress: ORACLE_ADDRESS,
-        method: "function emergencySetPrice(uint256 _price)",
+        method: "function updatePrice(uint256 _newPrice)",
         params: [targetRaw.toString()],
       }],
     }),
