@@ -340,18 +340,59 @@ export default function Vault() {
         <Tabs defaultValue="deposit">
           <TabsList className="w-full bg-card border border-border">
             <TabsTrigger value="deposit" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-deposit">
-              {t("vault.depositTab")}
+              存入记录
             </TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-withdraw">
-              {t("vault.withdrawTab")}
+              赎回记录
             </TabsTrigger>
             <TabsTrigger value="yield" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-yield">
               {t("vault.yieldTab")}
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="deposit" className="mt-3">
+          <TabsContent value="deposit" className="mt-3 space-y-3">
             {walletAddress ? (
-              <TransactionTable walletAddress={walletAddress} type="DEPOSIT" />
+              <>
+                {/* Active positions summary */}
+                {activePositions.length > 0 && (
+                  <Card className="border-border bg-card">
+                    <CardContent className="p-4">
+                      <h4 className="text-sm font-semibold mb-2">当前锁仓</h4>
+                      <div className="space-y-2">
+                        {activePositions.map((pos) => {
+                          const planConfig = VAULT_PLANS[pos.planType as keyof typeof VAULT_PLANS];
+                          const start = new Date(pos.startDate!);
+                          const end = pos.endDate ? new Date(pos.endDate) : null;
+                          const now = new Date();
+                          const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400_000)) : 0;
+                          const isExpired = end ? now >= end : false;
+                          return (
+                            <div key={pos.id} className="flex items-center justify-between bg-muted/30 rounded-md px-3 py-2.5 text-xs">
+                              <div>
+                                <span className="font-semibold text-sm">${Number(pos.principal).toFixed(0)}</span>
+                                <span className="text-muted-foreground ml-2">{planConfig?.label || pos.planType}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={isExpired ? "text-green-400" : "text-yellow-400"}>
+                                  {isExpired ? "可赎回" : `${daysLeft}天后到期`}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-[10px] h-6 px-2"
+                                  onClick={() => { setSelectedPositionId(pos.id); setRedeemOpen(true); }}
+                                >
+                                  赎回
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                <TransactionTable walletAddress={walletAddress} type="VAULT_DEPOSIT" />
+              </>
             ) : (
               <Card className="border-border bg-card">
                 <CardContent className="p-4 text-center py-6 text-sm text-muted-foreground">{t("common.connectWalletToView")}</CardContent>
@@ -468,7 +509,7 @@ export default function Vault() {
           <Button
             variant="secondary"
             className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-4 h-9 sm:h-10"
-            onClick={() => toast({ title: t("common.comingSoon") })}
+            onClick={() => setRedeemOpen(true)}
             data-testid="button-redeem-vault"
           >
             <ArrowUpFromLine className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
@@ -523,7 +564,7 @@ export default function Vault() {
                   const principal = Number(pos.principal);
                   const yieldAmt = principal * Number(pos.dailyRate) * days;
                   const isEarly = pos.endDate && now < new Date(pos.endDate);
-                  const penalty = isEarly ? principal * 0.2 : 0;
+                  const penalty = isEarly ? principal * 0.20 : 0;
                   const netPrincipal = principal - penalty;
                   return (
                     <div className="bg-muted/30 rounded-md p-3 text-xs space-y-1">
