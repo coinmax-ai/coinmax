@@ -58,49 +58,55 @@ function TransactionTable({ walletAddress, type }: { walletAddress: string; type
 
   return (
     <Card className="border-border bg-card">
-      <CardContent className="p-4">
-        <div className="overflow-x-auto">
-        <div className="grid grid-cols-6 text-[12px] text-muted-foreground mb-2 font-medium gap-1 min-w-[400px]">
-          <span>{t("common.token")}</span><span>{t("common.amount")}</span><span>Chain</span><span>{t("common.txid")}</span><span>{t("common.status")}</span><span>{t("common.date")}</span>
-        </div>
-        <div className="space-y-1">
+      <CardContent className="p-3 sm:p-4">
+        <div className="space-y-2">
           {txs.map((tx, idx) => (
             <div
               key={tx.id}
-              className="grid grid-cols-6 text-xs py-2 border-b border-border/30 last:border-0 gap-1 min-w-[400px]"
+              className="rounded-lg bg-muted/20 px-3 py-2.5 text-xs space-y-1.5"
               style={{ animation: `fadeSlideIn 0.3s ease-out ${idx * 0.05}s both` }}
               data-testid={`row-tx-${tx.id}`}
             >
-              <span className="font-medium">{tx.token}</span>
-              <span className="text-neon-value">{type === "YIELD" ? `${usdcToMA(Number(tx.amount)).toFixed(2)} MA` : `$${Number(tx.amount).toFixed(2)}`}</span>
-              <span className="text-blue-400 text-[11px]">Base</span>
-              <span className="text-muted-foreground truncate">
-                {tx.txHash ? (
-                  <a
-                    href={`https://sepolia.basescan.org/tx/${tx.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary/80 hover:text-primary"
-                  >
-                    {shortenAddress(tx.txHash)}
-                  </a>
-                ) : "-"}
-              </span>
-              <Badge
-                className={`text-[11px] w-fit no-default-hover-elevate no-default-active-elevate ${
-                  tx.status === "CONFIRMED"
-                    ? "bg-primary/15 text-primary"
-                    : "bg-yellow-500/15 text-yellow-400"
-                }`}
-              >
-                {tx.status}
-              </Badge>
-              <span className="text-muted-foreground">
-                {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : "-"}
-              </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{tx.token || "USDT"}</span>
+                  <span className="text-neon-value font-mono">
+                    {type === "YIELD" ? `${usdcToMA(Number(tx.amount)).toFixed(2)} MA` : `$${Number(tx.amount).toFixed(2)}`}
+                  </span>
+                </div>
+                <Badge
+                  className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${
+                    tx.status === "CONFIRMED" || tx.status === "COMPLETED"
+                      ? "bg-primary/15 text-primary"
+                      : "bg-yellow-500/15 text-yellow-400"
+                  }`}
+                >
+                  {tx.status}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-yellow-400/70">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500/30 inline-block" />
+                    BSC
+                  </span>
+                  {tx.txHash && !tx.txHash.startsWith("backfill") && !tx.txHash.startsWith("trial") ? (
+                    <a
+                      href={`https://bscscan.com/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary/60 hover:text-primary font-mono"
+                    >
+                      {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)}
+                    </a>
+                  ) : (
+                    <span className="font-mono">-</span>
+                  )}
+                </div>
+                <span>{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString("zh-CN") : "-"}</span>
+              </div>
             </div>
           ))}
-        </div>
         </div>
       </CardContent>
     </Card>
