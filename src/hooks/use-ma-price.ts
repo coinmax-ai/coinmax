@@ -30,12 +30,12 @@ export function useMaPrice() {
     refetchInterval: 3_000,
   });
 
-  // Fallback: DB config price
+  // Fallback: DB config price (also refreshes frequently to stay current)
   const { data: dbPrice, isLoading } = useQuery({
     queryKey: ["ma-price-db"],
     queryFn: getMaPrice,
-    staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    staleTime: 0,
+    refetchInterval: 10_000,
   });
 
   // Oracle takes priority, DB as fallback
