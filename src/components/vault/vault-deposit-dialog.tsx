@@ -105,6 +105,14 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
         });
       } catch { /* non-critical */ }
 
+      // Auto-flush Splitter (distribute USDC to wallets)
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/splitter-flush`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch { /* non-critical */ }
+
       // Refresh profile + vault data
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["vault"] });

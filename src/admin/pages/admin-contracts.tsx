@@ -643,6 +643,10 @@ export default function AdminContracts() {
             defaultOpen={false}
           />
 
+          {/* Splitter + Vault Flow */}
+          {isSuperAdmin && <SplitterPanel />}
+          <VaultFlowDiagram />
+
           {/* Deployed addresses summary */}
           <ContractSection
             title="已部署合约地址"
@@ -915,6 +919,139 @@ function OracleAdminPanel({ onPriceUpdated }: { onPriceUpdated: () => void }) {
           <div className="flex justify-between"><span>中继器 (Feeder)</span><span className="font-mono">{RELAYER_ADDR.slice(0, 6)}...{RELAYER_ADDR.slice(-4)}</span></div>
           <div className="flex justify-between"><span>Oracle 合约</span><span className="font-mono">{PRICE_ORACLE_ADDRESS.slice(0, 6)}...{PRICE_ORACLE_ADDRESS.slice(-4)}</span></div>
           <div className="flex justify-between"><span>自动同步</span><span>Cron 每 5 分钟</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Splitter Admin Panel ──
+
+function SplitterPanel() {
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [balance, setBalance] = useState<string | null>(null);
+
+  const checkBalance = async () => {
+    try {
+      const res = await fetch("https://bsc-dataseed1.binance.org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "eth_call", id: 1,
+          params: [{ to: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", data: "0x70a08231000000000000000000000000" + SPLITTER_ADDRESS.slice(2).toLowerCase() }, "latest"],
+        }),
+      });
+      const d = await res.json();
+      setBalance((parseInt(d.result || "0x0", 16) / 1e18).toFixed(4));
+    } catch { setBalance("error"); }
+  };
+
+  useEffect(() => { checkBalance(); }, []);
+
+  const handleFlush = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/splitter-flush`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      toast({ title: "Splitter Flush", description: `${data.status}: ${data.balance || ""}` });
+      setTimeout(checkBalance, 10000);
+    } catch (e: any) {
+      toast({ title: "Flush 失败", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-emerald-500/15 overflow-hidden" style={{ background: "rgba(16,185,129,0.02)" }}>
+      <div className="px-4 py-3 border-b border-emerald-500/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft className="h-4 w-4 text-emerald-400" />
+          <span className="text-[13px] font-bold text-foreground/80">Splitter 资金分配</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-foreground/30 font-mono">
+            余额: {balance !== null ? `$${balance} USDC` : "加载中..."}
+          </span>
+          <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={checkBalance}>刷新</Button>
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        <Button
+          size="sm"
+          disabled={busy}
+          className="w-full bg-emerald-600 text-white hover:bg-emerald-500"
+          onClick={handleFlush}
+        >
+          {busy ? "分配中..." : "立即分配到 5 个钱包"}
+        </Button>
+        <div className="text-[10px] text-foreground/20 space-y-1">
+          <div className="flex justify-between"><span>Splitter 合约</span><span className="font-mono">{SPLITTER_ADDRESS.slice(0, 6)}...{SPLITTER_ADDRESS.slice(-4)}</span></div>
+          <div className="flex justify-between"><span>Owner (Server Wallet)</span><span className="font-mono">0x85e4...d95b</span></div>
+          <div className="flex justify-between"><span>自动分配</span><span>Cron 每 30 分钟 + 每次存入后</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Vault Flow Diagram ──
+
+function VaultFlowDiagram() {
+  const steps = [
+    { label: "用户钱包", addr: "用户 USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
+    { label: "Gateway", addr: "0x62ac...21eb", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+    { label: "PancakeSwap", addr: "USDT→USDC", color: "text-purple-400", bg: "bg-purple-500/10" },
+    { label: "Splitter", addr: "0xcfF1...3845", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    { label: "5个钱包", addr: "按比例分配", color: "text-green-400", bg: "bg-green-500/10" },
+  ];
+  const vaultSteps = [
+    { label: "Gateway", addr: "铸造 cUSD", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+    { label: "Vault", addr: "0xC3E0...3F0a", color: "text-primary", bg: "bg-primary/10" },
+    { label: "MA 铸造", addr: "按 Oracle 价格", color: "text-amber-400", bg: "bg-amber-500/10" },
+    { label: "锁仓", addr: "5/45/90/180天", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
+        <Wallet className="h-4 w-4 text-primary/60" />
+        <span className="text-[13px] font-bold text-foreground/80">金库存入链路</span>
+      </div>
+      <div className="p-4 space-y-4">
+        {/* USDC flow */}
+        <div>
+          <p className="text-[10px] text-foreground/30 mb-2">资金流向 (USDC)</p>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {steps.map((s, i) => (
+              <div key={i} className="flex items-center shrink-0">
+                <div className={`px-2 py-1.5 rounded-lg ${s.bg} text-center`}>
+                  <div className={`text-[10px] font-bold ${s.color}`}>{s.label}</div>
+                  <div className="text-[8px] text-foreground/25 font-mono">{s.addr}</div>
+                </div>
+                {i < steps.length - 1 && <span className="text-[10px] text-foreground/15 mx-0.5">→</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* MA flow */}
+        <div>
+          <p className="text-[10px] text-foreground/30 mb-2">MA 铸造流向</p>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {vaultSteps.map((s, i) => (
+              <div key={i} className="flex items-center shrink-0">
+                <div className={`px-2 py-1.5 rounded-lg ${s.bg} text-center`}>
+                  <div className={`text-[10px] font-bold ${s.color}`}>{s.label}</div>
+                  <div className="text-[8px] text-foreground/25 font-mono">{s.addr}</div>
+                </div>
+                {i < vaultSteps.length - 1 && <span className="text-[10px] text-foreground/15 mx-0.5">→</span>}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
