@@ -637,7 +637,8 @@ export default function AdminContracts() {
               { label: "MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
               { label: "cUSD", value: CUSD_ADDRESS, type: "address" },
               { label: "Oracle", value: PRICE_ORACLE_ADDRESS, type: "address" },
-              { label: "Vault", value: VAULT_V3_ADDRESS, type: "address" },
+              { label: "Vault V2 (新)", value: VAULT_V3_ADDRESS, type: "address" },
+              { label: "Vault V1 (旧)", value: "0xC3E05890dB946B311b00AB64cA255FdcC3643F0a", type: "address" },
               { label: "Engine", value: ENGINE_ADDRESS, type: "address" },
               { label: "Release", value: RELEASE_ADDRESS, type: "address" },
               { label: "Gateway", value: GATEWAY_ADDRESS, type: "address" },
@@ -979,27 +980,49 @@ function SplitterPanel() {
 // ── Vault Flow Diagram ──
 
 function VaultFlowDiagram() {
-  const steps = [
-    { label: "用户钱包", addr: "用户 USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
+  const depositFlow = [
+    { label: "用户钱包", addr: "USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
     { label: "Gateway", addr: "0x62ac...21eb", color: "text-cyan-400", bg: "bg-cyan-500/10" },
     { label: "PancakeSwap", addr: "USDT→USDC", color: "text-purple-400", bg: "bg-purple-500/10" },
     { label: "Splitter", addr: "0xcfF1...3845", color: "text-emerald-400", bg: "bg-emerald-500/10" },
     { label: "5个钱包", addr: "按比例分配", color: "text-green-400", bg: "bg-green-500/10" },
   ];
-  const vaultSteps = [
+  const mintFlow = [
     { label: "Gateway", addr: "铸造 cUSD", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-    { label: "Vault", addr: "0xC3E0...3F0a", color: "text-primary", bg: "bg-primary/10" },
+    { label: "Vault V2", addr: "0xE0A8...e821", color: "text-primary", bg: "bg-primary/10" },
     { label: "MA 铸造", addr: "按 Oracle 价格", color: "text-amber-400", bg: "bg-amber-500/10" },
-    { label: "锁仓", addr: "5/45/90/180天", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+    { label: "锁仓", addr: "5/45/90/180/360天", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+  ];
+  const redeemFlow = [
+    { label: "到期赎回", addr: "claimPrincipal", color: "text-green-400", bg: "bg-green-500/10" },
+    { label: "100% MA", addr: "→ 用户钱包", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  ];
+  const earlyFlow = [
+    { label: "提前赎回", addr: "earlyClaimPrincipal", color: "text-red-400", bg: "bg-red-500/10" },
+    { label: "80% MA", addr: "→ 用户钱包", color: "text-green-400", bg: "bg-green-500/10" },
+    { label: "20% MA", addr: "→ 销毁", color: "text-red-400", bg: "bg-red-500/10" },
+  ];
+  const fundFlow = [
+    { label: "Vault V2", addr: "distributeFunds", color: "text-primary", bg: "bg-primary/10" },
+    { label: "资金分配", addr: "→ FundDistributor", color: "text-purple-400", bg: "bg-purple-500/10" },
+  ];
+  const bridgeFlow = [
+    { label: "Vault V2", addr: "bridgeToRemoteVault", color: "text-primary", bg: "bg-primary/10" },
+    { label: "Bridge", addr: "跨链桥", color: "text-indigo-400", bg: "bg-indigo-500/10" },
+    { label: "ARB Vault", addr: "HyperLiquid", color: "text-pink-400", bg: "bg-pink-500/10" },
   ];
 
   return (
     <FlowDiagram
-      title="金库存入链路"
+      title="金库链路 (Vault V2)"
       icon={<Wallet className="h-4 w-4 text-primary/60" />}
       flows={[
-        { label: "资金流向 (USDC)", steps },
-        { label: "MA 铸造流向", steps: vaultSteps },
+        { label: "存入: USDT → USDC → 分配", steps: depositFlow },
+        { label: "存入: cUSD → Vault → MA铸造锁仓", steps: mintFlow },
+        { label: "到期赎回", steps: redeemFlow },
+        { label: "提前赎回 (20%罚金)", steps: earlyFlow },
+        { label: "资金分配 (Admin)", steps: fundFlow },
+        { label: "跨链桥接 (预留)", steps: bridgeFlow },
       ]}
     />
   );
