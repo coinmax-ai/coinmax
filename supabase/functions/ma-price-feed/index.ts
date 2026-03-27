@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 /**
- * MA Price Feed — Hourly cron, pushes price to Oracle via thirdweb Server Wallet
+ * MA Price Feed — Pushes price to Oracle via thirdweb Server Wallet (relayer)
  *
- * Price curve: $0.30 → $0.90 in 7 days, then $0.90 → $1.00 stabilize, then 5%/month growth
+ * Uses emergencySetPrice to sync directly with K-line price curve.
+ * Runs every 5 minutes via cron.
  */
 
 const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") || "EwFZ-cz8maTnDHEukynx4UgOx_0oqeqg1qR1gx2cHIM0L-Nks5ogM0U7JhZGQMyg3489Tc42J_QSZ9rLGojFSQ";
@@ -11,16 +12,19 @@ const RELAYER_WALLET = "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA";
 const ORACLE_ADDRESS = "0x3EC635802091b9F95b2891f3fd2504499f710145";
 const LAUNCH = new Date("2026-03-24T00:00:00Z").getTime();
 
-// Phase 0 daily momentum (7 days)
+// ── Price curve (identical to K-line chart in profile-ma.tsx) ──
+
 const DAILY_MOMENTUM = [
-  { base: 0.6, vol: 0.015 }, // Day 0
-  { base: 0.8, vol: 0.020 }, // Day 1
-  { base: 1.0, vol: 0.025 }, // Day 2
-  { base: 0.3, vol: 0.020 }, // Day 3
-  { base: 0.9, vol: 0.025 }, // Day 4
-  { base: 1.2, vol: 0.030 }, // Day 5
-  { base: 0.7, vol: 0.020 }, // Day 6
+  { base: 0.6, vol: 0.015 },
+  { base: 0.8, vol: 0.020 },
+  { base: 1.0, vol: 0.025 },
+  { base: 0.3, vol: 0.020 },
+  { base: 0.9, vol: 0.025 },
+  { base: 1.2, vol: 0.030 },
+  { base: 0.7, vol: 0.020 },
 ];
+
+const HOUR_PATTERN = [0.3,0.2,0.1,0,-0.1,-0.2,0.4,0.6,0.8,0.7,0.5,0.3,0.5,0.7,0.9,1,0.8,0.6,0.4,0.2,0,-0.1,0.1,0.2];
 
 function rng(seed: number): number {
   let h = Math.abs(seed | 0) * 2654435761;
@@ -34,24 +38,20 @@ function smoothStep(x: number): number {
   return x * x * x * (x * (x * 6 - 15) + 10);
 }
 
-function calculatePrice(prevPrice: number, hoursSinceLaunch: number): number {
+function calculateCurrentPrice(hoursSinceLaunch: number): number {
   const h = Math.floor(hoursSinceLaunch);
 
-  // Phase 0: $0.30 → $0.90 in 168 hours
+  // Phase 0: $0.30 → $0.90 in 168 hours (7 days)
   if (h <= 168) {
     const dayIndex = Math.min(Math.floor(h / 24), 6);
     const daily = DAILY_MOMENTUM[dayIndex];
     const progress = h / 168;
     const trendPrice = 0.30 + 0.60 * smoothStep(progress);
-    const hourlyBias = [0.3,0.2,0.1,0,-0.1,-0.2,0.4,0.6,0.8,0.7,0.5,0.3,0.5,0.7,0.9,1,0.8,0.6,0.4,0.2,0,-0.1,0.1,0.2][h % 24] * 0.005 * daily.base;
+    const hourlyBias = HOUR_PATTERN[h % 24] * 0.005 * daily.base;
     const noise = (rng(h * 7 + 1) - 0.5) * 2 * daily.vol;
     const isDip = rng(h * 31 + 3) < 0.15;
     const isSpike = !isDip && rng(h * 47 + 5) < 0.12;
     let p = trendPrice * (1 + noise + hourlyBias + (isDip ? -daily.vol * 1.5 : 0) + (isSpike ? daily.vol * 2 : 0));
-    if (prevPrice > 0) {
-      const max = prevPrice * 0.03;
-      p = Math.max(prevPrice - max, Math.min(prevPrice + max, p));
-    }
     return Math.max(0.28, p);
   }
 
@@ -60,45 +60,50 @@ function calculatePrice(prevPrice: number, hoursSinceLaunch: number): number {
     const progress = (h - 168) / (30 * 24);
     const base = 0.90 + 0.10 * smoothStep(progress);
     const noise = (rng(h * 19 + 7) - 0.5) * 2 * 0.008;
-    let p = base * (1 + noise);
-    if (prevPrice > 0) { const m = prevPrice * 0.02; p = Math.max(prevPrice - m, Math.min(prevPrice + m, p)); }
-    return Math.max(0.85, p);
+    return Math.max(0.85, base * (1 + noise));
   }
 
   // Phase 2: 5%/month growth
   const monthsIn = (h - 168 - 30 * 24) / (30 * 24);
   const base = 1.0 * Math.pow(1.05, monthsIn);
   const noise = (rng(h * 23 + 11) - 0.5) * 2 * 0.010;
-  let p = base * (1 + noise);
-  if (prevPrice > 0) { const m = prevPrice * 0.03; p = Math.max(prevPrice - m, Math.min(prevPrice + m, p)); }
-  return p;
+  return base * (1 + noise);
 }
 
 serve(async () => {
   const now = Date.now();
   const hoursSinceLaunch = (now - LAUNCH) / (1000 * 3600);
+  const targetPrice = calculateCurrentPrice(hoursSinceLaunch);
+  const targetRaw = Math.round(targetPrice * 1e6);
 
-  // Get current price from oracle (read via RPC)
-  let currentPrice = 0.30;
+  // Read current on-chain price
+  let currentPrice = 0;
   try {
     const rpcRes = await fetch("https://bsc-dataseed1.binance.org", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0", method: "eth_call", id: 1,
-        params: [{ to: ORACLE_ADDRESS, data: "0xa035b1fe" /* price() */ }, "latest"],
+        params: [{ to: ORACLE_ADDRESS, data: "0xa035b1fe" }, "latest"],
       }),
     });
     const rpcData = await rpcRes.json();
     if (rpcData.result && rpcData.result !== "0x") {
       currentPrice = parseInt(rpcData.result, 16) / 1e6;
     }
-  } catch { /* use default */ }
+  } catch { /* use 0 */ }
 
-  const newPrice = calculatePrice(currentPrice, hoursSinceLaunch);
-  const newPriceRaw = Math.round(newPrice * 1e6);
+  // Skip if already close enough (within 0.5%)
+  if (currentPrice > 0 && Math.abs(targetPrice - currentPrice) / currentPrice < 0.005) {
+    return new Response(JSON.stringify({
+      status: "skipped",
+      reason: "price already synced",
+      onChain: `$${currentPrice.toFixed(4)}`,
+      target: `$${targetPrice.toFixed(4)}`,
+    }), { headers: { "Content-Type": "application/json" } });
+  }
 
-  // Push via thirdweb Server Wallet
+  // Push via thirdweb Server Wallet using emergencySetPrice (bypasses 10% limit)
   const res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
     method: "POST",
     headers: {
@@ -110,20 +115,39 @@ serve(async () => {
       from: RELAYER_WALLET,
       calls: [{
         contractAddress: ORACLE_ADDRESS,
-        method: "function updatePrice(uint256 _newPrice)",
-        params: [newPriceRaw.toString()],
+        method: "function emergencySetPrice(uint256 _price)",
+        params: [targetRaw.toString()],
       }],
     }),
   });
 
   const data = await res.json();
-  const txId = data?.result?.transactionIds?.[0] || "unknown";
+  const txId = data?.result?.transactionIds?.[0] || null;
+  const error = data?.error || null;
+
+  // Also update DB fallback price
+  try {
+    const sbUrl = Deno.env.get("SUPABASE_URL")!;
+    const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${sbUrl}/rest/v1/system_config?key=eq.MA_TOKEN_PRICE`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: sbKey,
+        Authorization: `Bearer ${sbKey}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ value: targetPrice.toFixed(6) }),
+    });
+  } catch { /* non-critical */ }
 
   return new Response(JSON.stringify({
+    status: txId ? "pushed" : "failed",
     hour: hoursSinceLaunch.toFixed(1),
-    prevPrice: `$${currentPrice.toFixed(4)}`,
-    newPrice: `$${newPrice.toFixed(4)}`,
-    raw: newPriceRaw,
+    onChainBefore: `$${currentPrice.toFixed(4)}`,
+    target: `$${targetPrice.toFixed(4)}`,
+    raw: targetRaw,
     txId,
+    error,
   }), { headers: { "Content-Type": "application/json" } });
 });
