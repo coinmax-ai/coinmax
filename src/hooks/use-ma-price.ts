@@ -1,18 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { getMaPrice } from "@/lib/api";
+import { useThirdwebClient } from "@/hooks/use-thirdweb";
+import { getPriceOracleContract } from "@/lib/contracts";
+import { readContract } from "thirdweb";
 
 const DEFAULT_MA_PRICE = 0.1;
 
 export function useMaPrice() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["ma-price"],
+  const { client } = useThirdwebClient();
+
+  // Primary: on-chain oracle price (same as K-line chart)
+  const { data: oraclePrice } = useQuery({
+    queryKey: ["ma-oracle-price-global"],
+    queryFn: async () => {
+      if (!client) return null;
+      try {
+        const raw = await readContract({
+          contract: getPriceOracleContract(client),
+          method: "function getPriceUnsafe() view returns (uint256)",
+          params: [],
+        });
+        return Number(raw) / 1e6;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!client,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+
+  // Fallback: DB config price
+  const { data: dbPrice, isLoading } = useQuery({
+    queryKey: ["ma-price-db"],
     queryFn: getMaPrice,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
 
-  const price = data?.price ?? DEFAULT_MA_PRICE;
-  const source = data?.source ?? "DEFAULT";
+  // Oracle takes priority, DB as fallback
+  const price = oraclePrice ?? dbPrice?.price ?? DEFAULT_MA_PRICE;
+  const source = oraclePrice ? "ORACLE" : dbPrice?.source ?? "DEFAULT";
 
   const usdcToMA = (usdc: number) => usdc / price;
 
