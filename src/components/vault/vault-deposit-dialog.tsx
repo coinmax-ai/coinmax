@@ -24,6 +24,7 @@ import { useMaPrice } from "@/hooks/use-ma-price";
 import { VAULT_PLANS } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { queryClient } from "@/lib/queryClient";
 
 interface VaultDepositDialogProps {
   open: boolean;
@@ -81,7 +82,32 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
         params: [amountWei, BigInt(plan.planIndex), minUsdcOut, "0x" as `0x${string}`],
       });
       const depositResult = await sendTx(depositTx);
-      await waitForReceipt({ client: client!, chain: BSC_CHAIN, transactionHash: depositResult.transactionHash });
+      const receipt = await waitForReceipt({ client: client!, chain: BSC_CHAIN, transactionHash: depositResult.transactionHash });
+
+      if (receipt.status === "reverted") throw new Error("Transaction reverted");
+
+      // Step 3: Record to database
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        await fetch(`${supabaseUrl}/functions/v1/vault-record`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: account.address,
+            txHash: receipt.transactionHash,
+            planType: selectedPlan,
+            principal: usdtAmount,
+            dailyRate: plan.dailyRate,
+            days: plan.days,
+            maPrice,
+            maMinted: maToMint,
+          }),
+        });
+      } catch { /* non-critical */ }
+
+      // Refresh profile + vault data
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["vault"] });
 
       setStep("success");
       toast({ title: "存入成功", description: `${usdtAmount} USDT → ${maToMint.toFixed(2)} MA 已锁仓 ${plan.days} 天` });
