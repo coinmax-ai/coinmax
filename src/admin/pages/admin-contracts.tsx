@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileCode2, Save, Lock, RefreshCw, ExternalLink, ChevronDown, ChevronRight, Shield, Zap, Wallet, ArrowRightLeft } from "lucide-react";
+import { FileCode2, Save, Lock, RefreshCw, ExternalLink, ChevronDown, ChevronRight, Shield, Zap, Wallet, ArrowRightLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -624,6 +624,7 @@ export default function AdminContracts() {
           <VaultFlowDiagram />
           <NodeFlowDiagram />
           <VIPFlowDiagram />
+          <ReleaseFlowDiagram />
 
           {/* Deployed addresses */}
           <ContractSection
@@ -1060,6 +1061,53 @@ function VIPFlowDiagram() {
         { label: "VIP 激活", steps: activateSteps },
       ]}
     />
+  );
+}
+
+function ReleaseFlowDiagram() {
+  const planSteps = [
+    { label: "用户", addr: "选择释放方案", color: "text-blue-400", bg: "bg-blue-500/10" },
+    { label: "Release合约", addr: "createRelease()", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+    { label: "MA 拆分", addr: "释放% + 销毁%", color: "text-amber-400", bg: "bg-amber-500/10" },
+    { label: "销毁", addr: "burn() 立即执行", color: "text-red-400", bg: "bg-red-500/10" },
+  ];
+  const vestSteps = [
+    { label: "线性释放", addr: "每天可领取", color: "text-green-400", bg: "bg-green-500/10" },
+    { label: "claimAll()", addr: "领取已解锁", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    { label: "MA转账", addr: "→ 用户钱包", color: "text-primary", bg: "bg-primary/10" },
+  ];
+  const plans = [
+    { label: "80%即时", desc: "20%销毁, 0天", color: "text-green-400" },
+    { label: "85%/7天", desc: "15%销毁", color: "text-emerald-400" },
+    { label: "90%/15天", desc: "10%销毁", color: "text-cyan-400" },
+    { label: "95%/30天", desc: "5%销毁", color: "text-blue-400" },
+    { label: "100%/60天", desc: "0%销毁", color: "text-purple-400" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-amber-400/60" />
+        <span className="text-[13px] font-bold text-foreground/80">MA 盈利释放链路</span>
+      </div>
+      <div className="p-4 space-y-4">
+        <FlowDiagram title="" icon={null} flows={[
+          { label: "释放流程", steps: planSteps },
+          { label: "线性领取", steps: vestSteps },
+        ]} />
+        <div>
+          <p className="text-[10px] text-foreground/30 mb-2">释放方案</p>
+          <div className="flex flex-wrap gap-1.5">
+            {plans.map((p, i) => (
+              <div key={i} className="px-2 py-1 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center">
+                <div className={`text-[10px] font-bold ${p.color}`}>{p.label}</div>
+                <div className="text-[8px] text-foreground/20">{p.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

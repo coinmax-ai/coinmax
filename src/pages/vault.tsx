@@ -11,6 +11,7 @@ import { Lock, ArrowDownToLine, ArrowUpFromLine, Sparkles, AlertCircle, Loader2,
 import { VaultChart } from "@/components/vault/vault-chart";
 import { VaultStats } from "@/components/vault/vault-stats";
 import { VaultDepositDialog } from "@/components/vault/vault-deposit-dialog";
+import { MAReleaseDialog } from "@/components/vault/ma-release-dialog";
 import { useActiveAccount } from "thirdweb/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getVaultPositions, getTransactions, getVaultRewards, vaultDeposit, vaultWithdraw } from "@/lib/api";
@@ -122,6 +123,7 @@ export default function Vault() {
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("5_DAYS");
   const [depositAmount, setDepositAmount] = useState("");
   const [selectedPositionId, setSelectedPositionId] = useState<string>("");
@@ -265,10 +267,10 @@ export default function Vault() {
             <Button
               variant="secondary"
               className="w-full"
-              disabled={totalYield <= 0}
+              onClick={() => setReleaseOpen(true)}
               data-testid="button-claim"
             >
-              <Sparkles className="mr-2 h-4 w-4" /> {t("vault.claimYield")}
+              <Sparkles className="mr-2 h-4 w-4" /> MA 盈利分红提取
             </Button>
           </CardContent>
         </Card>
@@ -447,6 +449,7 @@ export default function Vault() {
       </div>
 
       <VaultDepositDialog open={depositOpen} onOpenChange={setDepositOpen} />
+      <MAReleaseDialog open={releaseOpen} onOpenChange={setReleaseOpen} />
 
       <Dialog open={redeemOpen} onOpenChange={setRedeemOpen}>
         <DialogContent className="bg-card border-border max-w-sm">
