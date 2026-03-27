@@ -14,6 +14,7 @@ import { usePayment, getPaymentStatusLabel } from "@/hooks/use-payment";
 import { useFetchWithPayment } from "thirdweb/react";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
 import { VIP_PLANS } from "@/lib/data";
+import { MAReleaseDialog } from "@/components/vault/ma-release-dialog";
 import type { Profile } from "@shared/types";
 
 import { useLocation } from "wouter";
@@ -70,6 +71,7 @@ export default function ProfilePage() {
 
   const payment = usePayment();
   const [showVipPlans, setShowVipPlans] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
   const [selectedVipPlan, setSelectedVipPlan] = useState<"monthly" | "halfyear" | null>(null);
 
   // x402 fetch — handles 402 → wallet payment → re-request automatically
@@ -277,9 +279,7 @@ export default function ProfilePage() {
                   <Button
                     size="sm"
                     className="rounded-xl text-[12px] h-8"
-                    onClick={() => {
-                      toast({ title: t("profile.withdrawEarnings"), description: t("profile.withdrawEarningsDesc") });
-                    }}
+                    onClick={() => setReleaseOpen(true)}
                     disabled={totalEarnings <= 0}
                     data-testid="button-withdraw-earnings"
                   >
@@ -555,6 +555,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <MAReleaseDialog open={releaseOpen} onOpenChange={setReleaseOpen} />
     </div>
   );
 }

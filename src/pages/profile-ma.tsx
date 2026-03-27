@@ -536,12 +536,6 @@ export default function ProfileMAPage() {
             <MAPriceChart />
           </div>
 
-          {/* Vault Redeem */}
-          <VaultRedeemSection />
-
-          {/* MA Release (profit distribution) */}
-          <MAReleaseSection />
-
           {/* Swap */}
           <MASwap />
         </div>
