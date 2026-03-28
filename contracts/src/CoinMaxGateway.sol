@@ -119,8 +119,10 @@ contract CoinMaxGateway is
     /// @notice Trusted remote gateway addresses (source chain → bytes32)
     mapping(bytes32 => bool) public trustedRemotes;
 
+    address public trustedForwarder;
+
     // ─── Gap ────────────────────────────────────────────────────────
-    uint256[30] private __gap;
+    uint256[29] private __gap;
 
     // ═══════════════════════════════════════════════════════════════════
     //  EVENTS
@@ -417,6 +419,10 @@ contract CoinMaxGateway is
         usdc = IERC20(_t);
     }
 
+    function setTrustedForwarder(address _forwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        trustedForwarder = _forwarder;
+    }
+
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) { _pause(); }
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
 
@@ -432,4 +438,23 @@ contract CoinMaxGateway is
     }
 
     receive() external payable {}
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EIP-2771 META-TX SUPPORT
+    // ═══════════════════════════════════════════════════════════════════
+
+    function _msgSender() internal view override(ContextUpgradeable) returns (address sender) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            assembly { sender := shr(96, calldataload(sub(calldatasize(), 20))) }
+        } else {
+            sender = msg.sender;
+        }
+    }
+
+    function _msgData() internal view override(ContextUpgradeable) returns (bytes calldata) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            return msg.data[:msg.data.length - 20];
+        }
+        return msg.data;
+    }
 }

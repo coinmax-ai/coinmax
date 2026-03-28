@@ -25,6 +25,8 @@ import {
   RELEASE_ADDRESS,
   GATEWAY_ADDRESS,
   SPLITTER_ADDRESS,
+  FORWARDER_ADDRESS,
+  TIMELOCK_ADDRESS,
 } from "@/lib/contracts";
 
 // ── Known deployed addresses ──
@@ -582,7 +584,7 @@ export default function AdminContracts() {
           {isSuperAdmin && <OracleAdminPanel onPriceUpdated={v3Oracle.refresh} />}
 
           <ContractSection
-            title="利息引擎 (Engine)"
+            title="收益引擎 (Engine)"
             icon={<Zap className="h-4 w-4 text-orange-400" />}
             address={ENGINE_ADDRESS}
             items={[
@@ -626,27 +628,39 @@ export default function AdminContracts() {
           <VIPFlowDiagram />
           <ReleaseFlowDiagram />
 
-          {/* Deployed addresses */}
+          {/* Server Wallet 调度 */}
+          <ContractSection
+            title="Server Wallet 调度"
+            icon={<Wallet className="h-4 w-4 text-amber-400" />}
+            address=""
+            items={[
+              { label: "🏦 vault (金库核心 ADMIN)", value: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b", type: "address" },
+              { label: "📈 trade (交易运营 SERVER)", value: "0x0831e8875685C796D05F2302D3c5C2Dd77fAc3B6", type: "address" },
+              { label: "💎 VIP (价格 FEEDER)", value: "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A", type: "address" },
+              { label: "🪙 CoinMax (代币 ADMIN)", value: "0x60D416dA873508c23C1315a2b750a31201959d78", type: "address" },
+              { label: "⛽ relayer (Gas 支付)", value: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA", type: "address" },
+            ]}
+            loading={false}
+            onRefresh={() => {}}
+            defaultOpen={false}
+          />
+
+          {/* 合约地址 */}
           <ContractSection
             title="已部署合约地址"
             icon={<FileCode2 className="h-4 w-4 text-foreground/40" />}
             address=""
             items={[
-              { label: "USDT", value: USDT_ADDRESS, type: "address" },
-              { label: "USDC", value: USDC_ADDRESS, type: "address" },
-              { label: "MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
-              { label: "cUSD", value: CUSD_ADDRESS, type: "address" },
-              { label: "Oracle", value: PRICE_ORACLE_ADDRESS, type: "address" },
-              { label: "Vault V2 (新)", value: VAULT_V3_ADDRESS, type: "address" },
-              { label: "Vault V1 (旧)", value: "0xC3E05890dB946B311b00AB64cA255FdcC3643F0a", type: "address" },
-              { label: "Engine", value: ENGINE_ADDRESS, type: "address" },
-              { label: "Release", value: RELEASE_ADDRESS, type: "address" },
-              { label: "Gateway", value: GATEWAY_ADDRESS, type: "address" },
-              { label: "Splitter", value: SPLITTER_ADDRESS, type: "address" },
-              { label: "SwapRouter", value: SWAP_ROUTER_ADDRESS, type: "address" },
-              { label: "NodesV2", value: NODE_V2_CONTRACT_ADDRESS, type: "address" },
-              { label: "Stargate Adapter", value: "0xabF960833168c3D69284De219F8Da0D8054d96e4", type: "address" },
-              { label: "Stargate Router (BSC)", value: "0x4a364f8c717cAAD9A442737Eb7b8A55cc6cf18D8", type: "address" },
+              { label: "MA Token (V3)", value: MA_TOKEN_ADDRESS, type: "address" },
+              { label: "cUSD (V3)", value: CUSD_ADDRESS, type: "address" },
+              { label: "Vault (ERC4626)", value: VAULT_V3_ADDRESS, type: "address" },
+              { label: "Engine (利息)", value: ENGINE_ADDRESS, type: "address" },
+              { label: "Release (释放)", value: RELEASE_ADDRESS, type: "address" },
+              { label: "Gateway (入口)", value: GATEWAY_ADDRESS, type: "address" },
+              { label: "Oracle (价格)", value: PRICE_ORACLE_ADDRESS, type: "address" },
+              { label: "Splitter (分配)", value: SPLITTER_ADDRESS, type: "address" },
+              { label: "Forwarder (EIP-2771)", value: FORWARDER_ADDRESS, type: "address" },
+              { label: "Timelock (24h)", value: TIMELOCK_ADDRESS, type: "address" },
             ]}
             loading={false}
             onRefresh={() => {}}

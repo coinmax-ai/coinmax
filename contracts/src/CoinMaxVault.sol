@@ -141,8 +141,11 @@ contract CoinMaxVault is
     /// @notice Early exit penalty rate in basis points (2000 = 20%)
     uint256 public earlyExitPenaltyBps;
 
-    // ─── Gap for future upgrades (reduced by 5 for new storage above)
-    uint256[35] private __gap;
+    /// @notice EIP-2771 trusted forwarder for meta-transactions
+    address public trustedForwarder;
+
+    // ─── Gap for future upgrades (reduced by 6 for new storage above)
+    uint256[34] private __gap;
 
     // ═══════════════════════════════════════════════════════════════════
     //  EVENTS
@@ -510,6 +513,30 @@ contract CoinMaxVault is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(to != address(0), "Invalid");
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EIP-2771 META-TRANSACTIONS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function setTrustedForwarder(address _forwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        trustedForwarder = _forwarder;
+    }
+
+    /// @dev Override Context._msgSender for EIP-2771 support
+    function _msgSender() internal view override(ContextUpgradeable) returns (address sender) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            assembly { sender := shr(96, calldataload(sub(calldatasize(), 20))) }
+        } else {
+            sender = msg.sender;
+        }
+    }
+
+    function _msgData() internal view override(ContextUpgradeable) returns (bytes calldata) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            return msg.data[:msg.data.length - 20];
+        }
+        return msg.data;
     }
 
     // ═══════════════════════════════════════════════════════════════════

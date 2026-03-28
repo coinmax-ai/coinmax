@@ -96,8 +96,10 @@ contract CoinMaxInterestEngine is
     /// @notice Minimum interval between batch calls (prevents double-processing)
     uint256 public minBatchInterval;
 
+    address public trustedForwarder;
+
     // ─── Gap for future upgrades ────────────────────────────────────
-    uint256[40] private __gap;
+    uint256[39] private __gap;
 
     // ═══════════════════════════════════════════════════════════════════
     //  EVENTS
@@ -310,8 +312,31 @@ contract CoinMaxInterestEngine is
         minBatchInterval = _seconds;
     }
 
+    function setTrustedForwarder(address _forwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        trustedForwarder = _forwarder;
+    }
+
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) { _pause(); }
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EIP-2771 META-TX SUPPORT
+    // ═══════════════════════════════════════════════════════════════════
+
+    function _msgSender() internal view override(ContextUpgradeable) returns (address sender) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            assembly { sender := shr(96, calldataload(sub(calldatasize(), 20))) }
+        } else {
+            sender = msg.sender;
+        }
+    }
+
+    function _msgData() internal view override(ContextUpgradeable) returns (bytes calldata) {
+        if (msg.sender == trustedForwarder && trustedForwarder != address(0) && msg.data.length >= 20) {
+            return msg.data[:msg.data.length - 20];
+        }
+        return msg.data;
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     //  INTERNAL
