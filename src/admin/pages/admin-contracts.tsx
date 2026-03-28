@@ -989,7 +989,7 @@ function FlashSwapPanel({ onRefresh }: { onRefresh?: () => void }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Deposit liquidity: approve + transfer ERC20 to FlashSwap contract
+  // Deposit liquidity: direct transfer ERC20 to FlashSwap contract
   const handleDeposit = async () => {
     if (!client || !account || !depositAmount) return;
     const amount = parseFloat(depositAmount);
@@ -997,30 +997,16 @@ function FlashSwapPanel({ onRefresh }: { onRefresh?: () => void }) {
 
     const tokenAddr = depositToken === "USDT" ? USDT_ADDRESS : MA_TOKEN_ADDRESS;
     const tokenContract = getContract({ client, chain: bsc, address: tokenAddr });
-    const rawAmount = toWei(depositAmount);
 
     try {
-      // Step 1: Approve
-      setBusy("approving");
-      const approveTx = prepareContractCall({
-        contract: tokenContract,
-        method: "function approve(address spender, uint256 amount) returns (bool)",
-        params: [FLASH_SWAP_ADDRESS, rawAmount],
-      });
-      const approveRes = await sendTx(approveTx);
-      await waitForReceipt({ client, chain: bsc, transactionHash: approveRes.transactionHash });
-
-      // Step 2: Transfer
       setBusy("sending");
-      const transferTx = prepareContractCall({
+      const tx = prepareContractCall({
         contract: tokenContract,
         method: "function transfer(address to, uint256 amount) returns (bool)",
-        params: [FLASH_SWAP_ADDRESS, rawAmount],
+        params: [FLASH_SWAP_ADDRESS, toWei(depositAmount)],
       });
-      const txRes = await sendTx(transferTx);
-      const receipt = await waitForReceipt({ client, chain: bsc, transactionHash: txRes.transactionHash });
-
-      if (receipt.status === "reverted") throw new Error("Transaction reverted");
+      const result = await sendTx(tx);
+      await waitForReceipt({ client, chain: bsc, transactionHash: result.transactionHash });
 
       toast({ title: "补充成功", description: `${depositAmount} ${depositToken} -> FlashSwap` });
       setDepositAmount("");
@@ -1120,16 +1106,14 @@ function FlashSwapPanel({ onRefresh }: { onRefresh?: () => void }) {
                   disabled={!depositAmount || !!busy}
                   onClick={handleDeposit}
                 >
-                  {busy === "approving" ? (
-                    <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />授权中</>
-                  ) : busy === "sending" ? (
+                  {busy === "sending" ? (
                     <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />转账中</>
                   ) : (
                     <><Send className="h-3 w-3 mr-1" />补充</>
                   )}
                 </Button>
               </div>
-              <p className="text-[9px] text-foreground/20 mt-1">从已连接钱包 approve + transfer {depositToken} 到 FlashSwap 合约</p>
+              <p className="text-[9px] text-foreground/20 mt-1">从已连接钱包直接转账 {depositToken} 到 FlashSwap 合约</p>
             </div>
           )}
 
