@@ -278,10 +278,10 @@ export default function Vault() {
         <Tabs defaultValue="deposit">
           <TabsList className="w-full bg-card border border-border">
             <TabsTrigger value="deposit" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-deposit">
-              存入记录
+              {t("vault.depositRecords", "存入记录")}
             </TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-withdraw">
-              赎回记录
+              {t("vault.redeemRecords", "赎回记录")}
             </TabsTrigger>
             <TabsTrigger value="yield" className="flex-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-yield">
               {t("vault.yieldTab")}
@@ -294,7 +294,7 @@ export default function Vault() {
                 {activePositions.length > 0 && (
                   <Card className="border-border bg-card">
                     <CardContent className="p-4">
-                      <h4 className="text-sm font-semibold mb-2">当前锁仓</h4>
+                      <h4 className="text-sm font-semibold mb-2">{t("vault.currentLocked", "当前锁仓")}</h4>
                       <div className="space-y-2">
                         {activePositions.map((pos) => {
                           const planConfig = VAULT_PLANS[pos.planType as keyof typeof VAULT_PLANS];
@@ -310,7 +310,7 @@ export default function Vault() {
                                 <span className="text-muted-foreground ml-2">{planConfig?.label || pos.planType}</span>
                               </div>
                               <span className={isExpired ? "text-green-400" : "text-yellow-400"}>
-                                {isExpired ? "已到期" : `${daysLeft}天后到期`}
+                                {isExpired ? t("vault.expired", "已到期") : t("vault.daysUntilExpiry", "{{days}}天后到期", { days: daysLeft })}
                               </span>
                             </div>
                           );
@@ -500,34 +500,34 @@ export default function Vault() {
                   return (
                     <div className="bg-muted/30 rounded-md p-3 text-xs space-y-1.5">
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">存入本金</span>
+                        <span className="text-muted-foreground">{t("vault.depositPrincipal", "存入本金")}</span>
                         <span>${principal.toFixed(2)} USDT</span>
                       </div>
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">铸造 MA</span>
+                        <span className="text-muted-foreground">{t("vault.mintedMA", "铸造 MA")}</span>
                         <span>{totalMA.toFixed(2)} MA</span>
                       </div>
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">累计利息 ({days}天)</span>
+                        <span className="text-muted-foreground">{t("vault.accumulatedInterest", "累计利息 ({{days}}天)", { days })}</span>
                         <span className="text-neon-value">+{yieldMA.toFixed(2)} MA</span>
                       </div>
                       {isEarly && (
                         <>
                           <div className="flex justify-between gap-2 text-red-400">
-                            <span>提前赎回罚金 (20%)</span>
+                            <span>{t("vault.earlyRedeemPenalty", "提前赎回罚金 (20%)")}</span>
                             <span>-{penaltyMA.toFixed(2)} MA</span>
                           </div>
                           <div className="text-[10px] text-yellow-400/80 bg-yellow-500/8 rounded px-2 py-1">
-                            未到期赎回将扣除铸造 MA 的 20%，仅返还 80%
+                            {t("vault.earlyRedeemWarning", "未到期赎回将扣除铸造 MA 的 20%，仅返还 80%")}
                           </div>
                         </>
                       )}
                       <div className="flex justify-between gap-2 pt-1.5 border-t border-border/30">
-                        <span className="font-medium">赎回获得</span>
+                        <span className="font-medium">{t("vault.redeemReceive", "赎回获得")}</span>
                         <span className="font-bold text-primary">{(netMA + yieldMA).toFixed(2)} MA</span>
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        ≈ ${((netMA + yieldMA) * maPrice).toFixed(2)} (按当前价 ${maPrice.toFixed(4)})
+                        {t("vault.approxValue", "≈ ${{value}} (按当前价 ${{price}})", { value: ((netMA + yieldMA) * maPrice).toFixed(2), price: maPrice.toFixed(4) })}
                       </div>
                     </div>
                   );

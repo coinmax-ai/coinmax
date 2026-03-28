@@ -364,18 +364,18 @@ export default function ProfileReferralPage() {
         {isConnected && rankStatus?.nextRankConditions && (
           <div className="rounded-xl p-3.5" style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}>
             <div className="text-[12px] font-bold text-white mb-2">
-              升级到 {rankStatus.nextRankConditions.rank} 条件
+              {t("profile.upgradeCondition", "升级到 {{rank}} 条件", { rank: rankStatus.nextRankConditions.rank })}
             </div>
             <div className="space-y-1.5 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-white/40">个人持仓</span>
+                <span className="text-white/40">{t("profile.personalHolding", "个人持仓")}</span>
                 <span className={Number(rankStatus.personalHolding) >= Number(rankStatus.nextRankConditions.personalHolding) ? "text-green-400" : "text-red-400"}>
                   {formatCompact(Number(rankStatus.personalHolding))} / {formatCompact(Number(rankStatus.nextRankConditions.personalHolding))}
                 </span>
               </div>
               {rankStatus.nextRankConditions.requiredReferrals > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-white/40">直推人数</span>
+                  <span className="text-white/40">{t("profile.directReferralCount", "直推人数")}</span>
                   <span className={directSponsorCount >= Number(rankStatus.nextRankConditions.requiredReferrals) ? "text-green-400" : "text-red-400"}>
                     {directSponsorCount} / {rankStatus.nextRankConditions.requiredReferrals}
                   </span>
@@ -383,12 +383,12 @@ export default function ProfileReferralPage() {
               )}
               {rankStatus.nextRankConditions.requiredSubRanks > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-white/40">下级 {rankStatus.nextRankConditions.subRankLevel}+</span>
-                  <span className="text-white/50">需 {rankStatus.nextRankConditions.requiredSubRanks} 人</span>
+                  <span className="text-white/40">{t("profile.subRankLevel", "下级 {{level}}+", { level: rankStatus.nextRankConditions.subRankLevel })}</span>
+                  <span className="text-white/50">{t("profile.requiredCount", "需 {{count}} 人", { count: rankStatus.nextRankConditions.requiredSubRanks })}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-white/40">团队业绩</span>
+                <span className="text-white/40">{t("profile.teamPerformanceLabel", "团队业绩")}</span>
                 <span className={totalTeamDeposits >= Number(rankStatus.nextRankConditions.teamPerformance) ? "text-green-400" : "text-red-400"}>
                   {formatCompact(totalTeamDeposits)} / {formatCompact(Number(rankStatus.nextRankConditions.teamPerformance))}
                 </span>
@@ -480,7 +480,7 @@ export default function ProfileReferralPage() {
             {/* Skip first N controls */}
             {teamData?.referrals && teamData.referrals.length > 5 && (
               <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-                <span className="text-[10px] text-white/30 mr-0.5">压缩前:</span>
+                <span className="text-[10px] text-white/30 mr-0.5">{t("profile.skipBefore", "压缩前:")}</span>
                 {[0, 5, 10, 20, 30, 40, 50].filter(n => n === 0 || n < teamData.referrals.length).map(n => (
                   <button
                     key={n}
@@ -493,7 +493,7 @@ export default function ProfileReferralPage() {
                       fontWeight: skipCount === n ? 700 : 400,
                     }}
                   >
-                    {n === 0 ? "全部" : n}
+                    {n === 0 ? t("profile.filterAll", "全部") : n}
                   </button>
                 ))}
               </div>
@@ -557,7 +557,7 @@ export default function ProfileReferralPage() {
                     className="rounded-xl p-2.5 text-center text-[11px] text-white/35"
                     style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
                   >
-                    已压缩前 {Math.min(skipCount, teamData.referrals.length)} 个成员
+                    {t("profile.skippedMembers", "已压缩前 {{count}} 个成员", { count: Math.min(skipCount, teamData.referrals.length) })}
                   </div>
                 )}
                 {teamData.referrals.slice(skipCount).filter((ref) => {

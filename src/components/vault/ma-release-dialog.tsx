@@ -27,27 +27,39 @@ import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { VAULT_PLANS } from "@/lib/data";
+import { useTranslation } from "react-i18next";
 
 interface MAReleaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const PLANS = [
-  { index: 4, release: 80, burn: 20, days: 0, label: "即时释放", desc: "80% 立即到账，20% 销毁", color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
-  { index: 3, release: 85, burn: 15, days: 7, label: "7天释放", desc: "85% 线性释放 7天，15% 销毁", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-  { index: 2, release: 90, burn: 10, days: 15, label: "15天释放", desc: "90% 线性释放 15天，10% 销毁", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
-  { index: 1, release: 95, burn: 5, days: 30, label: "30天释放", desc: "95% 线性释放 30天，5% 销毁", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-  { index: 0, release: 100, burn: 0, days: 60, label: "60天释放", desc: "100% 线性释放 60天，0% 销毁", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+const PLAN_DATA = [
+  { index: 4, release: 80, burn: 20, days: 0, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
+  { index: 3, release: 85, burn: 15, days: 7, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  { index: 2, release: 90, burn: 10, days: 15, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+  { index: 1, release: 95, burn: 5, days: 30, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  { index: 0, release: 100, burn: 0, days: 60, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
 ];
 
 export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
   const { mutateAsync: sendTx } = useSendTransaction();
   const [amount, setAmount] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(4); // default: instant
   const [step, setStep] = useState<"select" | "creating" | "success">("select");
+
+  const PLANS = PLAN_DATA.map(p => ({
+    ...p,
+    label: p.days === 0
+      ? t("release.instant", "即时释放")
+      : t("release.daysRelease", "{{days}}天释放", { days: p.days }),
+    desc: p.days === 0
+      ? t("release.instantDesc", "80% 立即到账，20% 销毁")
+      : t("release.linearDesc", "{{release}}% 线性释放 {{days}}天，{{burn}}% 销毁", { release: p.release, days: p.days, burn: p.burn }),
+  }));
 
   // Read accumulated balance from Release contract
   const { data: accumulatedRaw, refetch: refetchAccumulated } = useQuery({
@@ -212,29 +224,29 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            MA 盈利分红释放
+            {t("release.title", "MA 盈利分红释放")}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            选择提取数量和释放方案，不同方案有不同的释放速度和销毁比例
+            {t("release.description", "选择提取数量和释放方案，不同方案有不同的释放速度和销毁比例")}
           </DialogDescription>
         </DialogHeader>
 
         {step === "success" ? (
           <div className="text-center py-8">
             <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
-            <p className="text-sm font-bold text-foreground/80">释放计划已创建</p>
+            <p className="text-sm font-bold text-foreground/80">{t("release.planCreated", "释放计划已创建")}</p>
             <p className="text-xs text-foreground/40 mt-1">
-              {plan.days === 0 ? `${releaseMA.toFixed(2)} MA 已到账` : `${releaseMA.toFixed(2)} MA 将在 ${plan.days} 天内线性释放`}
+              {plan.days === 0 ? t("release.instantSuccess", "{{amount}} MA 已到账", { amount: releaseMA.toFixed(2) }) : t("release.linearSuccess", "{{amount}} MA 将在 {{days}} 天内线性释放", { amount: releaseMA.toFixed(2), days: plan.days })}
             </p>
-            {burnMA > 0 && <p className="text-xs text-red-400/60 mt-1">{burnMA.toFixed(2)} MA 已销毁</p>}
-            <Button className="mt-4" onClick={resetAndClose}>完成</Button>
+            {burnMA > 0 && <p className="text-xs text-red-400/60 mt-1">{t("release.burned", "{{amount}} MA 已销毁", { amount: burnMA.toFixed(2) })}</p>}
+            <Button className="mt-4" onClick={resetAndClose}>{t("release.done", "完成")}</Button>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Accumulated balance */}
             <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-foreground/40">可提取 MA</span>
+                <span className="text-xs text-foreground/40">{t("release.withdrawableMA", "可提取 MA")}</span>
                 <span className="text-lg font-bold font-mono text-primary">{accumulated.toFixed(2)} MA</span>
               </div>
             </div>
@@ -244,13 +256,13 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
               <div className="rounded-xl bg-green-500/5 border border-green-500/15 px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-foreground/40">可领取释放中 MA</span>
-                    <p className="text-[10px] text-foreground/20">{releaseCount || 0} 个释放计划进行中</p>
+                    <span className="text-xs text-foreground/40">{t("release.claimableMA", "可领取释放中 MA")}</span>
+                    <p className="text-[10px] text-foreground/20">{t("release.plansInProgress", "{{count}} 个释放计划进行中", { count: releaseCount || 0 })}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold font-mono text-green-400">{totalClaimable.toFixed(2)} MA</span>
                     <Button size="sm" className="h-7 text-[10px] bg-green-600 text-white" onClick={handleClaimAll}>
-                      领取
+                      {t("release.claim", "领取")}
                     </Button>
                   </div>
                 </div>
@@ -260,16 +272,16 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
             {/* Amount input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs text-foreground/40">提取数量</label>
+                <label className="text-xs text-foreground/40">{t("release.withdrawAmount", "提取数量")}</label>
                 <button onClick={() => setAmount(accumulated.toFixed(2))} className="text-[10px] text-primary">
-                  全部 {accumulated.toFixed(0)}
+                  {t("release.all", "全部")} {accumulated.toFixed(0)}
                 </button>
               </div>
               <Input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="输入 MA 数量"
+                placeholder={t("release.enterMAAmount", "输入 MA 数量")}
                 className="font-mono"
                 max={accumulated}
               />
@@ -277,7 +289,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
 
             {/* Plan selection */}
             <div>
-              <label className="text-xs text-foreground/40 mb-2 block">选择释放方案</label>
+              <label className="text-xs text-foreground/40 mb-2 block">{t("release.selectPlan", "选择释放方案")}</label>
               <div className="space-y-2">
                 {PLANS.map(p => (
                   <button
@@ -294,7 +306,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
                           {p.label}
                         </span>
                         <Badge className={cn("text-[9px]", selectedPlan === p.index ? `${p.bg} ${p.color} ${p.border}` : "bg-foreground/5 text-foreground/30")}>
-                          {p.release}% 释放
+                          {t("release.releasePercent", "{{percent}}% 释放", { percent: p.release })}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -305,7 +317,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
                         )}
                         {p.days > 0 && (
                           <span className="text-[9px] text-foreground/25 flex items-center gap-0.5">
-                            <Clock className="h-2.5 w-2.5" />{p.days}天
+                            <Clock className="h-2.5 w-2.5" />{t("release.daysUnit", "{{days}}天", { days: p.days })}
                           </span>
                         )}
                       </div>
@@ -320,22 +332,22 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
             {inputAmount > 0 && (
               <div className="rounded-xl bg-muted/20 p-3 text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-foreground/40">提取数量</span>
+                  <span className="text-foreground/40">{t("release.withdrawAmount", "提取数量")}</span>
                   <span className="font-mono">{inputAmount.toFixed(2)} MA</span>
                 </div>
                 <div className="flex justify-between text-green-400">
-                  <span>获得释放</span>
+                  <span>{t("release.releaseReceived", "获得释放")}</span>
                   <span className="font-mono font-bold">{releaseMA.toFixed(2)} MA</span>
                 </div>
                 {burnMA > 0 && (
                   <div className="flex justify-between text-red-400">
-                    <span className="flex items-center gap-1"><Flame className="h-3 w-3" />销毁</span>
+                    <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{t("release.burn", "销毁")}</span>
                     <span className="font-mono">-{burnMA.toFixed(2)} MA</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-1 border-t border-border/20">
-                  <span className="text-foreground/40">释放方式</span>
-                  <span className={plan.color}>{plan.days === 0 ? "立即到账" : `${plan.days}天 线性释放`}</span>
+                  <span className="text-foreground/40">{t("release.releaseMethod", "释放方式")}</span>
+                  <span className={plan.color}>{plan.days === 0 ? t("release.instantArrival", "立即到账") : t("release.linearReleaseDays", "{{days}}天 线性释放", { days: plan.days })}</span>
                 </div>
               </div>
             )}
@@ -347,9 +359,9 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
               onClick={handleCreateRelease}
             >
               {step === "creating" ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />创建释放计划中...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("release.creating", "创建释放计划中...")}</>
               ) : (
-                "确认提取"
+                t("release.confirmWithdraw", "确认提取")
               )}
             </Button>
           </div>

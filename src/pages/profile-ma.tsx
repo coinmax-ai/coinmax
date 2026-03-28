@@ -23,6 +23,7 @@ const UP = "#00e7a0";
 const DOWN = "#ff4976";
 
 function MAPriceChart() {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
   const [tf, setTf] = useState<"1H" | "4H" | "1D">("1H");
@@ -225,7 +226,7 @@ function MAPriceChart() {
                 chartMode === m ? "bg-white/10 text-white/60" : "text-white/15 hover:text-white/30"
               )}
             >
-              {m === "area" ? "面积" : "K线"}
+              {m === "area" ? t("ma.chartArea", "面积") : t("ma.chartCandle", "K线")}
             </button>
           ))}
         </div>
@@ -238,6 +239,7 @@ function MAPriceChart() {
 // ─── Swap ────────────────────────────────────────────────────
 
 function MASwap() {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
   const { mutateAsync: sendTransaction } = useSendTransaction();
@@ -333,7 +335,7 @@ function MASwap() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <Wallet className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] text-white/50">MA 余额</span>
+            <span className="text-[11px] text-white/50">{t("ma.balance", "MA 余额")}</span>
           </div>
           <span className="text-[11px] text-white/30 font-mono">≈ ${(maBalance * maPrice).toFixed(2)}</span>
         </div>
@@ -342,11 +344,11 @@ function MASwap() {
         </div>
         <div className="mt-2.5 flex gap-2">
           <div className="flex-1 bg-white/5 rounded-lg px-2.5 py-1.5">
-            <div className="text-[9px] text-white/30">闪兑额度</div>
+            <div className="text-[9px] text-white/30">{t("ma.swapQuota", "闪兑额度")}</div>
             <div className="text-[13px] font-semibold font-mono text-primary">{swapQuota.toLocaleString("en-US", { maximumFractionDigits: 2 })} MA</div>
           </div>
           <div className="flex-1 bg-white/5 rounded-lg px-2.5 py-1.5">
-            <div className="text-[9px] text-white/30">MA 价格</div>
+            <div className="text-[9px] text-white/30">{t("ma.price", "MA 价格")}</div>
             <div className="text-[13px] font-semibold font-mono text-green-400">${maPrice.toFixed(4)}</div>
           </div>
         </div>
@@ -356,7 +358,7 @@ function MASwap() {
       <div className="rounded-2xl p-3 sm:p-3.5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
         {/* Chain + From */}
         <div className="flex items-center justify-between mb-1">
-          <div className="text-[10px] text-white/30">{isSwapped ? "支付" : "卖出"}</div>
+          <div className="text-[10px] text-white/30">{isSwapped ? t("ma.pay", "支付") : t("ma.sell", "卖出")}</div>
           <div className="flex items-center gap-1 text-[8px] text-yellow-400/50">
             <div className="w-2 h-2 rounded-full bg-yellow-500/30" />
             BSC Chain
@@ -393,7 +395,7 @@ function MASwap() {
         </div>
 
         {/* To */}
-        <div className="text-[10px] text-white/30 mb-1">获得</div>
+        <div className="text-[10px] text-white/30 mb-1">{t("ma.receive", "获得")}</div>
         <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2.5">
           <div className="flex-1 text-[16px] sm:text-[18px] font-mono font-semibold text-white/70 min-w-0">
             {inputAmount > 0 ? outputAmount.toFixed(isSwapped ? 2 : 4) : "0.00"}
@@ -415,11 +417,11 @@ function MASwap() {
         {/* Info */}
         <div className="mt-2 px-0.5 space-y-0.5">
           <div className="flex justify-between text-[9px]">
-            <span className="text-white/25">汇率</span>
+            <span className="text-white/25">{t("ma.exchangeRate", "汇率")}</span>
             <span className="text-white/40 font-mono">1 MA = ${maPrice.toFixed(4)}</span>
           </div>
           <div className="flex justify-between text-[9px]">
-            <span className="text-white/25">手续费</span>
+            <span className="text-white/25">{t("ma.fee", "手续费")}</span>
             <span className="text-white/40 font-mono">0.3%</span>
           </div>
         </div>
@@ -427,20 +429,20 @@ function MASwap() {
         {exceedsQuota && (
           <div className="mt-2 flex items-start gap-1.5 bg-red-500/8 border border-red-500/15 rounded-lg px-2.5 py-1.5">
             <Info className="h-3 w-3 text-red-400 shrink-0 mt-0.5" />
-            <span className="text-[10px] text-red-300">超出闪兑额度，需保留至少50% MA</span>
+            <span className="text-[10px] text-red-300">{t("ma.exceedsQuota", "超出闪兑额度，需保留至少50% MA")}</span>
           </div>
         )}
 
         {/* Fee + status */}
         {inputAmount > 0 && !exceedsQuota && (
           <div className="flex justify-between text-[9px] mt-1 px-0.5">
-            <span className="text-white/25">手续费</span>
+            <span className="text-white/25">{t("ma.fee", "手续费")}</span>
             <span className="text-white/40 font-mono">${fee.toFixed(4)}</span>
           </div>
         )}
 
         {swapStatus === "success" && (
-          <div className="mt-2 text-center text-[11px] text-green-400 bg-green-500/8 rounded-lg py-1.5">闪兑成功</div>
+          <div className="mt-2 text-center text-[11px] text-green-400 bg-green-500/8 rounded-lg py-1.5">{t("ma.swapSuccess", "闪兑成功")}</div>
         )}
         {swapStatus === "error" && swapError && (
           <div className="mt-2 text-[10px] text-red-300 bg-red-500/8 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
@@ -460,25 +462,25 @@ function MASwap() {
           )}
         >
           {isBusy
-            ? (swapStatus === "transferring" ? "转账中..." : "记录中...")
-            : !account ? "连接钱包"
-            : exceedsQuota ? "超出额度"
-            : inputAmount <= 0 ? "输入数量"
-            : isSwapped ? "买入 MA"
-            : `闪兑 ${outputToken}`}
+            ? (swapStatus === "transferring" ? t("ma.transferring", "转账中...") : t("ma.recording", "记录中..."))
+            : !account ? t("ma.connectWallet", "连接钱包")
+            : exceedsQuota ? t("ma.exceedsLimit", "超出额度")
+            : inputAmount <= 0 ? t("ma.enterAmount", "输入数量")
+            : isSwapped ? t("ma.buyMA", "买入 MA")
+            : t("ma.swapTo", "闪兑 {{token}}", { token: outputToken })}
         </button>
       </div>
 
       {/* Swap History */}
       {swapHistory && swapHistory.length > 0 && (
         <div className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 className="text-[11px] font-bold text-white/40 mb-2">闪兑记录</h3>
+          <h3 className="text-[11px] font-bold text-white/40 mb-2">{t("ma.swapHistory", "闪兑记录")}</h3>
           <div className="space-y-1.5">
             {swapHistory.map((s: any) => (
               <div key={s.id} className="flex items-center justify-between px-1.5 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors">
                 <div className="flex items-center gap-1.5">
                   <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded", s.direction === "sell" ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400")}>
-                    {s.direction === "sell" ? "卖出" : "买入"}
+                    {s.direction === "sell" ? t("ma.sell", "卖出") : t("ma.buy", "买入")}
                   </span>
                   <span className="text-[11px] text-white/50 font-mono">{Number(s.ma_amount).toFixed(2)} MA</span>
                 </div>
@@ -547,6 +549,7 @@ export default function ProfileMAPage() {
 // ─── Vault Redeem ────────────────────────────────────────────
 
 function VaultRedeemSection() {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const { price: maPrice } = useMaPrice();
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -587,7 +590,7 @@ function VaultRedeemSection() {
 
   return (
     <div className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <h3 className="text-[12px] font-bold text-white/50 mb-2">金库锁仓赎回</h3>
+      <h3 className="text-[12px] font-bold text-white/50 mb-2">{t("ma.vaultRedeem", "金库锁仓赎回")}</h3>
       <div className="space-y-2">
         {positions.map((pos: any) => {
           const principal = Number(pos.principal);
@@ -608,23 +611,23 @@ function VaultRedeemSection() {
                   <span className="text-[10px] text-white/30">{planConfig?.label || pos.plan_type}</span>
                 </div>
                 <span className={cn("text-[10px] font-semibold", isEarly ? "text-yellow-400" : "text-green-400")}>
-                  {isEarly ? `${daysLeft}天后到期` : "已到期"}
+                  {isEarly ? t("ma.daysUntilExpiry", "{{days}}天后到期", { days: daysLeft }) : t("ma.expired", "已到期")}
                 </span>
               </div>
 
               <div className="text-[10px] space-y-1 text-white/40">
                 <div className="flex justify-between">
-                  <span>铸造 MA</span>
+                  <span>{t("ma.mintedMA", "铸造 MA")}</span>
                   <span className="font-mono text-white/60">{totalMA.toFixed(2)} MA</span>
                 </div>
                 {isEarly && (
                   <div className="flex justify-between text-red-400/80">
-                    <span>提前罚金 (20%)</span>
+                    <span>{t("ma.earlyPenalty", "提前罚金 (20%)")}</span>
                     <span className="font-mono">-{penaltyMA.toFixed(2)} MA</span>
                   </div>
                 )}
                 <div className="flex justify-between text-white/60 font-semibold pt-1 border-t border-white/[0.05]">
-                  <span>赎回获得</span>
+                  <span>{t("ma.redeemReceive", "赎回获得")}</span>
                   <span className="font-mono text-primary">{receiveMA.toFixed(2)} MA</span>
                 </div>
               </div>
@@ -637,7 +640,7 @@ function VaultRedeemSection() {
                   redeeming === pos.id ? "bg-white/5 text-white/20" : "bg-primary/10 text-primary hover:bg-primary/20"
                 )}
               >
-                {redeeming === pos.id ? "赎回中..." : isEarly ? "提前赎回 (获得80% MA)" : "赎回 (100% MA)"}
+                {redeeming === pos.id ? t("ma.redeeming", "赎回中...") : isEarly ? t("ma.earlyRedeem", "提前赎回 (获得80% MA)") : t("ma.redeemFull", "赎回 (100% MA)")}
               </button>
             </div>
           );
@@ -650,6 +653,7 @@ function VaultRedeemSection() {
 // ─── MA Release (profit distribution) ────────────────────────
 
 function MAReleaseSection() {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
 
@@ -671,15 +675,15 @@ function MAReleaseSection() {
   return (
     <div className="rounded-2xl p-3.5" style={{ background: "rgba(0,188,165,0.04)", border: "1px solid rgba(0,188,165,0.12)" }}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[12px] font-bold text-white/50">MA 盈利分红</h3>
+        <h3 className="text-[12px] font-bold text-white/50">{t("ma.profitDistribution", "MA 盈利分红")}</h3>
         <span className="text-[13px] font-bold font-mono text-primary">{accumulated.toFixed(2)} MA</span>
       </div>
-      <p className="text-[10px] text-white/30 mb-2">可提取的利息收益，选择释放方案后进入线性释放</p>
+      <p className="text-[10px] text-white/30 mb-2">{t("ma.profitDistributionDesc", "可提取的利息收益，选择释放方案后进入线性释放")}</p>
       <button
         onClick={() => window.location.href = "/vault"}
         className="w-full py-2 rounded-lg text-[11px] font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all"
       >
-        前往金库提取 →
+        {t("ma.goToVault", "前往金库提取 →")}
       </button>
     </div>
   );
