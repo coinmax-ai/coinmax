@@ -161,8 +161,8 @@ export function usePayment() {
       if (!amountUsd) throw new Error("Invalid node type");
 
       const usdtAmount = usdToUsdtUnits(amountUsd);
-      // minUsdcOut = 99.9% of input (0.1% slippage for stablecoin pair)
-      const minUsdcOut = usdtAmount * BigInt(999) / BigInt(1000);
+      // minUsdcOut = 99.5% of input (0.5% slippage for stablecoin pair)
+      const minUsdcOut = usdtAmount * BigInt(995) / BigInt(1000);
 
       // Approve USDT to SwapRouter, then SwapRouter handles the rest
       return _executePayment(SWAP_ROUTER_ADDRESS, amountUsd, () =>
