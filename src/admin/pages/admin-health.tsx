@@ -166,14 +166,14 @@ export default function AdminHealth() {
       const { data: latest } = await supabase
         .from("ai_market_analysis")
         .select("created_at, asset, reasoning, key_levels")
-        .or("key_levels->>source.eq.mac-mini-agent,model.eq.agent")
+        .eq("model", "agent")
         .order("created_at", { ascending: false })
         .limit(1);
 
       const { count } = await supabase
         .from("ai_market_analysis")
         .select("id", { count: "exact", head: true })
-        .or("key_levels->>source.eq.mac-mini-agent,model.eq.agent")
+        .eq("model", "agent")
         .gte("created_at", new Date(Date.now() - 2 * 3600_000).toISOString());
 
       const lastRecord = latest?.[0];
