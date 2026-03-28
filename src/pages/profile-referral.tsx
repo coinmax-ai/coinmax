@@ -50,6 +50,7 @@ export default function ProfileReferralPage() {
   const [addrStack, setAddrStack] = useState<Array<{ addr: string; label: string }>>([]);
   const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
   const [skipCount, setSkipCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const viewingAddr = addrStack.length > 0 ? addrStack[addrStack.length - 1].addr : walletAddr;
   const isViewingSelf = viewingAddr === walletAddr;
 
@@ -452,6 +453,17 @@ export default function ProfileReferralPage() {
               )}
             </div>
 
+            {/* Search */}
+            <div className="mb-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={t("profile.searchMember", "搜索钱包地址 / 后4位")}
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder:text-white/20 outline-none focus:border-primary/30"
+              />
+            </div>
+
             {/* Skip first N controls */}
             {teamData?.referrals && teamData.referrals.length > 5 && (
               <div className="flex items-center gap-1.5 mb-3 flex-wrap">
@@ -535,7 +547,13 @@ export default function ProfileReferralPage() {
                     已压缩前 {Math.min(skipCount, teamData.referrals.length)} 个成员
                   </div>
                 )}
-                {teamData.referrals.slice(skipCount).map((ref) => {
+                {teamData.referrals.slice(skipCount).filter((ref) => {
+                  if (!searchQuery) return true;
+                  const q = searchQuery.toLowerCase();
+                  const matchSelf = ref.walletAddress?.toLowerCase().includes(q);
+                  const matchSub = ref.subReferrals?.some(sr => sr.walletAddress?.toLowerCase().includes(q));
+                  return matchSelf || matchSub;
+                }).map((ref) => {
                   const subCount = ref.subReferrals?.length || 0;
                   const teamDeposits = ref.subReferrals?.reduce((s, r) => s + Number(r.totalDeposited || 0), 0) || 0;
                   const isExpanded = expandedRefs.has(ref.id);
