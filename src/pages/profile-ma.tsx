@@ -343,7 +343,7 @@ function MASwap() {
         <div className="mt-2.5 flex gap-2">
           <div className="flex-1 bg-white/5 rounded-lg px-2.5 py-1.5">
             <div className="text-[9px] text-white/30">闪兑额度</div>
-            <div className="text-[13px] font-semibold font-mono text-primary">{swapQuota.toLocaleString("en-US", { maximumFractionDigits: 0 })} MA</div>
+            <div className="text-[13px] font-semibold font-mono text-primary">{swapQuota.toLocaleString("en-US", { maximumFractionDigits: 2 })} MA</div>
           </div>
           <div className="flex-1 bg-white/5 rounded-lg px-2.5 py-1.5">
             <div className="text-[9px] text-white/30">MA 价格</div>
@@ -379,8 +379,8 @@ function MASwap() {
         </div>
 
         {!isSwapped && (
-          <button onClick={() => setMaAmount(swapQuota.toFixed(0))} className="text-[9px] text-primary mt-1 ml-1">
-            MAX {swapQuota.toFixed(0)}
+          <button onClick={() => setMaAmount(swapQuota.toFixed(2))} className="text-[9px] text-primary mt-1 ml-1">
+            MAX {swapQuota.toFixed(2)}
           </button>
         )}
 
