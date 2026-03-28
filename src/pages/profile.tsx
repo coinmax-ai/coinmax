@@ -96,7 +96,7 @@ export default function ProfilePage() {
       setSelectedVipPlan(null);
     },
     onError: (err: Error) => {
-      toast({ title: "VIP 激活失败", description: err.message, variant: "destructive" });
+      toast({ title: t("profile.vipActivateFailed", "VIP 激活失败"), description: err.message, variant: "destructive" });
       setSelectedVipPlan(null);
     },
   });
@@ -106,11 +106,11 @@ export default function ProfilePage() {
       return activateVipTrial(walletAddr);
     },
     onSuccess: () => {
-      toast({ title: "VIP 试用已激活", description: "7天免费 VIP 跟单体验已开启" });
+      toast({ title: t("profile.vipTrialActivated", "VIP 试用已激活"), description: t("profile.vipTrialDesc", "7天免费 VIP 跟单体验已开启") });
       queryClient.invalidateQueries({ queryKey: ["profile", walletAddr] });
     },
     onError: (err: Error) => {
-      toast({ title: "激活失败", description: err.message, variant: "destructive" });
+      toast({ title: t("profile.activateFailed", "激活失败"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -409,7 +409,7 @@ export default function ProfilePage() {
                     onClick={() => trialMutation.mutate()}
                     disabled={trialMutation.isPending}
                   >
-                    {trialMutation.isPending ? "激活中..." : "免费试用7天"}
+                    {trialMutation.isPending ? t("common.activating", "激活中...") : t("profile.freeTrial", "免费试用7天")}
                   </button>
                 )}
                 <button
@@ -474,7 +474,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <div className="text-[16px] font-black text-yellow-400">$250</div>
-                  <div className="text-[10px] text-emerald-400 font-bold">85折</div>
+                  <div className="text-[10px] text-emerald-400 font-bold">{t("profile.discount15", "85折")}</div>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">

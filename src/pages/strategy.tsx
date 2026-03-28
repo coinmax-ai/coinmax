@@ -1827,6 +1827,7 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
   profileId?: string; isVip: boolean; trialUsed: boolean; walletAddr: string; onBack: () => void;
 }) {
   const { toast: sToast } = useToast();
+  const { t } = useTranslation();
   const [activating, setActivating] = useState(false);
 
   const handleTrial = async () => {
@@ -1835,11 +1836,10 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
     try {
       const { activateVipTrial } = await import("@/lib/api");
       await activateVipTrial(walletAddr);
-      sToast({ title: "VIP 试用已激活", description: "7天免费跟单体验已开启，刷新页面生效" });
-      // Refresh profile data
+      sToast({ title: t("profile.vipTrialActivated", "VIP 试用已激活"), description: t("strategy.trialActivatedDesc", "7天免费跟单体验已开启，刷新页面生效") });
       queryClient.invalidateQueries({ queryKey: ["profile", walletAddr] });
     } catch (err: any) {
-      sToast({ title: "激活失败", description: err.message, variant: "destructive" });
+      sToast({ title: t("profile.activateFailed", "激活失败"), description: err.message, variant: "destructive" });
     } finally {
       setActivating(false);
     }
@@ -1849,15 +1849,15 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
     return (
       <div className="space-y-6" style={{ animation: "fadeSlideIn 0.3s ease-out" }}>
         <button onClick={onBack} className="flex items-center gap-1 text-xs text-foreground/40 hover:text-foreground/60 transition-colors">
-          <ChevronLeft className="h-3.5 w-3.5" /> 返回策略列表
+          <ChevronLeft className="h-3.5 w-3.5" /> {t("strategy.backToList", "返回策略列表")}
         </button>
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/8 flex items-center justify-center mb-4">
             <Key className="h-8 w-8 text-amber-400/40" />
           </div>
-          <h2 className="text-base font-bold text-foreground/60 mb-2">开启 AI 跟单交易</h2>
+          <h2 className="text-base font-bold text-foreground/60 mb-2">{t("strategy.enableCopyTrading", "开启 AI 跟单交易")}</h2>
           <p className="text-xs text-foreground/30 max-w-[280px] leading-relaxed mb-5">
-            AI 智能跟单 · 5大模型共识 · 20种策略组合 · 自动风控
+            {t("strategy.copyTradingDesc", "AI 智能跟单 · 5大模型共识 · 20种策略组合 · 自动风控")}
           </p>
 
           {/* Trial button */}
@@ -1868,11 +1868,11 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
               className="w-full max-w-[260px] py-3 rounded-xl text-sm font-bold text-yellow-400 transition-all hover:bg-yellow-500/10 active:scale-[0.98] disabled:opacity-50 mb-3"
               style={{ border: "1px solid rgba(234,179,8,0.3)" }}
             >
-              {activating ? "激活中..." : "免费试用 7 天"}
+              {activating ? t("common.activating", "激活中...") : t("profile.freeTrial", "免费试用 7 天")}
             </button>
           )}
           {trialUsed && (
-            <p className="text-[11px] text-foreground/25 mb-3">免费试用已使用</p>
+            <p className="text-[11px] text-foreground/25 mb-3">{t("profile.trialUsed", "免费试用已使用")}</p>
           )}
 
           {/* Paid plans */}
@@ -1882,8 +1882,8 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
               onClick={() => { window.location.href = "/profile"; }}
             >
               <div className="text-left">
-                <p className="text-xs font-bold text-foreground/60">月费会员</p>
-                <p className="text-[10px] text-foreground/25">30天</p>
+                <p className="text-xs font-bold text-foreground/60">{t("strategy.monthlyPlan", "月费会员")}</p>
+                <p className="text-[10px] text-foreground/25">{t("strategy.thirtyDays", "30天")}</p>
               </div>
               <span className="text-sm font-black text-yellow-400">$49</span>
             </div>
@@ -1892,12 +1892,12 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
               onClick={() => { window.location.href = "/profile"; }}
             >
               <div className="text-left">
-                <p className="text-xs font-bold text-foreground/60">半年会员</p>
-                <p className="text-[10px] text-foreground/25">180天</p>
+                <p className="text-xs font-bold text-foreground/60">{t("strategy.halfYearPlan", "半年会员")}</p>
+                <p className="text-[10px] text-foreground/25">{t("strategy.oneEightyDays", "180天")}</p>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-black text-yellow-400">$149</span>
-                <span className="text-[9px] text-emerald-400 font-bold">省49%</span>
+                <span className="text-sm font-black text-yellow-400">$250</span>
+                <span className="text-[9px] text-emerald-400 font-bold">{t("strategy.save15pct", "85折")}</span>
               </div>
             </div>
           </div>

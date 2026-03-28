@@ -32,31 +32,32 @@ const TX_TYPE_COLORS: Record<string, string> = {
   CONFIRMED: "bg-primary/15 text-primary",
 };
 
-const TX_TYPE_LABELS: Record<string, string> = {
-  DEPOSIT: "入金",
-  VAULT_DEPOSIT: "金库存入",
-  WITHDRAW: "提取",
-  VAULT_REDEEM: "金库赎回",
-  YIELD: "收益",
-  YIELD_CLAIM: "收益提取",
-  VIP_PURCHASE: "VIP购买",
-  NODE_PURCHASE: "节点购买",
-  REWARD: "奖励",
-  TEAM_COMMISSION: "团队奖励",
-  DIRECT_REFERRAL: "直推奖励",
-  FIXED_YIELD: "节点收益",
-  REWARD_RELEASE: "释放到账",
+// Labels resolved at render time via t()
+const TX_TYPE_LABEL_KEYS: Record<string, { key: string; fallback: string }> = {
+  DEPOSIT: { key: "tx.deposit", fallback: "入金" },
+  VAULT_DEPOSIT: { key: "tx.vaultDeposit", fallback: "金库存入" },
+  WITHDRAW: { key: "tx.withdraw", fallback: "提取" },
+  VAULT_REDEEM: { key: "tx.vaultRedeem", fallback: "金库赎回" },
+  YIELD: { key: "tx.yield", fallback: "收益" },
+  YIELD_CLAIM: { key: "tx.yieldClaim", fallback: "收益提取" },
+  VIP_PURCHASE: { key: "tx.vipPurchase", fallback: "VIP购买" },
+  NODE_PURCHASE: { key: "tx.nodePurchase", fallback: "节点购买" },
+  REWARD: { key: "tx.reward", fallback: "奖励" },
+  TEAM_COMMISSION: { key: "tx.teamCommission", fallback: "团队奖励" },
+  DIRECT_REFERRAL: { key: "tx.directReferral", fallback: "直推奖励" },
+  FIXED_YIELD: { key: "tx.fixedYield", fallback: "节点收益" },
+  REWARD_RELEASE: { key: "tx.rewardRelease", fallback: "释放到账" },
 };
 
-const FILTERS = [
-  { key: "ALL", label: "全部" },
-  { key: "DEPOSIT,VAULT_DEPOSIT", label: "入金" },
-  { key: "VIP_PURCHASE,NODE_PURCHASE", label: "购买" },
-  { key: "YIELD,YIELD_CLAIM", label: "收益提取" },
-  { key: "DIRECT_REFERRAL", label: "直推奖励" },
-  { key: "TEAM_COMMISSION", label: "团队奖励" },
-  { key: "FIXED_YIELD", label: "节点收益" },
-  { key: "WITHDRAW,VAULT_REDEEM", label: "赎回/提取" },
+const FILTER_KEYS = [
+  { key: "ALL", labelKey: "common.all", fallback: "全部" },
+  { key: "DEPOSIT,VAULT_DEPOSIT", labelKey: "tx.filterDeposit", fallback: "入金" },
+  { key: "VIP_PURCHASE,NODE_PURCHASE", labelKey: "tx.filterPurchase", fallback: "购买" },
+  { key: "YIELD,YIELD_CLAIM", labelKey: "tx.filterYield", fallback: "收益提取" },
+  { key: "DIRECT_REFERRAL", labelKey: "tx.filterDirect", fallback: "直推奖励" },
+  { key: "TEAM_COMMISSION", labelKey: "tx.filterTeam", fallback: "团队奖励" },
+  { key: "FIXED_YIELD", labelKey: "tx.filterNode", fallback: "节点收益" },
+  { key: "WITHDRAW,VAULT_REDEEM", labelKey: "tx.filterRedeem", fallback: "赎回/提取" },
 ];
 
 export default function ProfileTransactionsPage() {
@@ -92,7 +93,7 @@ export default function ProfileTransactionsPage() {
       {/* Filter tabs */}
       {isConnected && (
         <div className="px-4 flex gap-1.5 overflow-x-auto pb-1" style={{ animation: "fadeSlideIn 0.4s ease-out 0.05s both" }}>
-          {FILTERS.map(f => (
+          {FILTER_KEYS.map(f => (
             <button
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
@@ -103,7 +104,7 @@ export default function ProfileTransactionsPage() {
                   : "bg-white/[0.03] text-foreground/30 border border-white/[0.06] hover:text-foreground/50"
               )}
             >
-              {f.label}
+              {t(f.labelKey, f.fallback)}
             </button>
           ))}
         </div>
@@ -136,7 +137,8 @@ export default function ProfileTransactionsPage() {
               const explorerUrl = tx.txHash && !tx.txHash.startsWith("trial") && !tx.txHash.startsWith("yield_") && !tx.txHash.startsWith("redeem_")
                 ? `https://bscscan.com/tx/${tx.txHash}`
                 : null;
-              const typeLabel = TX_TYPE_LABELS[tx.type] || tx.type;
+              const typeCfg = TX_TYPE_LABEL_KEYS[tx.type];
+              const typeLabel = typeCfg ? t(typeCfg.key, typeCfg.fallback) : tx.type;
               return (
                 <Card key={tx.id} className="border-border bg-card">
                   <CardContent className="p-3 space-y-1.5">

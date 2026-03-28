@@ -678,7 +678,7 @@ function MAReleaseSection() {
         <h3 className="text-[12px] font-bold text-white/50">{t("ma.profitDistribution", "MA 盈利分红")}</h3>
         <span className="text-[13px] font-bold font-mono text-primary">{accumulated.toFixed(2)} MA</span>
       </div>
-      <p className="text-[10px] text-white/30 mb-2">{t("ma.profitDistributionDesc", "可提取的利息收益，选择释放方案后进入线性释放")}</p>
+      <p className="text-[10px] text-white/30 mb-2">{t("ma.profitDistributionDesc", "可提取的收益，选择释放方案后进入线性释放")}</p>
       <button
         onClick={() => window.location.href = "/vault"}
         className="w-full py-2 rounded-lg text-[11px] font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all"

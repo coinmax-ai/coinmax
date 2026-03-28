@@ -508,7 +508,7 @@ export default function Vault() {
                         <span>{totalMA.toFixed(2)} MA</span>
                       </div>
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">{t("vault.accumulatedInterest", "累计利息 ({{days}}天)", { days })}</span>
+                        <span className="text-muted-foreground">{t("vault.accumulatedInterest", "累计收益 ({{days}}天)", { days })}</span>
                         <span className="text-neon-value">+{yieldMA.toFixed(2)} MA</span>
                       </div>
                       {isEarly && (

@@ -9,8 +9,10 @@ import { CopyTradingDashboard } from "@/components/strategy/copy-trading-dashboa
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Settings, BarChart3 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function CopyTradingPage() {
+  const { t } = useTranslation();
   const account = useActiveAccount();
   const walletAddress = account?.address || "";
 
@@ -26,16 +28,16 @@ export default function CopyTradingPage() {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm font-bold text-foreground/80">CoinMax 跟单交易</h1>
+              <h1 className="text-sm font-bold text-foreground/80">{t("copyTrading.title", "CoinMax 跟单交易")}</h1>
               <p className="text-[10px] text-foreground/40 mt-0.5">
-                {walletAddress ? "AI 智能跟单 · 多策略组合" : "请先连接钱包"}
+                {walletAddress ? t("copyTrading.subtitle", "AI 智能跟单 · 多策略组合") : t("common.connectWalletFirst", "请先连接钱包")}
               </p>
             </div>
             <div className={cn(
               "px-2.5 py-1 rounded-lg text-[10px] font-bold",
               !walletAddress ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"
             )}>
-              {!walletAddress ? "未连接" : "已连接"}
+              {!walletAddress ? t("common.disconnected", "未连接") : t("common.connected", "已连接")}
             </div>
           </div>
 
@@ -48,7 +50,7 @@ export default function CopyTradingPage() {
                   tab === "dashboard" ? "bg-primary/10 text-primary" : "text-foreground/30 hover:text-foreground/50"
                 )}
               >
-                <BarChart3 className="h-3.5 w-3.5" /> 仪表盘
+                <BarChart3 className="h-3.5 w-3.5" /> {t("copyTrading.dashboard", "仪表盘")}
               </button>
               <button
                 onClick={() => setTab("settings")}
@@ -57,7 +59,7 @@ export default function CopyTradingPage() {
                   tab === "settings" ? "bg-primary/10 text-primary" : "text-foreground/30 hover:text-foreground/50"
                 )}
               >
-                <Settings className="h-3.5 w-3.5" /> 配置
+                <Settings className="h-3.5 w-3.5" /> {t("copyTrading.settings", "配置")}
               </button>
             </div>
           )}
@@ -68,7 +70,7 @@ export default function CopyTradingPage() {
       <div className="max-w-lg mx-auto px-4 py-4">
         {!walletAddress ? (
           <div className="rounded-xl bg-yellow-500/8 border border-yellow-500/15 px-4 py-3">
-            <p className="text-xs text-yellow-400/80">请先在首页连接钱包，才能保存跟单设置和绑定交易所。</p>
+            <p className="text-xs text-yellow-400/80">{t("copyTrading.connectPrompt", "请先在首页连接钱包，才能保存跟单设置和绑定交易所。")}</p>
           </div>
         ) : tab === "dashboard" ? (
           <CopyTradingDashboard wallet={walletAddress} />

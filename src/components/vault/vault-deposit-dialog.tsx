@@ -4,7 +4,7 @@
  * Flow:
  *   1. User selects staking plan (5d/45d/90d/180d visual cards)
  *   2. Enters USDT amount
- *   3. Preview: MA to mint, daily interest, total yield
+ *   3. Preview: MA to mint, daily yield, total yield
  *   4. Approve USDT → Gateway.depositVault() on-chain
  *   5. Gateway swaps USDT→USDC, mints cUSD, deposits to Vault
  */
@@ -141,7 +141,7 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
             {t("vault.depositToVault")}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {t("deposit.description", "存入 USDT，铸造 MA 锁仓，每日产生利息")}
+            {t("deposit.description", "存入 USDT，铸造 MA 锁仓，每日产生收益")}
           </DialogDescription>
         </DialogHeader>
 
@@ -215,7 +215,7 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
                   <span className="text-foreground/70 font-mono">{maToMint.toFixed(2)} MA</span>
                 </div>
                 <div className="flex justify-between text-[12px]">
-                  <span className="text-foreground/40">{t("deposit.dailyInterest", "每日利息 (USDT)")}</span>
+                  <span className="text-foreground/40">{t("deposit.dailyInterest", "每日收益 (USDT)")}</span>
                   <span className="text-foreground/70 font-mono">${dailyInterestUsd.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-[12px]">
@@ -230,7 +230,7 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
                   </span>
                 </div>
                 <p className="text-[9px] text-foreground/20 leading-relaxed">
-                  {t("deposit.priceNote", "实际每日产出 MA 数量 = 当日利息(USDT) ÷ MA实时价格，随价格波动")}
+                  {t("deposit.priceNote", "实际每日产出 MA 数量 = 当日收益(USDT) ÷ MA实时价格，随价格波动")}
                 </p>
               </div>
             )}
