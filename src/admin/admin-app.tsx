@@ -22,6 +22,7 @@ import AdminAIProgress from "./pages/admin-ai-progress";
 import AdminAITrades from "./pages/admin-ai-trades";
 import AdminHealth from "./pages/admin-health";
 import AdminCopyTrading from "./pages/admin-copy-trading";
+import AdminFunds from "./pages/admin-funds";
 import AdminTreasury from "./pages/admin-treasury";
 
 function NoPermission() {
@@ -126,6 +127,9 @@ function AdminLayout() {
               </Route>
               <Route path="/admin/contracts">
                 <ProtectedRoute permission="contracts"><AdminContracts /></ProtectedRoute>
+              </Route>
+              <Route path="/admin/funds">
+                <ProtectedRoute permission="contracts"><AdminFunds /></ProtectedRoute>
               </Route>
               <Route path="/admin/logs">
                 <ProtectedRoute permission="logs"><AdminLogs /></ProtectedRoute>
