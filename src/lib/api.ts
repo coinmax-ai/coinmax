@@ -532,6 +532,18 @@ export async function getReferralTree(walletAddress: string) {
   return data ?? { referrals: [], teamSize: 0, directCount: 0 };
 }
 
+export async function getRankStatus(walletAddress: string) {
+  const { data, error } = await supabase.rpc("get_rank_status", { addr: walletAddress });
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserTeamStats(walletAddress: string) {
+  const { data, error } = await supabase.rpc("get_user_team_stats", { addr: walletAddress });
+  if (error) throw error;
+  return data;
+}
+
 // ─────────────────────────────────────────────
 // C) Direct external API calls (public, no keys)
 // ─────────────────────────────────────────────

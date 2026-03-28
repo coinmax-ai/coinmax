@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { copyText } from "@/lib/copy";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { getProfile, getReferralTree, getCommissionRecords } from "@/lib/api";
+import { getProfile, getReferralTree, getCommissionRecords, getRankStatus, getUserTeamStats } from "@/lib/api";
 import type { Profile, CommissionSummary } from "@shared/types";
 import { useTranslation } from "react-i18next";
 
@@ -87,22 +87,33 @@ export default function ProfileReferralPage() {
   const directTotal = Number(commission?.directReferralTotal || 0);
   const diffTotal = Number(commission?.differentialTotal || 0);
 
+  // Rank status + team stats from RPC
+  const { data: rankStatus } = useQuery({
+    queryKey: ["rank-status", walletAddr],
+    queryFn: () => getRankStatus(walletAddr),
+    enabled: isConnected,
+  });
+
+  const { data: teamStats } = useQuery({
+    queryKey: ["team-stats", walletAddr],
+    queryFn: () => getUserTeamStats(walletAddr),
+    enabled: isConnected,
+  });
+
   const refCode = profile?.refCode;
   const currentRank = profile?.rank || "V0";
-  // Self-referral link: sponsor=self, placement=self
   const referralLink = refCode ? `${window.location.origin}/r/${refCode}/${refCode}` : "--";
   const parentWallet = (profile as any)?.parentWallet || null;
+
+  // Use RPC team performance instead of 2-level client sum
+  const totalTeamDeposits = Number(teamStats?.teamPerformance || 0);
+  const directSponsorCount = Number(teamStats?.directSponsorCount || 0);
+  const teamSize = Number(teamStats?.teamSize || teamData?.teamSize || 0);
 
   const copyToClipboard = async (text: string) => {
     await copyText(text);
     toast({ title: t("common.copied"), description: t("common.copiedDesc") });
   };
-
-  const totalTeamDeposits = teamData?.referrals.reduce((sum, ref) => {
-    const direct = Number(ref.totalDeposited || 0);
-    const sub = ref.subReferrals?.reduce((s, r) => s + Number(r.totalDeposited || 0), 0) || 0;
-    return sum + direct + sub;
-  }, 0) || 0;
 
   const filteredRecords = commission?.records?.filter((r) => {
     if (historyFilter === "income") return true;
@@ -270,7 +281,7 @@ export default function ProfileReferralPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-[11px] text-white/40 mb-0.5">{t("profile.claimed")}</div>
-                <div className="text-[16px] font-bold text-white">$0</div>
+                <div className="text-[16px] font-bold text-white">${totalCommission.toFixed(2)}</div>
               </div>
               <div>
                 <div className="text-[11px] text-white/40 mb-0.5">{t("profile.pendingRewards")}</div>
@@ -350,6 +361,43 @@ export default function ProfileReferralPage() {
             <div className="text-[18px] font-black text-white">{isConnected ? formatCompact(diffTotal) : "--"}</div>
           </div>
         </div>
+
+        {/* Rank upgrade conditions */}
+        {isConnected && rankStatus?.nextRankConditions && (
+          <div className="rounded-xl p-3.5" style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.4)" }}>
+            <div className="text-[12px] font-bold text-white mb-2">
+              升级到 {rankStatus.nextRankConditions.rank} 条件
+            </div>
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-white/40">个人持仓</span>
+                <span className={Number(rankStatus.personalHolding) >= Number(rankStatus.nextRankConditions.personalHolding) ? "text-green-400" : "text-red-400"}>
+                  {formatCompact(Number(rankStatus.personalHolding))} / {formatCompact(Number(rankStatus.nextRankConditions.personalHolding))}
+                </span>
+              </div>
+              {rankStatus.nextRankConditions.requiredReferrals > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-white/40">直推人数</span>
+                  <span className={directSponsorCount >= Number(rankStatus.nextRankConditions.requiredReferrals) ? "text-green-400" : "text-red-400"}>
+                    {directSponsorCount} / {rankStatus.nextRankConditions.requiredReferrals}
+                  </span>
+                </div>
+              )}
+              {rankStatus.nextRankConditions.requiredSubRanks > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-white/40">下级 {rankStatus.nextRankConditions.subRankLevel}+</span>
+                  <span className="text-white/50">需 {rankStatus.nextRankConditions.requiredSubRanks} 人</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-white/40">团队业绩</span>
+                <span className={totalTeamDeposits >= Number(rankStatus.nextRankConditions.teamPerformance) ? "text-green-400" : "text-red-400"}>
+                  {formatCompact(totalTeamDeposits)} / {formatCompact(Number(rankStatus.nextRankConditions.teamPerformance))}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2.5 mt-1">
           {([
