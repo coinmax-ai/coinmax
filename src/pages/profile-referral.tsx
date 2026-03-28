@@ -598,6 +598,12 @@ export default function ProfileReferralPage() {
                             <span className="text-[12px] font-mono text-white/80 truncate">
                               {shortenAddress(ref.walletAddress)}
                             </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); e.preventDefault(); copyToClipboard(ref.walletAddress); }}
+                              className="shrink-0 p-0.5 rounded transition-colors hover:bg-white/10"
+                            >
+                              <Copy className="h-3 w-3 text-white/30" />
+                            </button>
                             {refCode && ref.refCode && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); e.preventDefault(); copyToClipboard(`${window.location.origin}/r/${refCode}/${ref.refCode}`); }}
