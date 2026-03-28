@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 type SupportedExchange = "binance" | "bybit" | "okx" | "bitget" | "hyperliquid" | "dydx" | "aster";
 
@@ -39,6 +40,7 @@ const EXCHANGES: Array<{
 ];
 
 export function ApiKeyBind({ userId }: { userId?: string }) {
+  const { t } = useTranslation();
   const [storedKeys, setStoredKeys] = useState<StoredKey[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedExchange, setSelectedExchange] = useState<SupportedExchange | null>(null);
@@ -140,43 +142,40 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
       )}
 
       {/* Stored keys list */}
-      <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="rounded-xl bg-white/[0.02] p-3 sm:p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold text-foreground/50">已绑定的交易所</h3>
+          <h3 className="text-xs font-bold text-foreground/50">{t("exchange.boundExchanges", "已绑定的交易所")}</h3>
           <button
             onClick={() => { setShowForm(true); resetForm(); }}
             className="text-[10px] font-semibold text-primary bg-primary/10 px-3 py-1 rounded-lg hover:bg-primary/20 transition-colors"
           >
-            + 添加
+            + {t("exchange.add", "添加")}
           </button>
         </div>
 
         {storedKeys.length === 0 ? (
-          <p className="text-xs text-foreground/20 text-center py-6">尚未绑定任何交易所 API Key</p>
+          <p className="text-xs text-foreground/20 text-center py-4">{t("exchange.noBound", "尚未绑定任何交易所 API Key")}</p>
         ) : (
           <div className="space-y-2">
             {storedKeys.map(key => {
               const ex = EXCHANGES.find(e => e.id === key.exchange);
               return (
-                <div key={key.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.02]" style={{ border: "1px solid rgba(255,255,255,0.04)" }}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{ex?.icon || "?"}</span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-foreground/70">{ex?.name || key.exchange}</span>
-                        {key.testnet && <span className="text-[9px] text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded">测试网</span>}
-                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded", key.is_valid ? "text-green-400 bg-green-500/10" : "text-red-400 bg-red-500/10")}>
-                          {key.is_valid ? "有效" : "无效"}
+                <div key={key.id} className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-white/[0.02]" style={{ border: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0">{ex?.icon || "?"}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-semibold text-foreground/70">{ex?.name || key.exchange}</span>
+                        {key.testnet && <span className="text-[8px] text-yellow-400 bg-yellow-500/10 px-1 py-0.5 rounded">{t("exchange.testnet", "测试网")}</span>}
+                        <span className={cn("text-[8px] px-1 py-0.5 rounded", key.is_valid ? "text-green-400 bg-green-500/10" : "text-red-400 bg-red-500/10")}>
+                          {key.is_valid ? t("exchange.valid", "有效") : t("exchange.invalid", "无效")}
                         </span>
                       </div>
-                      <p className="text-[10px] text-foreground/25 mt-0.5 font-mono">{key.masked_key}</p>
+                      <p className="text-[9px] text-foreground/20 font-mono truncate">{key.masked_key}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(key.exchange)}
-                    className="text-[10px] text-red-400/50 hover:text-red-400 transition-colors"
-                  >
-                    删除
+                  <button onClick={() => handleDelete(key.exchange)} className="text-[9px] text-red-400/40 hover:text-red-400 transition-colors shrink-0 ml-2">
+                    {t("common.delete", "删除")}
                   </button>
                 </div>
               );
@@ -187,29 +186,29 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
 
       {/* Add key form */}
       {showForm && (
-        <div className="rounded-xl bg-white/[0.02] p-4 space-y-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-xl bg-white/[0.02] p-3 sm:p-4 space-y-3" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-foreground/50">绑定交易所 API Key</h3>
-            <button onClick={() => setShowForm(false)} className="text-xs text-foreground/30 hover:text-foreground/50">取消</button>
+            <h3 className="text-xs font-bold text-foreground/50">{t("exchange.bindTitle", "绑定交易所 API Key")}</h3>
+            <button onClick={() => setShowForm(false)} className="text-xs text-foreground/30 hover:text-foreground/50">{t("common.cancel", "取消")}</button>
           </div>
 
-          {/* Exchange selection */}
+          {/* Exchange selection — 2 cols on mobile, 4 on desktop */}
           <div>
-            <label className="text-[10px] text-foreground/30 mb-1 block">选择交易所</label>
-            <div className="grid grid-cols-3 gap-2">
+            <label className="text-[10px] text-foreground/30 mb-1.5 block">{t("exchange.selectExchange", "选择交易所")}</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {EXCHANGES.map(ex => (
                 <button
                   key={ex.id}
                   onClick={() => setSelectedExchange(ex.id)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
+                    "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] transition-colors",
                     selectedExchange === ex.id
                       ? "bg-primary/10 text-primary border border-primary/20"
                       : "bg-white/[0.02] text-foreground/40 border border-white/[0.04] hover:bg-white/[0.04]"
                   )}
                 >
-                  <span>{ex.icon}</span>
-                  <span className="font-semibold">{ex.name}</span>
+                  <span className="text-sm">{ex.icon}</span>
+                  <span className="font-semibold truncate">{ex.name}</span>
                 </button>
               ))}
             </div>
@@ -224,24 +223,22 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
                   type="text"
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder="输入 API Key"
-                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-xs text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
+                  placeholder={t("exchange.enterApiKey", "输入 API Key")}
+                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-[12px] text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
                 />
               </div>
 
-              {/* API Secret */}
               <div>
                 <label className="text-[10px] text-foreground/30 mb-1 block">API Secret</label>
                 <input
                   type="password"
                   value={apiSecret}
                   onChange={e => setApiSecret(e.target.value)}
-                  placeholder="输入 API Secret"
-                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-xs text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
+                  placeholder={t("exchange.enterApiSecret", "输入 API Secret")}
+                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-[12px] text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
                 />
               </div>
 
-              {/* Passphrase (OKX, Bitget) */}
               {exchangeConfig?.needsPassphrase && (
                 <div>
                   <label className="text-[10px] text-foreground/30 mb-1 block">Passphrase</label>
@@ -249,28 +246,26 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
                     type="password"
                     value={passphrase}
                     onChange={e => setPassphrase(e.target.value)}
-                    placeholder="输入 Passphrase"
-                    className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-xs text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
+                    placeholder={t("exchange.enterPassphrase", "输入 Passphrase")}
+                    className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-[12px] text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
                   />
                 </div>
               )}
 
-              {/* Label */}
               <div>
-                <label className="text-[10px] text-foreground/30 mb-1 block">标签（可选）</label>
+                <label className="text-[10px] text-foreground/30 mb-1 block">{t("exchange.label", "标签（可选）")}</label>
                 <input
                   type="text"
                   value={label}
                   onChange={e => setLabel(e.target.value)}
-                  placeholder={`我的 ${exchangeConfig?.name} 账户`}
-                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-xs text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
+                  placeholder={`${t("exchange.myAccount", "我的")} ${exchangeConfig?.name} ${t("exchange.account", "账户")}`}
+                  className="w-full bg-white/[0.04] rounded-lg px-3 py-2 text-[12px] text-foreground/60 border border-white/[0.06] placeholder:text-foreground/15"
                 />
               </div>
 
-              {/* Testnet toggle */}
               {exchangeConfig?.hasTestnet && (
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-foreground/40">使用测试网</span>
+                  <span className="text-[11px] text-foreground/40">{t("exchange.useTestnet", "使用测试网")}</span>
                   <button
                     onClick={() => setTestnet(!testnet)}
                     className={cn("w-8 h-4 rounded-full transition-colors relative", testnet ? "bg-yellow-500" : "bg-foreground/10")}
@@ -280,21 +275,18 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
                 </div>
               )}
 
-              {/* Security notice */}
-              <div className="px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
-                <p className="text-[10px] text-yellow-400/60">
-                  安全提示：请确保 API Key 仅开启「交易」权限，禁用「提币」权限。您的密钥将使用 AES-256-GCM 加密存储。
+              <div className="px-2.5 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
+                <p className="text-[9px] text-yellow-400/60 leading-relaxed">
+                  {t("exchange.securityNotice", "安全提示：请确保 API Key 仅开启「交易」权限，禁用「提币」权限。您的密钥将使用 AES-256-GCM 加密存储。")}
                 </p>
               </div>
 
-              {/* Error */}
               {error && (
-                <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                <div className="px-2.5 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[11px] text-red-400">
                   {error}
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 onClick={handleSubmit}
                 disabled={loading || !apiKey || !apiSecret}
