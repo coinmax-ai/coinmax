@@ -475,8 +475,8 @@ export default function ProfilePage() {
                   <div className="text-[11px] text-white/40 mt-0.5">6 months</div>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <div className="text-[16px] font-black text-yellow-400">$149</div>
-                  <div className="text-[10px] text-emerald-400 font-bold">SAVE 49%</div>
+                  <div className="text-[16px] font-black text-yellow-400">$250</div>
+                  <div className="text-[10px] text-emerald-400 font-bold">85折</div>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">

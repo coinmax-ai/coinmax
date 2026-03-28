@@ -24,6 +24,10 @@ const TX_TYPE_COLORS: Record<string, string> = {
   VIP_PURCHASE: "bg-purple-500/15 text-purple-400",
   NODE_PURCHASE: "bg-amber-500/15 text-amber-400",
   REWARD: "bg-green-500/15 text-green-400",
+  TEAM_COMMISSION: "bg-indigo-500/15 text-indigo-400",
+  DIRECT_REFERRAL: "bg-pink-500/15 text-pink-400",
+  FIXED_YIELD: "bg-yellow-500/15 text-yellow-400",
+  REWARD_RELEASE: "bg-teal-500/15 text-teal-400",
   COMPLETED: "bg-primary/15 text-primary",
   CONFIRMED: "bg-primary/15 text-primary",
 };
@@ -38,6 +42,10 @@ const TX_TYPE_LABELS: Record<string, string> = {
   VIP_PURCHASE: "VIP购买",
   NODE_PURCHASE: "节点购买",
   REWARD: "奖励",
+  TEAM_COMMISSION: "团队奖励",
+  DIRECT_REFERRAL: "直推奖励",
+  FIXED_YIELD: "节点收益",
+  REWARD_RELEASE: "释放到账",
 };
 
 const FILTERS = [
@@ -45,7 +53,9 @@ const FILTERS = [
   { key: "DEPOSIT,VAULT_DEPOSIT", label: "入金" },
   { key: "VIP_PURCHASE,NODE_PURCHASE", label: "购买" },
   { key: "YIELD,YIELD_CLAIM", label: "收益提取" },
-  { key: "REWARD", label: "奖励" },
+  { key: "DIRECT_REFERRAL", label: "直推奖励" },
+  { key: "TEAM_COMMISSION", label: "团队奖励" },
+  { key: "FIXED_YIELD", label: "节点收益" },
   { key: "WITHDRAW,VAULT_REDEEM", label: "赎回/提取" },
 ];
 

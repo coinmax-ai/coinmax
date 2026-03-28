@@ -2,25 +2,39 @@
 
 ## 任务列表
 
-| # | 任务 | 优先级 | 状态 | 备注 |
-|---|------|--------|------|------|
-| 1 | 同级奖励(10%) + 越级奖励(5%) | 高 | 进行中 | settle_team_commission 增加逻辑 |
-| 2 | 团队/直推奖励写入释放池 | 高 | 待做 | 奖励 → earnings_releases → 释放 |
-| 3 | 推荐页 UI: 升级条件显示 | 中 | 待做 | 调 get_rank_status RPC |
-| 4 | 推荐页 UI: 安置推荐人显示 | 中 | 待做 | placement_id → wallet |
-| 5 | 推荐页 UI: 已领取金额 | 中 | 待做 | 替换硬编码 $0 |
-| 6 | 推荐页 UI: 团队业绩修正 | 中 | 待做 | 用 RPC 替代前端2层 sum |
-| 7 | VIP 价格统一 | 中 | 待做 | data.ts vs SQL 不匹配 |
-| 8 | 360天金库计划加入前端 | 低 | 待做 | data.ts 缺 360_DAYS |
-| 9 | 邀请链接支持自定义安置 | 中 | 待做 | UI + 链接生成 |
-| 10 | 交易记录类型完善 | 低 | 待做 | 加直推/团队/节点奖励类型 |
-| 11 | referral_earnings 列更新 | 低 | 待做 | 死字段修复 |
-| 12 | API wrapper: getRankStatus + getUserTeamStats | 中 | 待做 | 前端无法调用 |
-| 13 | vault_deposits 与 vault_positions 表统一 | 低 | 待做 | distribute-revenue 用错表 |
+| # | 任务 | 状态 | 日期 |
+|---|------|------|------|
+| 1 | 同级奖励(10%) + 越级奖励(5%) | ✅ 完成 | 2026-03-28 |
+| 2 | 团队/直推奖励写入释放池 | ✅ 完成 | 2026-03-28 |
+| 3 | 推荐页 UI: 升级条件 + 团队业绩 + 已领取 | ✅ 完成 | 2026-03-28 |
+| 4 | VIP 价格统一 ($49月/$250半年) | ✅ 完成 | 2026-03-28 |
+| 5 | 邀请链接支持自定义安置 | ✅ 已有 | 团队树UI已实现 |
+| 6 | 交易记录类型完善 + 筛选 | ✅ 完成 | 2026-03-28 |
+| 7 | referral_earnings 列自动更新 | ✅ 完成 | trigger 自动更新 |
+| 8 | getRankStatus/getUserTeamStats API | ✅ 完成 | 2026-03-28 |
 
-## 修复记录
+## 修改记录
 
-### Task 1: 同级奖励 + 越级奖励
-- 日期: 2026-03-28
-- 状态: 进行中
-- 改动: settle_team_commission 增加 same_rank_bonus(10%) + override_bonus(5%)
+### Migration 039: settle_team_commission V2
+- 新增 same_rank bonus (同级10%)
+- 新增 override bonus (越级5%)
+- system_config: SAME_RANK_RATE=0.10, OVERRIDE_RATE=0.05
+
+### Migration 040: 奖励进释放池
+- trigger trg_commission_to_release: node_rewards INSERT → earnings_releases
+- trigger trg_update_referral_earnings: 自动更新 profiles.referral_earnings
+
+### subscribe_vip 价格更新
+- monthly: $49
+- halfyear: $250 (49×6×0.85)
+- trial: $0 (7天)
+
+### 前端修改
+- profile-referral.tsx: 升级条件、团队业绩(RPC)、已领取金额
+- profile-transactions.tsx: 直推奖励/团队奖励/节点收益/释放到账 类型 + 筛选
+- api.ts: getRankStatus(), getUserTeamStats()
+
+## 待确认/后续
+- 节点系统 NODE_SYSTEM_ACTIVE 需要开启才能触发节点收益
+- vault_deposits 与 vault_positions 表需统一 (distribute-revenue 用错表)
+- 无降级机制 (设计决策)
