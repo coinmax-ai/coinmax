@@ -29,6 +29,7 @@ import {
   TIMELOCK_ADDRESS,
   BATCH_BRIDGE_ADDRESS,
   ARB_FUND_ROUTER_ADDRESS,
+  FLASH_SWAP_ADDRESS,
 } from "@/lib/contracts";
 
 // ── Known deployed addresses ──
@@ -87,6 +88,31 @@ const FUND_MANAGER_READ_ABI = {
 const ERC20_BALANCE_ABI = {
   balanceOf: { type: "function", name: "balanceOf", inputs: [{ name: "account", type: "address" }], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
 } as const;
+
+const FLASH_SWAP_READ_ABI = {
+  feeBps: { type: "function", name: "feeBps", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  holdingRuleBps: { type: "function", name: "holdingRuleBps", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  minSwapAmount: { type: "function", name: "minSwapAmount", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  swapCount: { type: "function", name: "swapCount", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  totalMAReceived: { type: "function", name: "totalMAReceived", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  totalUSDTPaid: { type: "function", name: "totalUSDTPaid", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  totalFees: { type: "function", name: "totalFees", inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+  paused: { type: "function", name: "paused", inputs: [], outputs: [{ name: "", type: "bool" }], stateMutability: "view" },
+  getLiquidity: { type: "function", name: "getLiquidity", inputs: [], outputs: [{ name: "maLiq", type: "uint256" }, { name: "usdtLiq", type: "uint256" }, { name: "usdcLiq", type: "uint256" }], stateMutability: "view" },
+} as const;
+
+// ── Server Wallets for gas monitoring ──
+const SERVER_WALLETS = [
+  { label: "vault (金库ADMIN)", address: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b" },
+  { label: "trade (运营SERVER)", address: "0x0831e8875685C796D05F2302D3c5C2Dd77fAc3B6" },
+  { label: "VIP (价格FEEDER)", address: "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A" },
+  { label: "CoinMax (代币ADMIN)", address: "0x60D416dA873508c23C1315a2b750a31201959d78" },
+  { label: "relayer (Gas支付)", address: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA" },
+  { label: "deployer (当前admin)", address: "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1" },
+] as const;
+
+const BSC_RPC = "https://bsc-dataseed1.binance.org";
+const GAS_ALERT_THRESHOLD = 0.005; // BNB
 
 // ── Helpers ──
 
@@ -582,6 +608,12 @@ export default function AdminContracts() {
             onRefresh={v3Oracle.refresh}
           />
 
+          {/* FlashSwap Liquidity Monitor */}
+          {FLASH_SWAP_ADDRESS && <FlashSwapPanel onRefresh={() => {}} />}
+
+          {/* Batch Gas Management */}
+          <BatchGasPanel />
+
           {/* Oracle Admin Operations */}
           {isSuperAdmin && <OracleAdminPanel onPriceUpdated={v3Oracle.refresh} />}
 
@@ -632,7 +664,7 @@ export default function AdminContracts() {
 
           {/* ═══ 最新链路方案 ═══ */}
           <ContractSection
-            title="📋 完整资金链路"
+            title="完整资金链路"
             icon={<Shield className="h-4 w-4 text-primary" />}
             address=""
             items={[
@@ -658,7 +690,7 @@ export default function AdminContracts() {
               { label: "══ MA 闪兑 (BSC) ══", value: "" },
               { label: "1. 用户 MA", value: "→ FlashSwap (按Oracle价格换USDT)" },
               { label: "2. 50%持仓规则", value: "→ 必须保留一半MA余额" },
-              { label: "   状态:", value: "FlashSwap 合约待部署" },
+              { label: "   FlashSwap", value: `已部署 ${formatAddress(FLASH_SWAP_ADDRESS)} (0.3%手续费, 50%规则)` },
               { label: "", value: "" },
               { label: "══ VIP 订阅 (BSC) ══", value: "" },
               { label: "1. 免费试用7天", value: "→ activate-vip-trial (edge fn)" },
@@ -670,10 +702,10 @@ export default function AdminContracts() {
               { label: "3. 安全限制", value: "→ 单次最大涨跌10%, 24h心跳" },
               { label: "", value: "" },
               { label: "══ 用户可见性 ══", value: "" },
-              { label: "✓ 看到", value: "USDT → Gateway/SwapRouter → 合约地址" },
-              { label: "✗ 看不到", value: "5钱包分配 (在ARB链)" },
-              { label: "✗ 看不到", value: "节点最终钱包 (NodePool中转)" },
-              { label: "✗ 看不到", value: "LP收益去向 (PancakeSwap池)" },
+              { label: "[可见] 看到", value: "USDT → Gateway/SwapRouter → 合约地址" },
+              { label: "[隐藏] 看不到", value: "5钱包分配 (在ARB链)" },
+              { label: "[隐藏] 看不到", value: "节点最终钱包 (NodePool中转)" },
+              { label: "[隐藏] 看不到", value: "LP收益去向 (PancakeSwap池)" },
             ]}
             loading={false}
             onRefresh={() => {}}
@@ -686,20 +718,21 @@ export default function AdminContracts() {
             icon={<FileCode2 className="h-4 w-4 text-amber-400" />}
             address=""
             items={[
-              { label: "🚪 Gateway (入口swap) ✅UUPS", value: GATEWAY_ADDRESS, type: "address" },
-              { label: "🏦 Vault (ERC4626金库) ✅UUPS", value: VAULT_V3_ADDRESS, type: "address" },
-              { label: "⚙️ Engine (利息引擎) ✅UUPS", value: ENGINE_ADDRESS, type: "address" },
-              { label: "🔓 Release (释放合约) ✅UUPS", value: RELEASE_ADDRESS, type: "address" },
-              { label: "📊 Oracle (价格预言机) ✅UUPS", value: PRICE_ORACLE_ADDRESS, type: "address" },
-              { label: "🌉 BatchBridge (跨链累积)", value: BATCH_BRIDGE_ADDRESS, type: "address" },
-              { label: "📦 NodePool (节点中转)", value: "0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a", type: "address" },
-              { label: "🪙 MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
-              { label: "💵 cUSD (记账代币)", value: CUSD_ADDRESS, type: "address" },
-              { label: "🔀 SwapRouter (节点swap)", value: SWAP_ROUTER_ADDRESS, type: "address" },
-              { label: "🔄 NodesV2 (节点合约)", value: NODE_V2_CONTRACT_ADDRESS, type: "address" },
-              { label: "🔐 Forwarder (EIP-2771)", value: FORWARDER_ADDRESS, type: "address" },
-              { label: "⏳ Timelock (24h延迟)", value: TIMELOCK_ADDRESS, type: "address" },
-              { label: "🏊 PancakeSwap V3 Pool", value: "0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
+              { label: "Gateway (入口swap) UUPS", value: GATEWAY_ADDRESS, type: "address" },
+              { label: "Vault (ERC4626金库) UUPS", value: VAULT_V3_ADDRESS, type: "address" },
+              { label: "Engine (利息引擎) UUPS", value: ENGINE_ADDRESS, type: "address" },
+              { label: "Release (释放合约) UUPS", value: RELEASE_ADDRESS, type: "address" },
+              { label: "Oracle (价格预言机) UUPS", value: PRICE_ORACLE_ADDRESS, type: "address" },
+              { label: "FlashSwap (MA闪兑) UUPS", value: FLASH_SWAP_ADDRESS, type: "address" },
+              { label: "BatchBridge (跨链累积)", value: BATCH_BRIDGE_ADDRESS, type: "address" },
+              { label: "NodePool (节点中转)", value: "0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a", type: "address" },
+              { label: "MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
+              { label: "cUSD (记账代币)", value: CUSD_ADDRESS, type: "address" },
+              { label: "SwapRouter (节点swap)", value: SWAP_ROUTER_ADDRESS, type: "address" },
+              { label: "NodesV2 (节点合约)", value: NODE_V2_CONTRACT_ADDRESS, type: "address" },
+              { label: "Forwarder (EIP-2771)", value: FORWARDER_ADDRESS, type: "address" },
+              { label: "Timelock (24h延迟)", value: TIMELOCK_ADDRESS, type: "address" },
+              { label: "PancakeSwap V3 Pool", value: "0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
             ]}
             loading={false}
             onRefresh={() => {}}
@@ -712,12 +745,12 @@ export default function AdminContracts() {
             icon={<FileCode2 className="h-4 w-4 text-blue-400" />}
             address=""
             items={[
-              { label: "📤 FundRouter (分配) ✅UUPS", value: ARB_FUND_ROUTER_ADDRESS, type: "address" },
-              { label: "💰 Trading 30%", value: "0xd12097C9A12617c49220c032C84aCc99B6fFf57b", type: "address" },
-              { label: "🏢 Ops 8%", value: "0xDf90770C89732a7eba5B727fCd6a12f827102EE6", type: "address" },
-              { label: "📣 Marketing 12%", value: "0x1C4D983620B3c8c2f7607c0943f2A5989e655599", type: "address" },
-              { label: "🤝 Investor 20%", value: "0x85c3d07Ee3be12d6502353b4cA52B30cD85Ac5ff", type: "address" },
-              { label: "💳 Withdraw 30%", value: "0x7DEa369864583E792D230D360C0a4C56c2103FE4", type: "address" },
+              { label: "FundRouter (分配) UUPS", value: ARB_FUND_ROUTER_ADDRESS, type: "address" },
+              { label: "Trading 30%", value: "0xd12097C9A12617c49220c032C84aCc99B6fFf57b", type: "address" },
+              { label: "Ops 8%", value: "0xDf90770C89732a7eba5B727fCd6a12f827102EE6", type: "address" },
+              { label: "Marketing 12%", value: "0x1C4D983620B3c8c2f7607c0943f2A5989e655599", type: "address" },
+              { label: "Investor 20%", value: "0x85c3d07Ee3be12d6502353b4cA52B30cD85Ac5ff", type: "address" },
+              { label: "Withdraw 30%", value: "0x7DEa369864583E792D230D360C0a4C56c2103FE4", type: "address" },
             ]}
             loading={false}
             onRefresh={() => {}}
@@ -748,28 +781,28 @@ export default function AdminContracts() {
 
           {/* 钱包管理 */}
           <ContractSection
-            title="🔑 钱包管理"
+            title="钱包管理"
             icon={<Wallet className="h-4 w-4 text-amber-400" />}
             address=""
             items={[
               { label: "── Server Wallets (thirdweb) ──", value: "" },
-              { label: "🏦 vault (金库ADMIN)", value: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b", type: "address" },
-              { label: "📈 trade (运营SERVER)", value: "0x0831e8875685C796D05F2302D3c5C2Dd77fAc3B6", type: "address" },
-              { label: "💎 VIP (价格FEEDER)", value: "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A", type: "address" },
-              { label: "🪙 CoinMax (代币ADMIN)", value: "0x60D416dA873508c23C1315a2b750a31201959d78", type: "address" },
-              { label: "⛽ relayer (Gas支付)", value: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA", type: "address" },
+              { label: "vault (金库ADMIN)", value: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b", type: "address" },
+              { label: "trade (运营SERVER)", value: "0x0831e8875685C796D05F2302D3c5C2Dd77fAc3B6", type: "address" },
+              { label: "VIP (价格FEEDER)", value: "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A", type: "address" },
+              { label: "CoinMax (代币ADMIN)", value: "0x60D416dA873508c23C1315a2b750a31201959d78", type: "address" },
+              { label: "relayer (Gas支付)", value: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA", type: "address" },
               { label: "", value: "" },
               { label: "── 运营钱包 ──", value: "" },
-              { label: "🔑 deployer (当前admin)", value: "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1", type: "address" },
-              { label: "📦 节点接收钱包", value: "0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9", type: "address" },
-              { label: "🏊 LP仓位钱包", value: "Pool: 0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
+              { label: "deployer (当前admin)", value: "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1", type: "address" },
+              { label: "节点接收钱包", value: "0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9", type: "address" },
+              { label: "LP仓位钱包", value: "Pool: 0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
               { label: "", value: "" },
               { label: "── 安全 ──", value: "" },
-              { label: "Vault/Engine/Release/Oracle", value: "✅ UUPS Proxy 可升级" },
-              { label: "Gateway", value: "✅ Proxy 可升级 (新: 0x38a6)" },
-              { label: "FundRouter (ARB)", value: "✅ UUPS Proxy 可升级" },
-              { label: "EIP-2771 Forwarder", value: "✅ 已部署" },
-              { label: "Timelock (24h)", value: "✅ 已部署" },
+              { label: "Vault/Engine/Release/Oracle", value: "UUPS Proxy 可升级", type: "bool" },
+              { label: "Gateway", value: "Proxy 可升级", type: "bool" },
+              { label: "FundRouter (ARB)", value: "UUPS Proxy 可升级", type: "bool" },
+              { label: "EIP-2771 Forwarder", value: "true", type: "bool" },
+              { label: "Timelock (24h)", value: "true", type: "bool" },
               { label: "All admin", value: "deployer 0x1B6B (全部合约)" },
             ]}
             loading={false}
@@ -842,6 +875,360 @@ export default function AdminContracts() {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── FlashSwap Liquidity Monitor Panel ──
+
+const LIQUIDITY_ALERT_USDT = 500;  // USDT threshold for warning
+const LIQUIDITY_ALERT_MA = 5000;   // MA threshold for warning
+
+function FlashSwapPanel({ onRefresh }: { onRefresh?: () => void }) {
+  const { toast } = useToast();
+  const { client } = useThirdwebClient();
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<{
+    maLiq: string; usdtLiq: string; usdcLiq: string;
+    feeBps: number; holdingRuleBps: number; minSwap: string;
+    swapCount: number; totalMAReceived: string; totalUSDTPaid: string; totalFees: string;
+    paused: boolean;
+  } | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!client || !FLASH_SWAP_ADDRESS) return;
+    setLoading(true);
+    try {
+      const c = getContract({ client, chain: bsc, address: FLASH_SWAP_ADDRESS });
+      const read = (method: any, params?: any[]) => readContract({ contract: c, method, params: params as any });
+
+      const [liq, feeBps, holdingRuleBps, minSwapAmount, swapCount, totalMAReceived, totalUSDTPaid, totalFees, paused] = await Promise.all([
+        read(FLASH_SWAP_READ_ABI.getLiquidity),
+        read(FLASH_SWAP_READ_ABI.feeBps),
+        read(FLASH_SWAP_READ_ABI.holdingRuleBps),
+        read(FLASH_SWAP_READ_ABI.minSwapAmount),
+        read(FLASH_SWAP_READ_ABI.swapCount),
+        read(FLASH_SWAP_READ_ABI.totalMAReceived),
+        read(FLASH_SWAP_READ_ABI.totalUSDTPaid),
+        read(FLASH_SWAP_READ_ABI.totalFees),
+        read(FLASH_SWAP_READ_ABI.paused),
+      ]);
+
+      const maLiq = Number((liq as any)[0] || 0) / 1e18;
+      const usdtLiq = Number((liq as any)[1] || 0) / 1e18;
+      const usdcLiq = Number((liq as any)[2] || 0) / 1e18;
+
+      setData({
+        maLiq: maLiq.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        usdtLiq: usdtLiq.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        usdcLiq: usdcLiq.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        feeBps: Number(feeBps),
+        holdingRuleBps: Number(holdingRuleBps),
+        minSwap: (Number(minSwapAmount) / 1e18).toFixed(0),
+        swapCount: Number(swapCount),
+        totalMAReceived: (Number(totalMAReceived) / 1e18).toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        totalUSDTPaid: (Number(totalUSDTPaid) / 1e18).toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        totalFees: (Number(totalFees) / 1e18).toLocaleString("en-US", { maximumFractionDigits: 4 }),
+        paused: Boolean(paused),
+      });
+    } catch (err: any) {
+      toast({ title: "FlashSwap 读取失败", description: err?.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [client, toast]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const maNum = data ? parseFloat(data.maLiq.replace(/,/g, "")) : 0;
+  const usdtNum = data ? parseFloat(data.usdtLiq.replace(/,/g, "")) : 0;
+  const usdcNum = data ? parseFloat(data.usdcLiq.replace(/,/g, "")) : 0;
+  const maLow = maNum < LIQUIDITY_ALERT_MA;
+  const usdtLow = usdtNum < LIQUIDITY_ALERT_USDT;
+  const usdcLow = usdcNum < LIQUIDITY_ALERT_USDT;
+  const anyAlert = data && (maLow || usdtLow);
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${anyAlert ? "border-red-500/30" : "border-cyan-500/15"}`}
+      style={{ background: anyAlert ? "rgba(239,68,68,0.03)" : "rgba(6,182,212,0.02)" }}>
+      <div className="px-4 py-3 border-b border-cyan-500/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft className="h-4 w-4 text-cyan-400" />
+          <span className="text-[13px] font-bold text-foreground/80">FlashSwap 流动性监控</span>
+          <a href={bscScanUrl(FLASH_SWAP_ADDRESS)} target="_blank" rel="noopener noreferrer"
+            className="text-[10px] font-mono text-primary/50 hover:text-primary flex items-center gap-0.5">
+            {formatAddress(FLASH_SWAP_ADDRESS)}<ExternalLink className="h-2.5 w-2.5" />
+          </a>
+          {data?.paused && <Badge className="text-[9px] bg-red-500/10 text-red-400 border-red-500/20">已暂停</Badge>}
+          {anyAlert && <Badge className="text-[9px] bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">⚠ 流动性不足</Badge>}
+        </div>
+        <button
+          className="h-6 w-6 rounded flex items-center justify-center text-foreground/30 hover:text-foreground/60 hover:bg-white/[0.05] transition-colors"
+          onClick={() => { fetchData(); onRefresh?.(); }}
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {loading && !data ? (
+        <div className="p-4 space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+        </div>
+      ) : data ? (
+        <div className="p-4 space-y-4">
+          {/* Liquidity Pools */}
+          <div>
+            <p className="text-[10px] text-foreground/30 mb-2">流动性池余额</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className={`rounded-lg p-3 text-center border ${maLow ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}>
+                <div className={`text-lg font-bold font-mono ${maLow ? "text-red-400" : "text-foreground/80"}`}>{data.maLiq}</div>
+                <div className="text-[10px] text-foreground/30">MA Token</div>
+                {maLow && <div className="text-[9px] text-red-400 mt-1">⚠ 低于 {LIQUIDITY_ALERT_MA.toLocaleString()}</div>}
+              </div>
+              <div className={`rounded-lg p-3 text-center border ${usdtLow ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}>
+                <div className={`text-lg font-bold font-mono ${usdtLow ? "text-red-400" : "text-foreground/80"}`}>${data.usdtLiq}</div>
+                <div className="text-[10px] text-foreground/30">USDT</div>
+                {usdtLow && <div className="text-[9px] text-red-400 mt-1">⚠ 低于 ${LIQUIDITY_ALERT_USDT}</div>}
+              </div>
+              <div className={`rounded-lg p-3 text-center border ${usdcLow ? "bg-amber-500/5 border-amber-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}>
+                <div className={`text-lg font-bold font-mono ${usdcLow ? "text-amber-400" : "text-foreground/80"}`}>${data.usdcLiq}</div>
+                <div className="text-[10px] text-foreground/30">USDC</div>
+                {usdcLow && <div className="text-[9px] text-amber-400 mt-1">⚠ 低于 ${LIQUIDITY_ALERT_USDT}</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-2 text-center">
+              <div className="text-sm font-bold font-mono text-foreground/70">{data.swapCount}</div>
+              <div className="text-[9px] text-foreground/25">总交易数</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-2 text-center">
+              <div className="text-sm font-bold font-mono text-foreground/70">{data.totalMAReceived}</div>
+              <div className="text-[9px] text-foreground/25">收到 MA</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-2 text-center">
+              <div className="text-sm font-bold font-mono text-foreground/70">${data.totalUSDTPaid}</div>
+              <div className="text-[9px] text-foreground/25">支出 USDT</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-2 text-center">
+              <div className="text-sm font-bold font-mono text-foreground/70">${data.totalFees}</div>
+              <div className="text-[9px] text-foreground/25">累计手续费</div>
+            </div>
+          </div>
+
+          {/* Config */}
+          <div className="text-[10px] text-foreground/20 space-y-1 pt-2 border-t border-white/[0.04]">
+            <div className="flex justify-between"><span>手续费</span><span>{data.feeBps} bps ({(data.feeBps / 100).toFixed(1)}%)</span></div>
+            <div className="flex justify-between"><span>持仓规则</span><span>{data.holdingRuleBps} bps (保留{(data.holdingRuleBps / 100).toFixed(0)}%)</span></div>
+            <div className="flex justify-between"><span>最低交换</span><span>{data.minSwap} 单位</span></div>
+            <div className="flex justify-between"><span>警告阈值</span><span>MA &lt; {LIQUIDITY_ALERT_MA.toLocaleString()} / USDT &lt; ${LIQUIDITY_ALERT_USDT}</span></div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Batch Gas Panel — monitor & send BNB to Server Wallets ──
+
+function BatchGasPanel() {
+  const { toast } = useToast();
+  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [sendAmount, setSendAmount] = useState("0.01");
+  const [selectedWallets, setSelectedWallets] = useState<Set<string>>(new Set());
+
+  const fetchBalances = useCallback(async () => {
+    setLoading(true);
+    try {
+      const calls = SERVER_WALLETS.map((w) => ({
+        jsonrpc: "2.0", method: "eth_getBalance", id: w.address,
+        params: [w.address, "latest"],
+      }));
+      const res = await fetch(BSC_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(calls),
+      });
+      const results = await res.json();
+      const map: Record<string, string> = {};
+      for (const r of results) {
+        const bnb = parseInt(r.result || "0x0", 16) / 1e18;
+        map[r.id] = bnb.toFixed(4);
+      }
+      setBalances(map);
+
+      // Auto-select wallets below threshold
+      const lowWallets = new Set<string>();
+      for (const w of SERVER_WALLETS) {
+        if (parseFloat(map[w.address] || "0") < GAS_ALERT_THRESHOLD) {
+          lowWallets.add(w.address);
+        }
+      }
+      if (lowWallets.size > 0) setSelectedWallets(lowWallets);
+    } catch (err: any) {
+      toast({ title: "余额查询失败", description: err?.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchBalances(); }, [fetchBalances]);
+
+  const toggleWallet = (addr: string) => {
+    setSelectedWallets((prev) => {
+      const next = new Set(prev);
+      if (next.has(addr)) next.delete(addr); else next.add(addr);
+      return next;
+    });
+  };
+
+  const selectAllLow = () => {
+    const low = new Set<string>();
+    for (const w of SERVER_WALLETS) {
+      if (parseFloat(balances[w.address] || "0") < GAS_ALERT_THRESHOLD) low.add(w.address);
+    }
+    setSelectedWallets(low);
+  };
+
+  const selectAll = () => {
+    if (selectedWallets.size === SERVER_WALLETS.length) {
+      setSelectedWallets(new Set());
+    } else {
+      setSelectedWallets(new Set(SERVER_WALLETS.map(w => w.address)));
+    }
+  };
+
+  const lowCount = SERVER_WALLETS.filter(w => parseFloat(balances[w.address] || "0") < GAS_ALERT_THRESHOLD).length;
+  const totalCost = selectedWallets.size * parseFloat(sendAmount || "0");
+
+  const handleBatchSend = () => {
+    if (selectedWallets.size === 0) return;
+    // Generate the Hardhat script for the user to run
+    const targets = SERVER_WALLETS.filter(w => selectedWallets.has(w.address));
+    const script = targets.map(w =>
+      `await deployer.sendTransaction({ to: "${w.address}", value: ethers.parseEther("${sendAmount}") }); // ${w.label}`
+    ).join("\n");
+
+    navigator.clipboard.writeText(
+      `// Batch send ${sendAmount} BNB to ${targets.length} wallets (total: ${totalCost.toFixed(4)} BNB)\n` +
+      `// Run: npx hardhat run scripts/batch-gas.js --network bsc\n` +
+      `const { ethers } = require("hardhat");\nasync function main() {\n  const [deployer] = await ethers.getSigners();\n  console.log("Sending from:", deployer.address);\n` +
+      targets.map(w =>
+        `  const tx${targets.indexOf(w)} = await deployer.sendTransaction({ to: "${w.address}", value: ethers.parseEther("${sendAmount}") });\n  await tx${targets.indexOf(w)}.wait();\n  console.log("[OK] ${w.label} ->", tx${targets.indexOf(w)}.hash);`
+      ).join("\n") +
+      `\n  console.log("Done! Sent ${sendAmount} BNB × ${targets.length} = ${totalCost.toFixed(4)} BNB");\n}\nmain().catch(console.error);`
+    );
+    toast({
+      title: "脚本已复制到剪贴板",
+      description: `${targets.length} 个钱包，每个 ${sendAmount} BNB，共 ${totalCost.toFixed(4)} BNB`,
+    });
+  };
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${lowCount > 0 ? "border-amber-500/20" : "border-green-500/15"}`}
+      style={{ background: lowCount > 0 ? "rgba(245,158,11,0.02)" : "rgba(16,185,129,0.02)" }}>
+      <div className="px-4 py-3 border-b border-amber-500/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-amber-400" />
+          <span className="text-[13px] font-bold text-foreground/80">Server Wallet Gas 管理</span>
+          {lowCount > 0 && (
+            <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse">
+              ⚠ {lowCount} 个余额不足
+            </Badge>
+          )}
+        </div>
+        <button
+          className="h-6 w-6 rounded flex items-center justify-center text-foreground/30 hover:text-foreground/60 hover:bg-white/[0.05] transition-colors"
+          onClick={fetchBalances}
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Wallet List */}
+        <div className="space-y-1">
+          {SERVER_WALLETS.map((w) => {
+            const bal = parseFloat(balances[w.address] || "0");
+            const isLow = bal < GAS_ALERT_THRESHOLD;
+            const selected = selectedWallets.has(w.address);
+            return (
+              <div key={w.address}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                  selected ? "bg-primary/5 border border-primary/20" : "hover:bg-white/[0.02] border border-transparent"
+                }`}
+                onClick={() => toggleWallet(w.address)}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => toggleWallet(w.address)}
+                  className="h-3.5 w-3.5 rounded accent-primary cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="text-[11px] text-foreground/50 flex-1">{w.label}</span>
+                <a
+                  href={bscScanUrl(w.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-primary/40 hover:text-primary flex items-center gap-0.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {formatAddress(w.address)}<ExternalLink className="h-2.5 w-2.5" />
+                </a>
+                <span className={`text-[11px] font-mono font-bold min-w-[70px] text-right ${
+                  isLow ? "text-red-400" : bal < 0.02 ? "text-amber-400" : "text-green-400"
+                }`}>
+                  {loading ? "..." : `${balances[w.address] || "0"} BNB`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04]">
+          <button
+            className="text-[10px] text-primary/60 hover:text-primary transition-colors"
+            onClick={selectAll}
+          >
+            {selectedWallets.size === SERVER_WALLETS.length ? "取消全选" : "全选"}
+          </button>
+          <span className="text-foreground/10">|</span>
+          <button
+            className="text-[10px] text-amber-400/60 hover:text-amber-400 transition-colors"
+            onClick={selectAllLow}
+          >
+            选择余额不足
+          </button>
+          <div className="flex-1" />
+          <span className="text-[10px] text-foreground/25">每个</span>
+          <input
+            type="number"
+            step="0.005"
+            min="0.001"
+            value={sendAmount}
+            onChange={(e) => setSendAmount(e.target.value)}
+            className="w-20 h-7 text-[11px] font-mono text-center bg-background/50 border border-border/20 rounded px-1"
+          />
+          <span className="text-[10px] text-foreground/25">BNB</span>
+        </div>
+
+        <Button
+          size="sm"
+          disabled={selectedWallets.size === 0}
+          className="w-full bg-amber-600 text-white hover:bg-amber-500"
+          onClick={handleBatchSend}
+        >
+          复制批量打 Gas 脚本 ({selectedWallets.size} 个钱包，共 {totalCost.toFixed(4)} BNB)
+        </Button>
+        <p className="text-[9px] text-foreground/20 text-center">
+          复制 Hardhat 脚本到剪贴板，用 deployer 钱包发送。阈值: {GAS_ALERT_THRESHOLD} BNB
+        </p>
       </div>
     </div>
   );
