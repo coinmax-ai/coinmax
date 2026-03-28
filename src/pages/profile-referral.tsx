@@ -51,6 +51,7 @@ export default function ProfileReferralPage() {
   const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
   const [skipCount, setSkipCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [rankFilter, setRankFilter] = useState<string>("all");
   const viewingAddr = addrStack.length > 0 ? addrStack[addrStack.length - 1].addr : walletAddr;
   const isViewingSelf = viewingAddr === walletAddr;
 
@@ -449,8 +450,8 @@ export default function ProfileReferralPage() {
               )}
             </div>
 
-            {/* Search */}
-            <div className="mb-3">
+            {/* Search + rank filter */}
+            <div className="mb-3 space-y-2">
               <input
                 type="text"
                 value={searchQuery}
@@ -458,6 +459,22 @@ export default function ProfileReferralPage() {
                 placeholder={t("profile.searchMember", "搜索钱包地址 / 后4位")}
                 className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder:text-white/20 outline-none focus:border-primary/30"
               />
+              <div className="flex gap-1 overflow-x-auto pb-0.5">
+                {["all", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "none"].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setRankFilter(r)}
+                    className="shrink-0 px-2 py-1 rounded-md text-[10px] font-bold transition-all"
+                    style={{
+                      background: rankFilter === r ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.03)",
+                      border: rankFilter === r ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: rankFilter === r ? "#4ade80" : "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    {r === "all" ? t("profile.filterAll", "全部") : r === "none" ? t("profile.filterNoRank", "无等级") : r}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Skip first N controls */}
@@ -544,11 +561,26 @@ export default function ProfileReferralPage() {
                   </div>
                 )}
                 {teamData.referrals.slice(skipCount).filter((ref) => {
-                  if (!searchQuery) return true;
-                  const q = searchQuery.toLowerCase();
-                  const matchSelf = ref.walletAddress?.toLowerCase().includes(q);
-                  const matchSub = ref.subReferrals?.some(sr => sr.walletAddress?.toLowerCase().includes(q));
-                  return matchSelf || matchSub;
+                  // Search filter
+                  if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const matchSelf = ref.walletAddress?.toLowerCase().includes(q);
+                    const matchSub = ref.subReferrals?.some(sr => sr.walletAddress?.toLowerCase().includes(q));
+                    if (!matchSelf && !matchSub) return false;
+                  }
+                  // Rank filter
+                  if (rankFilter !== "all") {
+                    if (rankFilter === "none") {
+                      const selfMatch = !ref.rank;
+                      const subMatch = ref.subReferrals?.some(sr => !sr.rank);
+                      if (!selfMatch && !subMatch) return false;
+                    } else {
+                      const selfMatch = ref.rank === rankFilter;
+                      const subMatch = ref.subReferrals?.some(sr => sr.rank === rankFilter);
+                      if (!selfMatch && !subMatch) return false;
+                    }
+                  }
+                  return true;
                 }).map((ref) => {
                   const subCount = ref.subReferrals?.length || 0;
                   const teamDeposits = ref.subReferrals?.reduce((s, r) => s + Number(r.totalDeposited || 0), 0) || 0;
