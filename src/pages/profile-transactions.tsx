@@ -69,7 +69,7 @@ export default function ProfileTransactionsPage() {
           <div className="space-y-2">
             {transactions.map((tx) => {
               const explorerUrl = tx.txHash
-                ? `https://sepolia.basescan.org/tx/${tx.txHash}`
+                ? `https://bscscan.com/tx/${tx.txHash}`
                 : null;
               return (
                 <Card key={tx.id} className="border-border bg-card" data-testid={`transaction-card-${tx.id}`}>
@@ -102,8 +102,8 @@ export default function ProfileTransactionsPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="text-[11px] border-blue-500/30 text-blue-400 no-default-hover-elevate no-default-active-elevate">
-                          <Link className="h-2.5 w-2.5 mr-0.5" />Base Sepolia
+                        <Badge variant="outline" className="text-[11px] border-yellow-500/30 text-yellow-400 no-default-hover-elevate no-default-active-elevate">
+                          <Link className="h-2.5 w-2.5 mr-0.5" />BSC
                         </Badge>
                         {tx.txHash ? (
                           <a
