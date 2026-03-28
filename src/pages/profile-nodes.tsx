@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveAccount } from "thirdweb/react";
-import { ArrowLeft, ArrowUpRight, WalletCards, Zap, ShieldCheck, ChevronRight, TrendingUp, Lock, Unlock, Award, KeyRound, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, WalletCards, Zap, ShieldCheck, ChevronRight, TrendingUp, Lock, Unlock, Award, KeyRound, Loader2, ExternalLink, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { getNodeOverview, getNodeEarningsRecords, getNodeMemberships, getNodeMilestoneRequirements, validateAuthCode } from "@/lib/api";
 import type { NodeOverview, NodeEarningsRecord, NodeMembership } from "@shared/types";
-import { NODE_PLANS, NODE_MILESTONES } from "@/lib/data";
+import { NODE_PLANS, NODE_MILESTONES, NODE_ACTIVATION_TIERS, NODE_QUALIFICATION_CHECKS } from "@/lib/data";
 import { useTranslation } from "react-i18next";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,7 @@ export default function ProfileNodesPage() {
   const [authCodeError, setAuthCodeError] = useState("");
   const [authCodeLoading, setAuthCodeLoading] = useState(false);
   const [validatedAuthCode, setValidatedAuthCode] = useState("");
+  const [nodeInfoOpen, setNodeInfoOpen] = useState(false);
 
   const handleMaxNodeClick = () => {
     setAuthCodeInput("");
@@ -84,7 +85,10 @@ export default function ProfileNodesPage() {
     enabled: isConnected,
   });
 
-  const { data: requirements } = useQuery<{ vaultDeposited: number; directNodeReferrals: number }>({
+  const { data: requirements } = useQuery<{
+    vaultDeposited: number; directNodeReferrals: number; directMiniReferrals: number;
+    activatedRank: string | null; earningsPaused: boolean;
+  }>({
     queryKey: ["node-milestone-requirements", walletAddr],
     queryFn: () => getNodeMilestoneRequirements(walletAddr),
     enabled: isConnected,
@@ -92,6 +96,8 @@ export default function ProfileNodesPage() {
 
   const vaultDeposited = requirements?.vaultDeposited ?? 0;
   const directNodeReferrals = requirements?.directNodeReferrals ?? 0;
+  const directMiniReferrals = requirements?.directMiniReferrals ?? 0;
+  const isEarningsPaused = requirements?.earningsPaused ?? false;
 
   const nodes = overview?.nodes ?? [];
   const activeNodes = nodes.filter((n) => n.status === "ACTIVE" || n.status === "PENDING_MILESTONES");
@@ -105,6 +111,7 @@ export default function ProfileNodesPage() {
   const lockedEarnings = Number(overview?.lockedEarnings || 0);
 
   const firstNode = activeNodes.length > 0 ? activeNodes[0] : null;
+  const activatedRank = requirements?.activatedRank ?? firstNode?.activatedRank ?? null;
   const daysActive = firstNode?.startDate
     ? Math.floor((Date.now() - new Date(firstNode.startDate).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
@@ -115,7 +122,10 @@ export default function ProfileNodesPage() {
 
   const currentRank = overview?.rank || "V0";
 
-  const releaseStatus = t("profile.statusNotStarted");
+  const destroyedEarnings = Number(overview?.destroyedEarnings || 0);
+  const releaseStatus = activatedRank
+    ? (isEarningsPaused ? t("profile.earningsPaused") : t("profile.activatedLabel") + " " + activatedRank)
+    : t("profile.notActivated");
 
   const getStatusLabel = (status: string) => {
     const map: Record<string, string> = {
@@ -133,18 +143,23 @@ export default function ProfileNodesPage() {
   };
 
   const getMilestoneDesc = (ms: { rank: string; desc: string; requiredHolding: number; requiredReferrals: number }) => {
-    if (nodeType === "MINI") {
-      if (ms.rank === "V2") return t("profile.milestoneV2Mini");
-      if (ms.rank === "V4") return t("profile.milestoneV4Mini");
-    }
     if (ms.requiredReferrals > 0)
       return t("profile.rankDescHoldingRefs", { amount: ms.requiredHolding, refs: ms.requiredReferrals });
-    if (ms.rank === "V6")
-      return t("profile.rankDescUnlockAll", { amount: ms.requiredHolding });
     if (ms.requiredHolding > 0)
-      return t("profile.rankDescHolding", { amount: ms.requiredHolding });
+      return t("profile.vaultDepositRequired", { amount: ms.requiredHolding });
     return ms.desc;
   };
+
+  // Get activation tiers for current node type
+  const activationTiers = nodeType === "MAX" ? NODE_ACTIVATION_TIERS.MAX : NODE_ACTIVATION_TIERS.MINI;
+  const qualificationChecks = nodeType === "MAX" ? NODE_QUALIFICATION_CHECKS.MAX : NODE_QUALIFICATION_CHECKS.MINI;
+
+  // Determine which tier the user currently qualifies for
+  const currentActivationTier = activationTiers.filter(tier => {
+    const meetsDeposit = vaultDeposited >= tier.vaultDeposit;
+    const meetsRefs = tier.requiredMiniReferrals === 0 || directMiniReferrals >= tier.requiredMiniReferrals;
+    return meetsDeposit && meetsRefs;
+  }).pop();
 
   const milestoneStates = milestones.map((ms, idx) => {
     const daysLeft = getMilestoneDaysLeft(firstNode?.startDate ?? null, ms.days);
@@ -194,6 +209,13 @@ export default function ProfileNodesPage() {
               <ArrowLeft className="h-5 w-5 text-white/90" />
             </button>
             <h1 className="text-lg sm:text-xl font-bold tracking-wide text-white">{t("profile.nodeDetailsTitle")}</h1>
+            <button
+              onClick={() => setNodeInfoOpen(true)}
+              className="absolute right-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+              style={{ background: "rgba(10,186,181,0.1)", border: "1px solid rgba(10,186,181,0.25)" }}
+            >
+              <Info className="h-4 w-4 text-white/70" />
+            </button>
           </div>
 
           {/* Main progress card */}
@@ -490,9 +512,15 @@ export default function ProfileNodesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full" style={{
-                  background: "rgba(255,255,255,0.2)",
+                  background: activatedRank
+                    ? (isEarningsPaused ? "#f59e0b" : accentGreen)
+                    : "rgba(255,255,255,0.2)",
                 }} />
-                <span className="text-base sm:text-lg font-bold text-white/60">{releaseStatus}</span>
+                <span className="text-base sm:text-lg font-bold" style={{
+                  color: activatedRank
+                    ? (isEarningsPaused ? "#f59e0b" : accentGreen)
+                    : "rgba(255,255,255,0.6)",
+                }}>{releaseStatus}</span>
               </div>
             </div>
 
@@ -573,11 +601,11 @@ export default function ProfileNodesPage() {
                         </div>
                       </div>
                       <span className="text-[11px] px-2.5 py-1 rounded-full font-bold" style={{
-                        color: "#fbbf24",
-                        background: "rgba(251,191,36,0.1)",
-                        border: "1px solid rgba(251,191,36,0.2)",
+                        color: m.activatedRank ? accentGreen : "#fbbf24",
+                        background: m.activatedRank ? "rgba(52,211,153,0.1)" : "rgba(251,191,36,0.1)",
+                        border: `1px solid ${m.activatedRank ? "rgba(52,211,153,0.2)" : "rgba(251,191,36,0.2)"}`,
                       }}>
-                        {t("profile.vaultNotActive")}
+                        {m.activatedRank ? `${t("profile.activatedLabel")} ${m.activatedRank}` : t("profile.vaultNotActive")}
                       </span>
                     </div>
 
@@ -733,6 +761,90 @@ export default function ProfileNodesPage() {
         walletAddr={walletAddr}
         authCode={validatedAuthCode}
       />
+
+      {/* Node Info Dialog */}
+      <Dialog open={nodeInfoOpen} onOpenChange={setNodeInfoOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" style={{ background: "#0e1216", border: "1px solid rgba(10,186,181,0.2)" }}>
+          <DialogTitle className="text-lg font-bold text-white">{t("profile.nodeActivation")}</DialogTitle>
+          <DialogDescription className="text-xs text-white/40">{t("profile.nodeActivationDesc")}</DialogDescription>
+
+          <div className="space-y-5 mt-2">
+            {/* Small Node Section */}
+            <div>
+              <h3 className="text-sm font-bold text-white mb-2" style={{ color: "#a5b4fc" }}>
+                {t("profile.applySmallNode")} - {t("profile.activationTierTitle")}
+              </h3>
+              <div className="space-y-1.5">
+                {NODE_ACTIVATION_TIERS.MINI.map((tier) => (
+                  <div key={tier.rank} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "rgba(129,140,248,0.06)", border: "1px solid rgba(129,140,248,0.1)" }}>
+                    <span className="text-xs font-bold" style={{ color: "#a5b4fc" }}>{tier.rank}</span>
+                    <span className="text-xs text-white/60">{t("profile.vaultDepositRequired", { amount: tier.vaultDeposit })}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-white/30 mt-1.5">{t("profile.earnStartNextDay")} - {t("profile.miniDailyEarning")}</p>
+
+              <h4 className="text-xs font-bold text-white/60 mt-3 mb-1.5">{t("profile.qualificationTitle")}</h4>
+              <div className="space-y-1.5">
+                {NODE_QUALIFICATION_CHECKS.MINI.map((check, idx) => (
+                  <div key={idx} className="rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-white/80">{t("profile.checkDayLabel", { day: check.checkDay })}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(250,204,21,0.1)", color: "#fbbf24" }}>
+                        {check.requiredRank}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-400/80">{check.passAction === "UNLOCK_PARTIAL" ? t("profile.passUnlockPartial") : check.passAction === "UNLOCK_ALL" ? t("profile.passUnlockAll") : t("profile.passUnlockFrozen", { amount: 1000 })}</div>
+                    <div className="text-[11px] text-red-400/80">{check.failAction === "KEEP_LOCKED" ? t("profile.failKeepLocked") : check.failAction === "DESTROY" ? t("profile.failDestroy") : t("profile.failKeepFrozen")}</div>
+                    {check.failAction !== "KEEP_FROZEN" && <div className="text-[10px] text-white/25 mt-0.5">{t("profile.rankDropActual")}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Large Node Section */}
+            <div>
+              <h3 className="text-sm font-bold text-white mb-2" style={{ color: "#81d8d0" }}>
+                {t("profile.applyLargeNode")} - {t("profile.activationTierTitle")}
+              </h3>
+              <div className="space-y-1.5">
+                {NODE_ACTIVATION_TIERS.MAX.map((tier) => (
+                  <div key={tier.rank} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "rgba(10,186,181,0.06)", border: "1px solid rgba(10,186,181,0.1)" }}>
+                    <span className="text-xs font-bold" style={{ color: "#81d8d0" }}>{tier.rank}</span>
+                    <div className="text-right">
+                      <span className="text-xs text-white/60">{t("profile.vaultDepositRequired", { amount: tier.vaultDeposit })}</span>
+                      {tier.requiredMiniReferrals > 0 && (
+                        <div className="text-[10px] text-amber-400/80">{t("profile.requiresMiniRefs", { count: tier.requiredMiniReferrals })}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-white/30 mt-1.5">{t("profile.earnStartNextDay")} - {t("profile.maxDailyEarning")}</p>
+
+              <h4 className="text-xs font-bold text-white/60 mt-3 mb-1.5">{t("profile.qualificationTitle")}</h4>
+              <div className="space-y-1.5">
+                {NODE_QUALIFICATION_CHECKS.MAX.map((check, idx) => (
+                  <div key={idx} className="rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-white/80">{t("profile.checkDayLabel", { day: check.checkDay })}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(250,204,21,0.1)", color: "#fbbf24" }}>
+                        {check.requiredRank}
+                      </span>
+                    </div>
+                    {check.earningRange && (
+                      <div className="text-[10px] text-white/30 mb-0.5">{t("profile.checkDayRange", { start: check.earningRange.split("-")[0], end: check.earningRange.split("-")[1] })}</div>
+                    )}
+                    <div className="text-[11px] text-emerald-400/80">{check.passAction === "CONTINUE" ? t("profile.passContinue") : t("profile.passUnlockFrozen", { amount: 6000 })}</div>
+                    <div className="text-[11px] text-red-400/80">{check.failAction === "PAUSE" ? t("profile.failPause") : t("profile.failKeepFrozen")}</div>
+                    {check.failAction === "PAUSE" && <div className="text-[10px] text-white/25 mt-0.5">{t("profile.rankDropActual")}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

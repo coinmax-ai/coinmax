@@ -108,9 +108,21 @@ serve(async (req) => {
       .update({ total_deposited: newTotal })
       .eq("id", profile.id);
 
+    // 4. Check node activation based on new vault deposit
+    const { data: activationResult } = await supabase.rpc("check_node_activation", {
+      addr: walletAddress,
+    });
+
+    // 5. Check rank promotion
+    const { data: rankResult } = await supabase.rpc("check_rank_promotion", {
+      addr: walletAddress,
+    });
+
     return json({
       success: true,
       vaultPosition: { planType, principal, days, endDate: endDate.toISOString() },
+      activation: activationResult,
+      rank: rankResult,
       message: `${principal} USDT 存入记录已保存`,
     });
 

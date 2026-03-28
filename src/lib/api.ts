@@ -405,7 +405,7 @@ export async function getNodeMilestoneRequirements(walletAddress: string) {
     addr: walletAddress,
   });
   if (error) throw error;
-  return toCamel(data ?? { vault_deposited: 0, direct_node_referrals: 0 });
+  return toCamel(data ?? { vault_deposited: 0, direct_node_referrals: 0, direct_mini_referrals: 0, activated_rank: null, earnings_paused: false });
 }
 
 export async function placePredictionBet(

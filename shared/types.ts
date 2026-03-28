@@ -84,6 +84,10 @@ export interface NodeMembership {
   totalMilestones: number;
   earningsCapacity: string;
   dailyRate: string;
+  activatedRank: string | null;
+  earningsPaused: boolean;
+  destroyedEarnings: string;
+  frozenUnlocked: boolean;
   milestones?: NodeMilestone[];
 }
 
@@ -96,6 +100,9 @@ export interface NodeMilestone {
   deadlineAt: string;
   achievedAt: string | null;
   status: string;
+  passAction: string;
+  failAction: string;
+  earningRange: string | null;
   createdAt: string | null;
 }
 
@@ -119,6 +126,7 @@ export interface NodeOverview {
   availableBalance: string;
   lockedEarnings: string;
   releasedEarnings: string;
+  destroyedEarnings: string;
 }
 
 export interface NodeEarningsRecord {

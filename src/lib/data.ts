@@ -35,29 +35,70 @@ export const NODE_PLANS = {
   MINI: {
     price: 100, label: "Small Node", frozenAmount: 1000, dailyRate: 0.009, dailyYield: 9,
     durationDays: 90, contributionRate: 0.10,
-    activationDesc: "V2: 100U holding + 3 small node referrals",
+    activationDesc: "存入金库激活V1-V4等级",
     features: ["basicStrategies", "communityAccess"],
   },
   MAX: {
     price: 600, label: "Large Node", frozenAmount: 6000, dailyRate: 0.009, dailyYield: 54,
     durationDays: 120, contributionRate: 0.10,
-    activationDesc: "V2→V6 progressive milestones",
+    activationDesc: "存入金库激活V1-V6等级",
     features: ["allStrategiesUnlocked", "prioritySupport", "higherVaultYields"],
   },
 } as const;
 
-export const NODE_MILESTONES = {
+// Vault deposit thresholds to activate node rank
+export const NODE_ACTIVATION_TIERS = {
   MINI: [
-    { rank: "V2", days: 0, unlocks: "earnings", desc: "Unlock daily 0.9% earnings + withdraw", requiredHolding: 0, requiredReferrals: 0 },
-    { rank: "V4", days: 90, unlocks: "earnings_and_package", desc: "Unlock rewards + 10x contribution release", requiredHolding: 0, requiredReferrals: 0 },
+    { rank: "V1", vaultDeposit: 100, requiredMiniReferrals: 0 },
+    { rank: "V2", vaultDeposit: 300, requiredMiniReferrals: 0 },
+    { rank: "V3", vaultDeposit: 500, requiredMiniReferrals: 0 },
+    { rank: "V4", vaultDeposit: 600, requiredMiniReferrals: 0 },
   ],
   MAX: [
-    { rank: "V1", days: 15, unlocks: "none", desc: "Reach V1", requiredHolding: 0, requiredReferrals: 0 },
-    { rank: "V2", days: 30, unlocks: "earnings", desc: "100U holding + 3 direct small node referrals", requiredHolding: 100, requiredReferrals: 3 },
-    { rank: "V3", days: 45, unlocks: "earnings", desc: "500U holding", requiredHolding: 500, requiredReferrals: 0 },
-    { rank: "V4", days: 60, unlocks: "earnings", desc: "600U holding", requiredHolding: 600, requiredReferrals: 0 },
-    { rank: "V5", days: 90, unlocks: "earnings", desc: "800U holding", requiredHolding: 800, requiredReferrals: 0 },
-    { rank: "V6", days: 120, unlocks: "earnings_and_package", desc: "1000U holding, unlock all", requiredHolding: 1000, requiredReferrals: 0 },
+    { rank: "V1", vaultDeposit: 100, requiredMiniReferrals: 3 },
+    { rank: "V2", vaultDeposit: 300, requiredMiniReferrals: 0 },
+    { rank: "V3", vaultDeposit: 500, requiredMiniReferrals: 0 },
+    { rank: "V4", vaultDeposit: 600, requiredMiniReferrals: 0 },
+    { rank: "V5", vaultDeposit: 800, requiredMiniReferrals: 0 },
+    { rank: "V6", vaultDeposit: 1000, requiredMiniReferrals: 0 },
+  ],
+} as const;
+
+// Qualification checks at specific days after node activation
+// passAction/failAction: UNLOCK_PARTIAL, UNLOCK_ALL, DESTROY, UNLOCK_FROZEN, CONTINUE, PAUSE, KEEP_LOCKED, KEEP_FROZEN
+export const NODE_QUALIFICATION_CHECKS = {
+  MINI: [
+    { checkDay: 30, requiredRank: "V2", passAction: "UNLOCK_PARTIAL", failAction: "KEEP_LOCKED",
+      earningRange: "1-60", desc: "V2达标：解锁1-60天锁仓收益" },
+    { checkDay: 90, requiredRank: "V2", passAction: "UNLOCK_ALL", failAction: "DESTROY",
+      earningRange: "1-90", desc: "V2达标：解锁全部收益；不达标：收益销毁" },
+    { checkDay: 90, requiredRank: "V4", passAction: "UNLOCK_FROZEN", failAction: "KEEP_FROZEN",
+      earningRange: null, desc: "V4达标：解锁1000U铸造MA" },
+  ],
+  MAX: [
+    { checkDay: 15, requiredRank: "V1", passAction: "CONTINUE", failAction: "PAUSE",
+      earningRange: "16-30", desc: "V1达标：继续领取收益" },
+    { checkDay: 30, requiredRank: "V2", passAction: "CONTINUE", failAction: "PAUSE",
+      earningRange: "31-60", desc: "V2达标：继续领取收益" },
+    { checkDay: 60, requiredRank: "V4", passAction: "CONTINUE", failAction: "PAUSE",
+      earningRange: "61-120", desc: "V4达标：继续领取收益" },
+    { checkDay: 120, requiredRank: "V6", passAction: "UNLOCK_FROZEN", failAction: "KEEP_FROZEN",
+      earningRange: null, desc: "V6达标：解锁6000U铸造MA" },
+  ],
+} as const;
+
+// Legacy NODE_MILESTONES kept for backward compatibility in milestone tracker UI
+export const NODE_MILESTONES = {
+  MINI: [
+    { rank: "V1", days: 0, unlocks: "activation", desc: "存入金库100U激活", requiredHolding: 100, requiredReferrals: 0 },
+    { rank: "V2", days: 30, unlocks: "earnings", desc: "达标解锁1-60天收益", requiredHolding: 300, requiredReferrals: 0 },
+    { rank: "V4", days: 90, unlocks: "earnings_and_package", desc: "达标解锁收益+1000U铸造MA", requiredHolding: 600, requiredReferrals: 0 },
+  ],
+  MAX: [
+    { rank: "V1", days: 15, unlocks: "earnings", desc: "100U+推荐3个小节点", requiredHolding: 100, requiredReferrals: 3 },
+    { rank: "V2", days: 30, unlocks: "earnings", desc: "存入金库300U", requiredHolding: 300, requiredReferrals: 0 },
+    { rank: "V4", days: 60, unlocks: "earnings", desc: "存入金库600U", requiredHolding: 600, requiredReferrals: 0 },
+    { rank: "V6", days: 120, unlocks: "earnings_and_package", desc: "存入金库1000U，解锁全部", requiredHolding: 1000, requiredReferrals: 0 },
   ],
 } as const;
 
