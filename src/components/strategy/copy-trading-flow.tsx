@@ -16,6 +16,7 @@ import { AICoinPicker } from "@/components/strategy/ai-coin-picker";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { Brain } from "lucide-react";
 
 type CopyStep = "bind" | "ai";
 
@@ -46,13 +47,13 @@ const FIXED_CONFIG = {
   revenueSharePlatform: 20,
 };
 
-const MODEL_INFO: Record<string, { icon: string; desc: string }> = {
-  "GPT-4o": { icon: "🟢", desc: "Trend follower, momentum-based" },
-  "Claude": { icon: "🟠", desc: "Risk-aware, contrarian analysis" },
-  "Gemini": { icon: "🔵", desc: "Volatility scalper" },
-  "DeepSeek": { icon: "🟣", desc: "Technical purist, RSI/MACD/BB" },
-  "Llama": { icon: "🦙", desc: "Momentum chaser, local AI" },
-  "CoinMax": { icon: "🧠", desc: "Multi-model consensus + deep learning" },
+const MODEL_INFO: Record<string, { color: string; desc: string }> = {
+  "GPT-4o": { color: "#22c55e", desc: "Trend follower, momentum-based" },
+  "Claude": { color: "#f97316", desc: "Risk-aware, contrarian analysis" },
+  "Gemini": { color: "#3b82f6", desc: "Volatility scalper" },
+  "DeepSeek": { color: "#a855f7", desc: "Technical purist, RSI/MACD/BB" },
+  "Llama": { color: "#eab308", desc: "Momentum chaser, local AI" },
+  "CoinMax": { color: "#0abab5", desc: "Multi-model consensus + deep learning" },
 };
 
 export function CopyTradingFlow({
@@ -204,7 +205,9 @@ export function CopyTradingFlow({
               <>
                 <h3 className="text-xs font-bold text-foreground/50 mb-2">{t("copy.followingModel", "跟随模型")}</h3>
                 <div className="flex items-center gap-3 bg-primary/5 rounded-xl px-4 py-3 border border-primary/15">
-                  <span className="text-2xl">{MODEL_INFO[preSelectedModel].icon}</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: MODEL_INFO[preSelectedModel].color + "20" }}>
+                    <Brain className="h-4 w-4" style={{ color: MODEL_INFO[preSelectedModel].color }} />
+                  </div>
                   <div>
                     <p className="text-sm font-bold text-primary">{preSelectedModel}</p>
                     <p className="text-[10px] text-foreground/30">{MODEL_INFO[preSelectedModel].desc}</p>
@@ -217,7 +220,7 @@ export function CopyTradingFlow({
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(MODEL_INFO).map(([name, info]) => (
                     <span key={name} className="text-[10px] px-2 py-1 rounded-lg bg-primary/8 text-primary border border-primary/15 font-semibold">
-                      {info.icon} {name}
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ background: info.color }} /> {name}
                     </span>
                   ))}
                 </div>
