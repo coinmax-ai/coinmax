@@ -33,7 +33,7 @@ interface ReferralData {
 }
 
 type MainTab = "team" | "history";
-type HistoryFilter = "deposit" | "redeem" | "income" | "invite" | "team";
+type HistoryFilter = "all" | "deposit" | "redeem" | "direct" | "diff" | "same_rank" | "override";
 
 export default function ProfileReferralPage() {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export default function ProfileReferralPage() {
   const isConnected = !!walletAddr;
 
   const [mainTab, setMainTab] = useState<MainTab>("team");
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("income");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
 
   const [addrStack, setAddrStack] = useState<Array<{ addr: string; label: string }>>([]);
   const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
@@ -118,10 +118,12 @@ export default function ProfileReferralPage() {
     toast({ title: t("common.copied"), description: t("common.copiedDesc") });
   };
 
-  const filteredRecords = commission?.records?.filter((r) => {
-    if (historyFilter === "income") return true;
-    if (historyFilter === "invite") return r.details?.type === "direct_referral";
-    if (historyFilter === "team") return r.details?.type !== "direct_referral";
+  const filteredRecords = commission?.records?.filter((r: any) => {
+    if (historyFilter === "all") return true;
+    if (historyFilter === "direct") return r.details?.type === "direct_referral";
+    if (historyFilter === "diff") return r.details?.type === "differential";
+    if (historyFilter === "same_rank") return r.details?.type === "same_rank";
+    if (historyFilter === "override") return r.details?.type === "override";
     return true;
   }) || [];
 
@@ -742,11 +744,11 @@ export default function ProfileReferralPage() {
 
             <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
               {([
-                { key: "deposit" as HistoryFilter, label: t("profile.historyDeposit") },
-                { key: "redeem" as HistoryFilter, label: t("profile.historyRedeem") },
-                { key: "income" as HistoryFilter, label: t("profile.historyIncome") },
-                { key: "invite" as HistoryFilter, label: t("profile.historyInvite") },
-                { key: "team" as HistoryFilter, label: t("profile.historyTeam") },
+                { key: "all" as HistoryFilter, label: t("profile.historyAll", "全部") },
+                { key: "direct" as HistoryFilter, label: t("profile.historyDirect", "直推奖励") },
+                { key: "diff" as HistoryFilter, label: t("profile.historyDiff", "团队级差") },
+                { key: "same_rank" as HistoryFilter, label: t("profile.historySameRank", "同级奖励") },
+                { key: "override" as HistoryFilter, label: t("profile.historyOverride", "越级奖励") },
               ]).map((f) => (
                 <button
                   key={f.key}
@@ -778,58 +780,48 @@ export default function ProfileReferralPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredRecords.map((record) => {
-                  const isDirectRef = record.details?.type === "direct_referral";
+                {filteredRecords.map((record: any) => {
+                  const rType = record.details?.type || "unknown";
                   const amount = Number(record.amount || 0);
                   const depth = record.details?.depth || 0;
-                  const rate = record.details?.rate;
                   const createdAt = record.createdAt
-                    ? new Date(record.createdAt).toLocaleDateString(undefined, {
-                        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                      })
+                    ? new Date(record.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
                     : "--";
+
+                  const typeConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+                    direct_referral: { label: t("profile.directReward", "直推奖励"), color: "#ec4899", bg: "rgba(236,72,153,0.1)", icon: UserPlus },
+                    differential: { label: t("profile.teamDiff", "团队级差"), color: "#6366f1", bg: "rgba(99,102,241,0.1)", icon: Layers },
+                    same_rank: { label: t("profile.sameRank", "同级奖励"), color: "#a855f7", bg: "rgba(168,85,247,0.1)", icon: Users },
+                    override: { label: t("profile.override", "越级奖励"), color: "#eab308", bg: "rgba(234,179,8,0.1)", icon: Network },
+                  };
+                  const cfg = typeConfig[rType] || { label: rType, color: "#9ca3af", bg: "rgba(156,163,175,0.1)", icon: DollarSign };
+                  const Icon = cfg.icon;
 
                   return (
                     <div
                       key={record.id}
-                      className="rounded-xl p-3.5 flex items-center justify-between"
-                      style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.35)" }}
+                      className="rounded-xl p-3 flex items-center justify-between"
+                      style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.15)" }}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div
-                          className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: isDirectRef ? "rgba(74,222,128,0.1)" : "rgba(245,158,11,0.1)" }}
-                        >
-                          {isDirectRef ? (
-                            <UserPlus className="h-4 w-4 text-green-400" />
-                          ) : (
-                            <Layers className="h-4 w-4 text-amber-400" />
-                          )}
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cfg.bg }}>
+                          <Icon className="h-4 w-4" style={{ color: cfg.color }} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                              style={{
-                                background: isDirectRef ? "rgba(74,222,128,0.1)" : "rgba(245,158,11,0.1)",
-                                color: isDirectRef ? "#4ade80" : "#f59e0b",
-                              }}
-                            >
-                              {isDirectRef ? t("profile.directRef") : t("profile.differential")}
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: cfg.bg, color: cfg.color }}>
+                              {cfg.label}
                             </span>
-                            <span className="text-[10px] text-white/30">L{depth}</span>
-                            {rate !== undefined && !isDirectRef && (
-                              <span className="text-[10px] text-white/30">{(rate * 100).toFixed(0)}%</span>
-                            )}
+                            {depth > 0 && <span className="text-[9px] text-white/25">L{depth}</span>}
                           </div>
-                          <div className="text-[10px] text-white/35 mt-0.5 truncate">
-                            {t("profile.from")}: {record.sourceWallet ? shortenAddress(record.sourceWallet) : "--"}
+                          <div className="text-[10px] text-white/30 mt-0.5 truncate">
+                            {record.sourceWallet ? shortenAddress(record.sourceWallet) : "--"}
                           </div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-[13px] font-bold text-green-400">+{usdcToMA(amount).toFixed(2)} MA</div>
-                        <div className="text-[10px] text-white/30">{createdAt}</div>
+                        <div className="text-[13px] font-bold" style={{ color: cfg.color }}>+{amount.toFixed(2)} MA</div>
+                        <div className="text-[9px] text-white/25">{createdAt}</div>
                       </div>
                     </div>
                   );
