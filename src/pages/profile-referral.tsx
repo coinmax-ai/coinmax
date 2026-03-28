@@ -283,23 +283,19 @@ export default function ProfileReferralPage() {
             <div className="text-[24px] font-black text-white mb-3">
               {formatCompact(totalCommission)} <span className="text-[14px] text-primary">MA</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg p-2.5" style={{ background: "rgba(236,72,153,0.06)", border: "1px solid rgba(236,72,153,0.15)" }}>
-                <div className="text-[10px] text-pink-400/60 mb-0.5">{t("profile.directReferralReward", "直推奖励")}</div>
-                <div className="text-[15px] font-bold text-pink-400">{formatCompact(directTotal)} MA</div>
-              </div>
-              <div className="rounded-lg p-2.5" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)" }}>
-                <div className="text-[10px] text-indigo-400/60 mb-0.5">{t("profile.teamDiffReward", "团队级差")}</div>
-                <div className="text-[15px] font-bold text-indigo-400">{formatCompact(diffTotal)} MA</div>
-              </div>
-              <div className="rounded-lg p-2.5" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
-                <div className="text-[10px] text-purple-400/60 mb-0.5">{t("profile.sameRankReward", "同级奖励")}</div>
-                <div className="text-[15px] font-bold text-purple-400">{formatCompact(sameRankTotal)} MA</div>
-              </div>
-              <div className="rounded-lg p-2.5" style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)" }}>
-                <div className="text-[10px] text-yellow-400/60 mb-0.5">{t("profile.overrideReward", "越级奖励")}</div>
-                <div className="text-[15px] font-bold text-yellow-400">{formatCompact(overrideTotal)} MA</div>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: t("profile.directReferralReward", "直推奖励"), value: directTotal, opacity: 1.0 },
+                { label: t("profile.teamDiffReward", "团队级差"), value: diffTotal, opacity: 0.75 },
+                { label: t("profile.sameRankReward", "同级奖励"), value: sameRankTotal, opacity: 0.55 },
+                { label: t("profile.overrideReward", "越级奖励"), value: overrideTotal, opacity: 0.4 },
+              ].map((item, i) => (
+                <div key={i} className="rounded-lg p-2.5"
+                  style={{ background: `rgba(10,186,181,${item.opacity * 0.06})`, border: `1px solid rgba(10,186,181,${item.opacity * 0.15})` }}>
+                  <div className="text-[10px] mb-0.5" style={{ color: `rgba(10,186,181,${item.opacity * 0.6})` }}>{item.label}</div>
+                  <div className="text-[15px] font-bold" style={{ color: `rgba(10,186,181,${0.4 + item.opacity * 0.6})` }}>{formatCompact(item.value)} MA</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
