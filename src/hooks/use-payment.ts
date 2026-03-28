@@ -188,7 +188,7 @@ export function usePayment() {
       const plan = VIP_PLANS[planKey];
       if (!plan) throw new Error("Invalid VIP plan");
 
-      const receiverAddress = import.meta.env.VITE_VIP_RECEIVER_ADDRESS || "0x93F655C3C6B595600fc735118dcEE10cd63d4C8f";
+      const receiverAddress = import.meta.env.VITE_VIP_RECEIVER_ADDRESS || "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A";
 
       setStatus("paying");
       setError(null);

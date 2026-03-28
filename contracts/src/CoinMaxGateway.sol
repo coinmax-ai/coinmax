@@ -314,7 +314,7 @@ contract CoinMaxGateway is
     // ═══════════════════════════════════════════════════════════════════
 
     function _swapToUsdc(uint256 amountIn, uint256 amountOutMin) internal returns (uint256) {
-        usdt.forceApprove(address(dexRouter), amountIn);
+        usdt.safeIncreaseAllowance(address(dexRouter), amountIn);
         return dexRouter.exactInputSingle(
             IDEXRouter.ExactInputSingleParams({
                 tokenIn: address(usdt),
