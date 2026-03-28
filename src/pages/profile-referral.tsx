@@ -606,7 +606,7 @@ export default function ProfileReferralPage() {
                                 title={`${window.location.origin}/r/${refCode}/${ref.refCode}`}
                               >
                                 <Link2 className="h-2.5 w-2.5" />
-                                Placement
+                                {t("profile.placementLink", "安置链接")}
                               </button>
                             )}
                           </div>
@@ -622,43 +622,6 @@ export default function ProfileReferralPage() {
                             </span>
                           </div>
                         </button>
-                        {/* Details: sponsor, placement, link (shown when expanded) */}
-                        {isExpanded && (
-                          <div className="mt-2 pt-2 space-y-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                            <div className="grid grid-cols-2 gap-2">
-                              {ref.sponsorWallet && (
-                                <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.1)" }}>
-                                  <div className="text-[9px] text-white/35">{t("profile.sponsorLabel", "Sponsor (Referrer)")}</div>
-                                  <div className="text-[10px] font-mono text-green-400/70 truncate">{shortenAddress(ref.sponsorWallet)}</div>
-                                </div>
-                              )}
-                              {(ref as any).placedByWallet && (
-                                <div className="rounded-lg px-2 py-1.5" style={{ background: "rgba(147,130,220,0.05)", border: "1px solid rgba(147,130,220,0.1)" }}>
-                                  <div className="text-[9px] text-white/35">{t("profile.placedByLabel", "Placed By")}</div>
-                                  <div className="text-[10px] font-mono text-purple-400/70 truncate">{shortenAddress((ref as any).placedByWallet)}</div>
-                                </div>
-                              )}
-                            </div>
-                            {/* Placement referral link */}
-                            {refCode && ref.refCode && (
-                              <div className="flex items-center gap-1.5">
-                                <div className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-[9px] font-mono text-yellow-400/70 truncate"
-                                  style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)" }}
-                                >
-                                  {window.location.origin}/r/{refCode}/{ref.refCode}
-                                </div>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(`${window.location.origin}/r/${refCode}/${ref.refCode}`); }}
-                                  className="shrink-0 p-1.5 rounded-lg transition-colors hover:bg-white/10"
-                                  style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)" }}
-                                  title={t("profile.placementLink", "Placement Link")}
-                                >
-                                  <Copy className="h-3 w-3 text-yellow-400/70" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span
