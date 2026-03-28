@@ -101,10 +101,10 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
   const onChainAccumulated = Number(accumulatedRaw || BigInt(0)) / 1e18;
   const totalClaimable = Number(totalClaimableRaw || BigInt(0)) / 1e18;
 
-  // Also read DB-based yield (vault interest calculated off-chain)
+  // Also read DB-based yield in USD (vault interest calculated off-chain)
   const { price: maPrice } = useMaPrice();
-  const { data: dbYield = 0 } = useQuery({
-    queryKey: ["vault-db-yield", account?.address],
+  const { data: dbYieldUsd = 0 } = useQuery({
+    queryKey: ["vault-db-yield-usd", account?.address],
     queryFn: async () => {
       if (!account?.address) return 0;
       const { data: profile } = await supabase.from("profiles").select("id").eq("wallet_address", account.address).single();
@@ -116,16 +116,18 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
       for (const pos of positions) {
         const start = new Date(pos.start_date);
         const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 86400_000));
-        const dailyYieldUsd = Number(pos.principal) * Number(pos.daily_rate);
-        total += (dailyYieldUsd * days) / maPrice; // convert to MA
+        total += Number(pos.principal) * Number(pos.daily_rate) * days;
       }
-      return total;
+      return total; // returns USD value
     },
     enabled: !!account?.address,
   });
 
+  // Convert DB yield USD to MA using live price (same formula as Profile page)
+  const dbYieldMA = maPrice > 0 ? dbYieldUsd / maPrice : 0;
+
   // Use whichever is higher: on-chain accumulated or DB yield
-  const accumulated = Math.max(onChainAccumulated, dbYield);
+  const accumulated = Math.max(onChainAccumulated, dbYieldMA);
   const inputAmount = parseFloat(amount) || 0;
   const plan = PLANS.find(p => p.index === selectedPlan)!;
   const releaseMA = inputAmount * plan.release / 100;
