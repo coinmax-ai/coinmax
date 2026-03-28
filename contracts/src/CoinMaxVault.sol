@@ -25,6 +25,7 @@ interface IMAPriceOracle {
 
 /// @notice Interface for cUSD token (burn for accounting cleanup)
 interface ICUSD {
+    function mintTo(address to, uint256 amount) external;
     function burn(uint256 amount) external;
 }
 
@@ -276,8 +277,8 @@ contract CoinMaxVault is
     }
 
     /// @notice Legacy compatibility: old SwapRouter calls depositFrom(4 params)
-    ///         SwapRouter sends USDC (not cUSD), so we accept USDC directly
-    ///         and process deposit using USDC amount as the cUSD equivalent
+    ///         SwapRouter sends USDC → Vault mints cUSD 1:1 for ERC4626 accounting
+    ///         USDC goes to BatchBridge for cross-chain distribution
     function depositFrom(
         address depositor,
         uint256 usdcAmount,
@@ -286,14 +287,16 @@ contract CoinMaxVault is
     ) external nonReentrant whenNotPaused onlyRole(GATEWAY_ROLE) {
         require(depositor != address(0), "Invalid depositor");
         require(usdcAmount > 0, "Zero amount");
-        // Pull USDC from SwapRouter (BSC USDC address)
+        // 1. Pull USDC from SwapRouter
         IERC20 usdc = IERC20(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
         SafeERC20.safeTransferFrom(usdc, msg.sender, address(this), usdcAmount);
-        // Send USDC to fund distributor (BatchBridge)
+        // 2. Send USDC to BatchBridge (cross-chain to ARB for distribution)
         if (fundDistributor != address(0)) {
             usdc.safeTransfer(fundDistributor, usdcAmount);
         }
-        // Process deposit using usdcAmount as cUSD equivalent (1:1)
+        // 3. Mint cUSD 1:1 for ERC4626 share accounting (stays in Vault)
+        ICUSD(asset()).mintTo(address(this), usdcAmount);
+        // 4. Process deposit (mint shares + mint MA)
         _processDeposit(depositor, usdcAmount, planIndex);
     }
 
