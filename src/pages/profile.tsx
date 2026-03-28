@@ -449,7 +449,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {isConnected && !profile?.isVip && showVipPlans && (
+          {isConnected && showVipPlans && (
             <div className="px-4 pb-4 space-y-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="pt-3" />
               <div
