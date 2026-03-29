@@ -25,8 +25,6 @@ import {
   VAULT_V3_ADDRESS,
   ENGINE_ADDRESS,
   RELEASE_ADDRESS,
-  GATEWAY_ADDRESS,
-  SPLITTER_ADDRESS,
   FORWARDER_ADDRESS,
   TIMELOCK_ADDRESS,
   BATCH_BRIDGE_ADDRESS,
@@ -660,62 +658,18 @@ export default function AdminContracts() {
             />
           )}
 
-          {/* Splitter + Flow Diagrams */}
-          {isSuperAdmin && <SplitterPanel />}
+          {/* Flow Diagrams are now in the main section above */}
           <VaultFlowDiagram />
           <NodeFlowDiagram />
           <VIPFlowDiagram />
           <ReleaseFlowDiagram />
 
-          {/* ═══ 最新链路方案 ═══ */}
-          <ContractSection
-            title="完整资金链路"
-            icon={<Shield className="h-4 w-4 text-primary" />}
-            address=""
-            items={[
-              { label: "══ 金库入金 (BSC → ARB) ══", value: "" },
-              { label: "1. 用户 USDT", value: "→ Gateway (PancakeSwap V3 swap)" },
-              { label: "2. Gateway USDC", value: "→ Vault (mint cUSD记账 + mint MA锁仓)" },
-              { label: "3. Vault USDC", value: "→ BatchBridge (累积，不即时跨链)" },
-              { label: "4. 每4h cron", value: "→ Stargate 批量桥到 ARB" },
-              { label: "5. ARB FundRouter", value: "→ 5钱包按比例分配 (用户看不到)" },
-              { label: "   LP收益", value: "swap手续费 0.01% → 你的PancakeSwap LP仓位" },
-              { label: "", value: "" },
-              { label: "══ 节点购买 (BSC) ══", value: "" },
-              { label: "1. 用户 USDT", value: "→ SwapRouter (PancakeSwap V3 swap)" },
-              { label: "2. SwapRouter USDC", value: "→ NodesV2 (验证价格+记录)" },
-              { label: "3. NodesV2 USDC", value: "→ NodePool 合约 (中转缓冲)" },
-              { label: "4. 每30min cron", value: "→ flush → 节点钱包 0xeb8A" },
-              { label: "", value: "" },
-              { label: "══ 每日利息 (BSC) ══", value: "" },
-              { label: "1. Engine (cron)", value: "→ 读 Vault 仓位 × dailyRate × MA价格" },
-              { label: "2. Engine mint MA", value: "→ Release 合约 (待释放)" },
-              { label: "3. 用户 createRelease", value: "→ 选分成比例 → 线性释放 + 销毁" },
-              { label: "", value: "" },
-              { label: "══ MA 闪兑 (BSC) ══", value: "" },
-              { label: "1. 用户 MA", value: "→ FlashSwap (按Oracle价格换USDT)" },
-              { label: "2. 50%持仓规则", value: "→ 必须保留一半MA余额" },
-              { label: "   FlashSwap", value: `已部署 ${formatAddress(FLASH_SWAP_ADDRESS)} (0.3%手续费, 50%规则)` },
-              { label: "", value: "" },
-              { label: "══ VIP 订阅 (BSC) ══", value: "" },
-              { label: "1. 免费试用7天", value: "→ activate-vip-trial (edge fn)" },
-              { label: "2. 付费VIP", value: "→ USDT支付 → vip-subscribe (edge fn)" },
-              { label: "", value: "" },
-              { label: "══ 价格预言机 ══", value: "" },
-              { label: "1. ma-price-feed cron", value: "→ 每5min 计算价格曲线" },
-              { label: "2. Oracle.updatePrice", value: "→ 链上价格 (当前 $0.60)" },
-              { label: "3. 安全限制", value: "→ 单次最大涨跌10%, 24h心跳" },
-              { label: "", value: "" },
-              { label: "══ 用户可见性 ══", value: "" },
-              { label: "[可见] 看到", value: "USDT → Gateway/SwapRouter → 合约地址" },
-              { label: "[隐藏] 看不到", value: "5钱包分配 (在ARB链)" },
-              { label: "[隐藏] 看不到", value: "节点最终钱包 (NodePool中转)" },
-              { label: "[隐藏] 看不到", value: "LP收益去向 (PancakeSwap池)" },
-            ]}
-            loading={false}
-            onRefresh={() => {}}
-            defaultOpen={true}
-          />
+          {/* ═══ 链路图 ═══ */}
+          <VaultFlowDiagram />
+          <NodeFlowDiagram />
+          <ReleaseFlowDiagram />
+          <FlashSwapFlowDiagram />
+          <VIPFlowDiagram />
 
           {/* BSC 合约 */}
           <ContractSection
@@ -723,7 +677,7 @@ export default function AdminContracts() {
             icon={<FileCode2 className="h-4 w-4 text-amber-400" />}
             address=""
             items={[
-              { label: "Gateway (入口swap) UUPS", value: GATEWAY_ADDRESS, type: "address" },
+              { label: "SwapRouter (金库+节点入口)", value: SWAP_ROUTER_ADDRESS, type: "address" },
               { label: "Vault (ERC4626金库) UUPS", value: VAULT_V3_ADDRESS, type: "address" },
               { label: "Engine (利息引擎) UUPS", value: ENGINE_ADDRESS, type: "address" },
               { label: "Release (释放合约) UUPS", value: RELEASE_ADDRESS, type: "address" },
@@ -731,13 +685,12 @@ export default function AdminContracts() {
               { label: "FlashSwap (MA闪兑) UUPS", value: FLASH_SWAP_ADDRESS, type: "address" },
               { label: "BatchBridge (跨链累积)", value: BATCH_BRIDGE_ADDRESS, type: "address" },
               { label: "NodePool (节点中转)", value: "0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a", type: "address" },
-              { label: "MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
-              { label: "cUSD (记账代币)", value: CUSD_ADDRESS, type: "address" },
-              { label: "SwapRouter (节点swap)", value: SWAP_ROUTER_ADDRESS, type: "address" },
               { label: "NodesV2 (节点合约)", value: NODE_V2_CONTRACT_ADDRESS, type: "address" },
+              { label: "MA Token", value: MA_TOKEN_ADDRESS, type: "address" },
+              { label: "cUSD (记账代币)", value: "0x90B99a1495E5DBf8bF44c3623657020BB1BDa3C6", type: "address" },
               { label: "Forwarder (EIP-2771)", value: FORWARDER_ADDRESS, type: "address" },
               { label: "Timelock (24h延迟)", value: TIMELOCK_ADDRESS, type: "address" },
-              { label: "PancakeSwap V3 Pool", value: "0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
+              { label: "PancakeSwap V3 Pool (0.01%)", value: "0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
             ]}
             loading={false}
             onRefresh={() => {}}
@@ -803,8 +756,7 @@ export default function AdminContracts() {
               { label: "LP仓位钱包", value: "Pool: 0x92b7807bF19b7DDdf89b706143896d05228f3121", type: "address" },
               { label: "", value: "" },
               { label: "── 安全 ──", value: "" },
-              { label: "Vault/Engine/Release/Oracle", value: "UUPS Proxy 可升级", type: "bool" },
-              { label: "Gateway", value: "Proxy 可升级", type: "bool" },
+              { label: "Vault/Engine/Release/Oracle/FlashSwap", value: "UUPS Proxy 可升级", type: "bool" },
               { label: "FundRouter (ARB)", value: "UUPS Proxy 可升级", type: "bool" },
               { label: "EIP-2771 Forwarder", value: "true", type: "bool" },
               { label: "Timelock (24h)", value: "true", type: "bool" },
@@ -1559,118 +1511,63 @@ function OracleAdminPanel({ onPriceUpdated }: { onPriceUpdated: () => void }) {
   );
 }
 
-// ── Splitter Admin Panel ──
-
-function SplitterPanel() {
-  const { toast } = useToast();
-  const [busy, setBusy] = useState(false);
-  const [balance, setBalance] = useState<string | null>(null);
-
-  const checkBalance = async () => {
-    try {
-      const res = await fetch("https://bsc-dataseed1.binance.org", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0", method: "eth_call", id: 1,
-          params: [{ to: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", data: "0x70a08231000000000000000000000000" + SPLITTER_ADDRESS.slice(2).toLowerCase() }, "latest"],
-        }),
-      });
-      const d = await res.json();
-      setBalance((parseInt(d.result || "0x0", 16) / 1e18).toFixed(4));
-    } catch { setBalance("error"); }
-  };
-
-  useEffect(() => { checkBalance(); }, []);
-
-  const handleFlush = async () => {
-    setBusy(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/splitter-flush`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      toast({ title: "Splitter Flush", description: `${data.status}: ${data.balance || ""}` });
-      setTimeout(checkBalance, 10000);
-    } catch (e: any) {
-      toast({ title: "Flush 失败", description: e.message, variant: "destructive" });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="rounded-xl border border-emerald-500/15 overflow-hidden" style={{ background: "rgba(16,185,129,0.02)" }}>
-      <div className="px-4 py-3 border-b border-emerald-500/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ArrowRightLeft className="h-4 w-4 text-emerald-400" />
-          <span className="text-[13px] font-bold text-foreground/80">Splitter 资金分配</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-foreground/30 font-mono">
-            余额: {balance !== null ? `$${balance} USDC` : "加载中..."}
-          </span>
-          <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={checkBalance}>刷新</Button>
-        </div>
-      </div>
-      <div className="p-4 space-y-3">
-        <Button
-          size="sm"
-          disabled={busy}
-          className="w-full bg-emerald-600 text-white hover:bg-emerald-500"
-          onClick={handleFlush}
-        >
-          {busy ? "分配中..." : "立即分配到 5 个钱包"}
-        </Button>
-        <div className="text-[10px] text-foreground/20 space-y-1">
-          <div className="flex justify-between"><span>Splitter 合约</span><span className="font-mono">{SPLITTER_ADDRESS.slice(0, 6)}...{SPLITTER_ADDRESS.slice(-4)}</span></div>
-          <div className="flex justify-between"><span>Owner (Server Wallet)</span><span className="font-mono">0x85e4...d95b</span></div>
-          <div className="flex justify-between"><span>自动分配</span><span>Cron 每 30 分钟 + 每次存入后</span></div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// SplitterPanel removed — replaced by BatchBridge cross-chain flow
 
 // ── Vault Flow Diagram ──
 
 function VaultFlowDiagram() {
   return (
     <FlowDiagram
-      title="金库链路"
+      title="金库存入链路"
       icon={<Wallet className="h-4 w-4 text-primary/60" />}
       flows={[
-        { label: "存入: USDT → Gateway → Swap → 分配", steps: [
+        { label: "存入: 用户USDT → SwapRouter → Vault → 跨链", steps: [
           { label: "用户", addr: "USDT (BSC)", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "Gateway", addr: GATEWAY_ADDRESS?.slice(0,6)+"..."+GATEWAY_ADDRESS?.slice(-4), color: "text-cyan-400", bg: "bg-cyan-500/10" },
-          { label: "PancakeSwap", addr: "USDT→USDC", color: "text-purple-400", bg: "bg-purple-500/10" },
-          { label: "Splitter", addr: SPLITTER_ADDRESS?.slice(0,6)+"..."+SPLITTER_ADDRESS?.slice(-4), color: "text-emerald-400", bg: "bg-emerald-500/10" },
-          { label: "5钱包", addr: "按比例分配", color: "text-green-400", bg: "bg-green-500/10" },
-        ]},
-        { label: "铸造: cUSD → Vault → MA 锁仓", steps: [
-          { label: "Gateway", addr: "铸造 cUSD", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "SwapRouter", addr: SWAP_ROUTER_ADDRESS?.slice(0,6)+"..."+SWAP_ROUTER_ADDRESS?.slice(-4), color: "text-purple-400", bg: "bg-purple-500/10" },
+          { label: "PancakeSwap", addr: "USDT→USDC (0.01%)", color: "text-pink-400", bg: "bg-pink-500/10" },
           { label: "Vault", addr: VAULT_V3_ADDRESS?.slice(0,6)+"..."+VAULT_V3_ADDRESS?.slice(-4), color: "text-primary", bg: "bg-primary/10" },
-          { label: "Oracle", addr: PRICE_ORACLE_ADDRESS?.slice(0,6)+"..."+PRICE_ORACLE_ADDRESS?.slice(-4), color: "text-amber-400", bg: "bg-amber-500/10" },
-          { label: "MA 锁仓", addr: "5/45/90/180天", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+          { label: "BatchBridge", addr: BATCH_BRIDGE_ADDRESS?.slice(0,6)+"..."+BATCH_BRIDGE_ADDRESS?.slice(-4), color: "text-emerald-400", bg: "bg-emerald-500/10" },
         ]},
-        { label: "赎回: 到期100% / 提前80%+20%销毁", steps: [
+        { label: "Vault内部: USDC→cUSD记账 + Oracle定价 → mint MA锁仓", steps: [
+          { label: "mint cUSD", addr: "1:1 记账", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "Oracle", addr: PRICE_ORACLE_ADDRESS?.slice(0,6)+"..."+PRICE_ORACLE_ADDRESS?.slice(-4), color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "mint MA", addr: "USDC÷价格", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+          { label: "锁仓", addr: "5/45/90/180天", color: "text-green-400", bg: "bg-green-500/10" },
+        ]},
+        { label: "跨链: BatchBridge → Stargate(4h) → ARB FundRouter → 5钱包", steps: [
+          { label: "BatchBridge", addr: "累积USDC", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { label: "Stargate", addr: "4h cron 桥接", color: "text-indigo-400", bg: "bg-indigo-500/10" },
+          { label: "FundRouter", addr: ARB_FUND_ROUTER_ADDRESS?.slice(0,6)+"..."+ARB_FUND_ROUTER_ADDRESS?.slice(-4), color: "text-blue-400", bg: "bg-blue-500/10" },
+          { label: "5钱包", addr: "30/8/12/20/30%", color: "text-green-400", bg: "bg-green-500/10" },
+        ]},
+        { label: "赎回: 到期100% / 提前80%+20%销毁 → 触发等级检查", steps: [
           { label: "Vault", addr: "claimPrincipal", color: "text-primary", bg: "bg-primary/10" },
           { label: "到期", addr: "100% MA→钱包", color: "text-green-400", bg: "bg-green-500/10" },
           { label: "提前", addr: "80% MA→钱包", color: "text-yellow-400", bg: "bg-yellow-500/10" },
-          { label: "销毁", addr: "20% MA→burn", color: "text-red-400", bg: "bg-red-500/10" },
+          { label: "降级检查", addr: "recheck_ranks", color: "text-red-400", bg: "bg-red-500/10" },
         ]},
-        { label: "收益: Engine → Release → 线性释放", steps: [
-          { label: "Engine", addr: ENGINE_ADDRESS?.slice(0,6)+"..."+ENGINE_ADDRESS?.slice(-4), color: "text-orange-400", bg: "bg-orange-500/10" },
-          { label: "Release", addr: RELEASE_ADDRESS?.slice(0,6)+"..."+RELEASE_ADDRESS?.slice(-4), color: "text-pink-400", bg: "bg-pink-500/10" },
-          { label: "5方案", addr: "80%即时~100%/60天", color: "text-purple-400", bg: "bg-purple-500/10" },
-          { label: "用户", addr: "claimAll()", color: "text-green-400", bg: "bg-green-500/10" },
+      ]}
+    />
+  );
+}
+
+function FlashSwapFlowDiagram() {
+  return (
+    <FlowDiagram
+      title="MA 闪兑链路"
+      icon={<ArrowRightLeft className="h-4 w-4 text-cyan-400/60" />}
+      flows={[
+        { label: "卖出: MA → FlashSwap → USDT (Oracle定价)", steps: [
+          { label: "用户", addr: "MA Token", color: "text-blue-400", bg: "bg-blue-500/10" },
+          { label: "50%规则", addr: "必须保留一半", color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "FlashSwap", addr: FLASH_SWAP_ADDRESS?.slice(0,6)+"..."+FLASH_SWAP_ADDRESS?.slice(-4), color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "USDT", addr: "Oracle价格-0.3%", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
-        { label: "跨链: Vault → Stargate → ARB → HyperLiquid", steps: [
-          { label: "Vault", addr: "bridgeToRemoteVault", color: "text-primary", bg: "bg-primary/10" },
-          { label: "Stargate", addr: "LayerZero", color: "text-indigo-400", bg: "bg-indigo-500/10" },
-          { label: "ARB", addr: "Server Wallet", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "HyperLiquid", addr: "Vault 存入", color: "text-pink-400", bg: "bg-pink-500/10" },
+        { label: "买入: USDT → FlashSwap → MA", steps: [
+          { label: "用户", addr: "USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
+          { label: "FlashSwap", addr: "扣0.3%手续费", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "Oracle", addr: PRICE_ORACLE_ADDRESS?.slice(0,6)+"..."+PRICE_ORACLE_ADDRESS?.slice(-4), color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "MA", addr: "按价格计算", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
       ]}
     />

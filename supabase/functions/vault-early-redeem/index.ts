@@ -128,6 +128,11 @@ serve(async (req) => {
       total_withdrawn: Number(profile.total_withdrawn || 0) + principal,
     }).eq("id", profile.id);
 
+    // Recheck ranks for user + upline (vault position changed → may trigger demotion)
+    try {
+      await supabase.rpc("recheck_ranks_on_vault_change", { target_user_id: profile.id });
+    } catch { /* non-critical */ }
+
     return json({
       success: true,
       isEarly,
