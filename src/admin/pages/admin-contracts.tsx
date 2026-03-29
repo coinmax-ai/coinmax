@@ -30,6 +30,8 @@ import {
   BATCH_BRIDGE_ADDRESS,
   ARB_FUND_ROUTER_ADDRESS,
   FLASH_SWAP_ADDRESS,
+  ARB_FLASH_SWAP_ADDRESS,
+  NODE_ENGINE_ADDRESS,
 } from "@/lib/contracts";
 
 // ── Known deployed addresses ──
@@ -658,12 +660,6 @@ export default function AdminContracts() {
             />
           )}
 
-          {/* Flow Diagrams are now in the main section above */}
-          <VaultFlowDiagram />
-          <NodeFlowDiagram />
-          <VIPFlowDiagram />
-          <ReleaseFlowDiagram />
-
           {/* ═══ 链路图 ═══ */}
           <VaultFlowDiagram />
           <NodeFlowDiagram />
@@ -699,11 +695,13 @@ export default function AdminContracts() {
 
           {/* ARB 合约 */}
           <ContractSection
-            title="ARB 合约 (管理面)"
+            title="ARB 合约"
             icon={<FileCode2 className="h-4 w-4 text-blue-400" />}
             address=""
             items={[
               { label: "FundRouter (分配) UUPS", value: ARB_FUND_ROUTER_ADDRESS, type: "address" },
+              { label: "FlashSwap (MA闪兑) UUPS", value: ARB_FLASH_SWAP_ADDRESS, type: "address" },
+              { label: "── 分配钱包 (30/8/12/20/30) ──", value: "" },
               { label: "Trading 30%", value: "0xd12097C9A12617c49220c032C84aCc99B6fFf57b", type: "address" },
               { label: "Ops 8%", value: "0xDf90770C89732a7eba5B727fCd6a12f827102EE6", type: "address" },
               { label: "Marketing 12%", value: "0x1C4D983620B3c8c2f7607c0943f2A5989e655599", type: "address" },
@@ -714,6 +712,9 @@ export default function AdminContracts() {
             onRefresh={() => {}}
             defaultOpen={false}
           />
+
+          {/* 跨链管理 */}
+          <CrossChainPanel />
 
           {/* Cron 任务 */}
           <ContractSection
@@ -769,70 +770,6 @@ export default function AdminContracts() {
         </div>
       )}
 
-      {/* Database Config Section */}
-      <div className="space-y-3">
-        <h2 className="text-[13px] font-bold text-foreground/50 uppercase tracking-wider">
-          数据库配置
-        </h2>
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {(configs ?? []).map((cfg: any) => {
-              const editVal = editValues[cfg.key];
-              const isEditing = editVal !== undefined;
-              const currentVal = isEditing ? editVal : cfg.value;
-              const hasChanged = isEditing && editVal !== cfg.value;
-
-              return (
-                <div
-                  key={cfg.key}
-                  className="rounded-xl border border-border/15 p-3 lg:p-4 transition-colors"
-                  style={{ background: hasChanged ? "rgba(10,186,181,0.03)" : "rgba(255,255,255,0.01)" }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground/70">{cfg.key}</span>
-                      {cfg.description && (
-                        <span className="text-[10px] text-foreground/25">({cfg.description})</span>
-                      )}
-                    </div>
-                    {cfg.updated_by && (
-                      <span className="text-[9px] text-foreground/20">
-                        {cfg.updated_by} · {new Date(cfg.updated_at).toLocaleDateString("zh-CN")}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={currentVal}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev, [cfg.key]: e.target.value }))}
-                      className="flex-1 h-9 text-xs font-mono bg-background/50 border-border/20"
-                      disabled={isReadOnly}
-                      placeholder="未配置"
-                    />
-                    {canEdit && hasChanged && (
-                      <Button
-                        size="sm"
-                        className="h-9 shrink-0"
-                        onClick={() => handleSave(cfg.key)}
-                        disabled={saving === cfg.key}
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" />
-                        {saving === cfg.key ? "保存中..." : "保存"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -1511,7 +1448,118 @@ function OracleAdminPanel({ onPriceUpdated }: { onPriceUpdated: () => void }) {
   );
 }
 
-// SplitterPanel removed — replaced by BatchBridge cross-chain flow
+// ── Cross-Chain Bridge Panel ──
+
+function CrossChainPanel() {
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [bridgeBalance, setBridgeBalance] = useState<string | null>(null);
+
+  const checkBridgeBalance = async () => {
+    try {
+      const res = await fetch("https://bsc-dataseed1.binance.org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "eth_call", id: 1,
+          params: [{ to: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", data: "0x70a08231000000000000000000000000" + BATCH_BRIDGE_ADDRESS.slice(2).toLowerCase() }, "latest"],
+        }),
+      });
+      const d = await res.json();
+      setBridgeBalance((parseInt(d.result || "0x0", 16) / 1e18).toFixed(2));
+    } catch { setBridgeBalance("error"); }
+  };
+
+  useEffect(() => { checkBridgeBalance(); }, []);
+
+  const handleManualBridge = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-bridge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      toast({ title: "BatchBridge", description: data.error ? `失败: ${data.error}` : `成功: ${data.bridged || data.status || "OK"}` });
+      setTimeout(checkBridgeBalance, 15000);
+    } catch (e: any) {
+      toast({ title: "跨链失败", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleManualNodeFlush = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flush-node-pool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      toast({ title: "NodePool Flush", description: data.error ? `失败: ${data.error}` : `成功: ${data.flushed || data.status || "OK"}` });
+    } catch (e: any) {
+      toast({ title: "Flush 失败", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-indigo-500/15 overflow-hidden" style={{ background: "rgba(99,102,241,0.02)" }}>
+      <div className="px-4 py-3 border-b border-indigo-500/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Send className="h-4 w-4 text-indigo-400" />
+          <span className="text-[13px] font-bold text-foreground/80">跨链 & 资金管理</span>
+        </div>
+        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={checkBridgeBalance}>
+          <RefreshCw className="h-3 w-3 mr-1" />刷新
+        </Button>
+      </div>
+      <div className="p-4 space-y-3">
+        {/* BatchBridge USDC balance */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+          <div>
+            <div className="text-[11px] text-foreground/50">BatchBridge 待跨链 USDC</div>
+            <div className="text-[10px] text-foreground/30 font-mono">{BATCH_BRIDGE_ADDRESS.slice(0,6)}...{BATCH_BRIDGE_ADDRESS.slice(-4)}</div>
+          </div>
+          <div className="text-[16px] font-bold font-mono text-indigo-400">
+            ${bridgeBalance !== null ? bridgeBalance : "..."}
+          </div>
+        </div>
+
+        {/* Cron status */}
+        <div className="text-[10px] text-foreground/30 space-y-1">
+          <div className="flex justify-between"><span>BSC→ARB 跨链</span><span>Cron 每 4 小时 (Stargate)</span></div>
+          <div className="flex justify-between"><span>NodePool 归集</span><span>Cron 每 30 分钟 → 0xeb8A</span></div>
+          <div className="flex justify-between"><span>MA 价格喂价</span><span>Cron 每 5 分钟</span></div>
+          <div className="flex justify-between"><span>每日结算</span><span>每天 00:00 UTC</span></div>
+        </div>
+
+        {/* Manual triggers */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            disabled={busy}
+            className="bg-indigo-600 text-white hover:bg-indigo-500 text-[10px]"
+            onClick={handleManualBridge}
+          >
+            {busy ? "执行中..." : "手动跨链 BSC→ARB"}
+          </Button>
+          <Button
+            size="sm"
+            disabled={busy}
+            variant="outline"
+            className="text-[10px]"
+            onClick={handleManualNodeFlush}
+          >
+            {busy ? "执行中..." : "手动 NodePool Flush"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Vault Flow Diagram ──
 
@@ -1523,25 +1571,25 @@ function VaultFlowDiagram() {
       flows={[
         { label: "存入: 用户USDT → SwapRouter → Vault → 跨链", steps: [
           { label: "用户", addr: "USDT (BSC)", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "SwapRouter", addr: SWAP_ROUTER_ADDRESS?.slice(0,6)+"..."+SWAP_ROUTER_ADDRESS?.slice(-4), color: "text-purple-400", bg: "bg-purple-500/10" },
-          { label: "PancakeSwap", addr: "USDT→USDC (0.01%)", color: "text-pink-400", bg: "bg-pink-500/10" },
-          { label: "Vault", addr: VAULT_V3_ADDRESS?.slice(0,6)+"..."+VAULT_V3_ADDRESS?.slice(-4), color: "text-primary", bg: "bg-primary/10" },
-          { label: "BatchBridge", addr: BATCH_BRIDGE_ADDRESS?.slice(0,6)+"..."+BATCH_BRIDGE_ADDRESS?.slice(-4), color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { label: "SwapRouter", addr: formatAddress(SWAP_ROUTER_ADDRESS), fullAddr: SWAP_ROUTER_ADDRESS, color: "text-purple-400", bg: "bg-purple-500/10" },
+          { label: "PancakeSwap", addr: "USDT→USDC (0.01%)", fullAddr: "0x92b7807bF19b7DDdf89b706143896d05228f3121", color: "text-pink-400", bg: "bg-pink-500/10" },
+          { label: "Vault", addr: formatAddress(VAULT_V3_ADDRESS), fullAddr: VAULT_V3_ADDRESS, color: "text-primary", bg: "bg-primary/10" },
+          { label: "BatchBridge", addr: formatAddress(BATCH_BRIDGE_ADDRESS), fullAddr: BATCH_BRIDGE_ADDRESS, color: "text-emerald-400", bg: "bg-emerald-500/10" },
         ]},
         { label: "Vault内部: USDC→cUSD记账 + Oracle定价 → mint MA锁仓", steps: [
-          { label: "mint cUSD", addr: "1:1 记账", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-          { label: "Oracle", addr: PRICE_ORACLE_ADDRESS?.slice(0,6)+"..."+PRICE_ORACLE_ADDRESS?.slice(-4), color: "text-amber-400", bg: "bg-amber-500/10" },
-          { label: "mint MA", addr: "USDC÷价格", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+          { label: "mint cUSD", addr: formatAddress("0x90B99a1495E5DBf8bF44c3623657020BB1BDa3C6"), fullAddr: "0x90B99a1495E5DBf8bF44c3623657020BB1BDa3C6", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "Oracle", addr: formatAddress(PRICE_ORACLE_ADDRESS), fullAddr: PRICE_ORACLE_ADDRESS, color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "mint MA", addr: formatAddress(MA_TOKEN_ADDRESS), fullAddr: MA_TOKEN_ADDRESS, color: "text-yellow-400", bg: "bg-yellow-500/10" },
           { label: "锁仓", addr: "5/45/90/180天", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
         { label: "跨链: BatchBridge → Stargate(4h) → ARB FundRouter → 5钱包", steps: [
-          { label: "BatchBridge", addr: "累积USDC", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { label: "BatchBridge", addr: formatAddress(BATCH_BRIDGE_ADDRESS), fullAddr: BATCH_BRIDGE_ADDRESS, color: "text-emerald-400", bg: "bg-emerald-500/10" },
           { label: "Stargate", addr: "4h cron 桥接", color: "text-indigo-400", bg: "bg-indigo-500/10" },
-          { label: "FundRouter", addr: ARB_FUND_ROUTER_ADDRESS?.slice(0,6)+"..."+ARB_FUND_ROUTER_ADDRESS?.slice(-4), color: "text-blue-400", bg: "bg-blue-500/10" },
+          { label: "FundRouter", addr: formatAddress(ARB_FUND_ROUTER_ADDRESS), fullAddr: ARB_FUND_ROUTER_ADDRESS, color: "text-blue-400", bg: "bg-blue-500/10" },
           { label: "5钱包", addr: "30/8/12/20/30%", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
         { label: "赎回: 到期100% / 提前80%+20%销毁 → 触发等级检查", steps: [
-          { label: "Vault", addr: "claimPrincipal", color: "text-primary", bg: "bg-primary/10" },
+          { label: "Vault", addr: formatAddress(VAULT_V3_ADDRESS), fullAddr: VAULT_V3_ADDRESS, color: "text-primary", bg: "bg-primary/10" },
           { label: "到期", addr: "100% MA→钱包", color: "text-green-400", bg: "bg-green-500/10" },
           { label: "提前", addr: "80% MA→钱包", color: "text-yellow-400", bg: "bg-yellow-500/10" },
           { label: "降级检查", addr: "recheck_ranks", color: "text-red-400", bg: "bg-red-500/10" },
@@ -1560,13 +1608,13 @@ function FlashSwapFlowDiagram() {
         { label: "卖出: MA → FlashSwap → USDT (Oracle定价)", steps: [
           { label: "用户", addr: "MA Token", color: "text-blue-400", bg: "bg-blue-500/10" },
           { label: "50%规则", addr: "必须保留一半", color: "text-amber-400", bg: "bg-amber-500/10" },
-          { label: "FlashSwap", addr: FLASH_SWAP_ADDRESS?.slice(0,6)+"..."+FLASH_SWAP_ADDRESS?.slice(-4), color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "FlashSwap", addr: formatAddress(FLASH_SWAP_ADDRESS), fullAddr: FLASH_SWAP_ADDRESS, color: "text-cyan-400", bg: "bg-cyan-500/10" },
           { label: "USDT", addr: "Oracle价格-0.3%", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
         { label: "买入: USDT → FlashSwap → MA", steps: [
           { label: "用户", addr: "USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "FlashSwap", addr: "扣0.3%手续费", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-          { label: "Oracle", addr: PRICE_ORACLE_ADDRESS?.slice(0,6)+"..."+PRICE_ORACLE_ADDRESS?.slice(-4), color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "FlashSwap", addr: "扣0.3%手续费", fullAddr: FLASH_SWAP_ADDRESS, color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "Oracle", addr: formatAddress(PRICE_ORACLE_ADDRESS), fullAddr: PRICE_ORACLE_ADDRESS, color: "text-amber-400", bg: "bg-amber-500/10" },
           { label: "MA", addr: "按价格计算", color: "text-green-400", bg: "bg-green-500/10" },
         ]},
       ]}
@@ -1580,11 +1628,13 @@ function NodeFlowDiagram() {
       title="节点购买链路"
       icon={<Zap className="h-4 w-4 text-green-400/60" />}
       flows={[
-        { label: "购买: USDT → SwapRouter → NodesV2", steps: [
+        { label: "购买: USDT → SwapRouter → NodesV2 → NodePool → 节点钱包", steps: [
           { label: "用户", addr: "USDT", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "SwapRouter", addr: SWAP_ROUTER_ADDRESS?.slice(0,6)+"..."+SWAP_ROUTER_ADDRESS?.slice(-4), color: "text-purple-400", bg: "bg-purple-500/10" },
-          { label: "PancakeSwap", addr: "USDT→USDC", color: "text-pink-400", bg: "bg-pink-500/10" },
-          { label: "NodesV2", addr: NODE_V2_CONTRACT_ADDRESS?.slice(0,6)+"..."+NODE_V2_CONTRACT_ADDRESS?.slice(-4), color: "text-green-400", bg: "bg-green-500/10" },
+          { label: "SwapRouter", addr: formatAddress(SWAP_ROUTER_ADDRESS), fullAddr: SWAP_ROUTER_ADDRESS, color: "text-purple-400", bg: "bg-purple-500/10" },
+          { label: "PancakeSwap", addr: "USDT→USDC", fullAddr: "0x92b7807bF19b7DDdf89b706143896d05228f3121", color: "text-pink-400", bg: "bg-pink-500/10" },
+          { label: "NodesV2", addr: formatAddress(NODE_V2_CONTRACT_ADDRESS), fullAddr: NODE_V2_CONTRACT_ADDRESS, color: "text-green-400", bg: "bg-green-500/10" },
+          { label: "NodePool", addr: formatAddress("0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a"), fullAddr: "0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { label: "节点钱包", addr: formatAddress("0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9"), fullAddr: "0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9", color: "text-amber-400", bg: "bg-amber-500/10" },
         ]},
         { label: "激活: 金库存入达标 → 等级升级", steps: [
           { label: "金库存入", addr: "≥100U", color: "text-cyan-400", bg: "bg-cyan-500/10" },
@@ -1668,7 +1718,7 @@ function ReleaseFlowDiagram() {
 function FlowDiagram({ title, icon, flows }: {
   title: string;
   icon: React.ReactNode;
-  flows: { label: string; steps: { label: string; addr: string; color: string; bg: string }[] }[];
+  flows: { label: string; steps: { label: string; addr: string; fullAddr?: string; color: string; bg: string }[] }[];
 }) {
   return (
     <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(255,255,255,0.01)" }}>
@@ -1685,7 +1735,13 @@ function FlowDiagram({ title, icon, flows }: {
                 <div key={i} className="flex items-center shrink-0">
                   <div className={`px-2 py-1.5 rounded-lg ${s.bg} text-center`}>
                     <div className={`text-[10px] font-bold ${s.color}`}>{s.label}</div>
-                    <div className="text-[8px] text-foreground/25 font-mono">{s.addr}</div>
+                    {s.fullAddr ? (
+                      <a href={`https://bscscan.com/address/${s.fullAddr}`} target="_blank" rel="noopener noreferrer" className="text-[8px] text-primary/50 hover:text-primary font-mono flex items-center justify-center gap-0.5">
+                        {s.addr} <ExternalLink className="h-2 w-2" />
+                      </a>
+                    ) : (
+                      <div className="text-[8px] text-foreground/25 font-mono">{s.addr}</div>
+                    )}
                   </div>
                   {i < flow.steps.length - 1 && <span className="text-[10px] text-foreground/15 mx-0.5">→</span>}
                 </div>

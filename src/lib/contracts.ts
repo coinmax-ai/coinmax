@@ -25,7 +25,7 @@ export const NODE_V2_CONTRACT_ADDRESS = import.meta.env.VITE_NODE_V2_CONTRACT_AD
 
 // ── V3 Contract addresses (Modular vault system) ──
 export const MA_TOKEN_ADDRESS = import.meta.env.VITE_MA_TOKEN_ADDRESS || "0xdFaC84b2f9cfD02b3f44760E0Ff88b4EeC0e1593";
-export const CUSD_ADDRESS = import.meta.env.VITE_CUSD_ADDRESS || "0xC4F323c972d5d6Da87bDa6AE5eb1206C2BCe43cc";
+export const CUSD_ADDRESS = import.meta.env.VITE_CUSD_ADDRESS || "0x90B99a1495E5DBf8bF44c3623657020BB1BDa3C6";
 export const PRICE_ORACLE_ADDRESS = import.meta.env.VITE_PRICE_ORACLE_ADDRESS || "0xff5Ab71939Fa021A7BCa38Db8b3c1672D1B819dD";
 export const VAULT_V3_ADDRESS = import.meta.env.VITE_VAULT_V3_ADDRESS || "0xE0A80b82F42d009cdE772d5c34b1682C2D79e821";
 export const ENGINE_ADDRESS = import.meta.env.VITE_ENGINE_ADDRESS || "0x0990013669d28eC6401f46a78b612cdaBE88b789";
