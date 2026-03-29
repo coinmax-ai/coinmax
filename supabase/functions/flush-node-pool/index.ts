@@ -10,7 +10,7 @@ const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") ||
 const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "vt_act_B6LKUWDDFVRRESRTNN2OYYYKTOCLDEAYSVFMSYI6A4L47R4ENX26GDBYUVCAGT2WVMNWCQNQWXOR6AFXILSR2DFIJAH3AM5QG4ERZIPV";
 
 const NODE_POOL = "0x7dE393D02C153cF943E0cf30C7B2B7A073E5e75a";
-const DEPLOYER = "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1";
+const SERVER_WALLET = "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b";
 const BSC_USDC = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d";
 
 serve(async () => {
@@ -48,7 +48,7 @@ serve(async () => {
     },
     body: JSON.stringify({
       chainId: 56,
-      from: DEPLOYER,
+      from: SERVER_WALLET,
       transactions: [{
         to: NODE_POOL,
         data: "0xd6f0948c", // flush() selector

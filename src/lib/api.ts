@@ -376,8 +376,8 @@ export async function purchaseNode(walletAddress: string, nodeType: string, txHa
   });
   if (error) throw error;
 
-  // Auto-distribute FundManager balance after purchase (fire and forget)
-  supabase.functions.invoke("distribute-funds").catch(() => {});
+  // Auto-flush NodePool to node wallet after purchase (fire and forget)
+  supabase.functions.invoke("flush-node-pool").catch(() => {});
 
   return toCamel(data);
 }

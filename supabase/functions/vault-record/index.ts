@@ -121,6 +121,17 @@ serve(async (req) => {
     // 6. Check bonus yield unlock (if user has bonus and deposits ≥100U on qualifying plan)
     await supabase.rpc("check_bonus_yield_unlock", { p_user_id: profile.id });
 
+    // 7. Auto-flush Splitter to distribute funds to configured wallets
+    try {
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/splitter-flush`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+      });
+    } catch { /* non-critical */ }
+
     return json({
       success: true,
       vaultPosition: { planType, principal, days, endDate: endDate.toISOString() },
