@@ -17,9 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, waitForReceipt, getContract } from "thirdweb";
-import { approve } from "thirdweb/extensions/erc20";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
-import { getSwapRouterContract, SWAP_ROUTER_ADDRESS, USDT_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
+import { VAULT_V3_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { VAULT_PLANS } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -66,26 +65,17 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
 
     try {
       const amountWei = BigInt(Math.floor(usdtAmount * 1e18));
-      const minUsdcOut = BigInt(Math.floor(usdtAmount * 0.995 * 1e18));
-      const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-      // ═══ Step 1: Approve USDT to SwapRouter ═══
+      // ═══ Vault.depositPublic — thirdweb Pay auto-swaps USDT→USDC ═══
       setStep("depositing");
-      const usdt = getContract({ client, chain: BSC_CHAIN, address: USDT_ADDRESS });
-      const approveTx = approve({ contract: usdt, spender: SWAP_ROUTER_ADDRESS, amountWei: maxUint });
-      const approveResult = await sendTx(approveTx);
-      await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
-
-      // ═══ Step 2: SwapRouter: USDT → USDC → Vault deposit ═══
-      const swapRouter = getSwapRouterContract(client);
-      const swapTx = prepareContractCall({
-        contract: swapRouter,
-        method: "function swapAndDepositVault(uint256 usdtAmount, uint256 planIndex, uint256 minUsdcOut)",
-        params: [amountWei, BigInt(plan.planIndex), minUsdcOut],
-        gas: BigInt(600000),
+      const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
+      const depositTx = prepareContractCall({
+        contract: vault,
+        method: "function depositPublic(uint256 usdcAmount, uint256 planIndex)",
+        params: [amountWei, BigInt(plan.planIndex)],
       });
-      const swapResult = await sendTx(swapTx);
-      const receipt = await waitForReceipt({ client: client!, chain: BSC_CHAIN, transactionHash: swapResult.transactionHash });
+      const depositResult = await sendTx(depositTx);
+      const receipt = await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: depositResult.transactionHash });
 
       if (receipt.status === "reverted") throw new Error("Transaction reverted");
 

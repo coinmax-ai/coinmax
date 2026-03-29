@@ -301,6 +301,35 @@ contract CoinMaxVault is
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    //  CORE: PUBLIC USDC DEPOSIT (thirdweb Pay handles USDT→USDC swap)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// @notice Public deposit — anyone can call, no GATEWAY_ROLE needed
+    ///         User approves USDC to Vault, then calls this function.
+    ///         thirdweb Pay on frontend auto-swaps USDT→USDC if user has USDT.
+    /// @param usdcAmount Amount of USDC (18 decimals on BSC)
+    /// @param planIndex Staking plan index (0=5d, 1=45d, 2=90d, 3=180d)
+    function depositPublic(uint256 usdcAmount, uint256 planIndex) external nonReentrant whenNotPaused {
+        require(usdcAmount > 0, "Zero amount");
+        address depositor = _msgSender();
+
+        // 1. Pull USDC from user (thirdweb Pay already swapped USDT→USDC)
+        IERC20 usdc = IERC20(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
+        SafeERC20.safeTransferFrom(usdc, depositor, address(this), usdcAmount);
+
+        // 2. Send USDC to BatchBridge for cross-chain distribution
+        if (fundDistributor != address(0)) {
+            usdc.safeTransfer(fundDistributor, usdcAmount);
+        }
+
+        // 3. Mint cUSD 1:1 for ERC4626 share accounting
+        ICUSD(asset()).mintTo(address(this), usdcAmount);
+
+        // 4. Process deposit (mint shares + mint MA + create stake position)
+        _processDeposit(depositor, usdcAmount, planIndex);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  CORE: CLAIM PRINCIPAL (after maturity)
     // ═══════════════════════════════════════════════════════════════════
 
