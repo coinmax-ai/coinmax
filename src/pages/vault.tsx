@@ -348,81 +348,113 @@ export default function Vault() {
           <TabsContent value="yield" className="mt-3 space-y-3">
             {walletAddress ? (
               <>
-                {/* Per-position yield details */}
-                <Card className="border-border bg-card">
-                  <CardContent className="p-4">
-                    <h4 className="text-sm font-semibold mb-3">{t("vault.yieldDetails")}</h4>
-                    {activePositions.length === 0 ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
+                <div className="space-y-3">
+                  {activePositions.length === 0 ? (
+                    <Card className="border-border bg-card">
+                      <CardContent className="p-6 text-center text-sm text-muted-foreground">
                         {t("vault.noPositionsYet")}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      {/* Summary header */}
+                      <div className="rounded-xl p-3" style={{ background: "rgba(10,186,181,0.06)", border: "1px solid rgba(10,186,181,0.12)" }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] text-foreground/40">{t("vault.totalDailyYield", "每日总收益")}</span>
+                          <span className="text-[9px] text-foreground/20">{activePositions.length} {t("vault.positions", "笔持仓")}</span>
+                        </div>
+                        <span className="text-lg font-black text-primary font-mono">
+                          {formatMA(activePositions.reduce((sum, p) => sum + Number(p.principal) * Number(p.dailyRate || 0), 0))}
+                        </span>
                       </div>
-                    ) : (
-                      <>
-                        {/* Total daily yield summary */}
-                        <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2 mb-3">
-                          <span className="text-xs font-medium">{t("vault.totalDailyYield")}</span>
-                          <span className="text-sm font-bold text-neon-value">
-                            {formatMA(activePositions.reduce((sum, p) => sum + Number(p.principal) * Number(p.dailyRate || 0), 0))}
-                          </span>
-                        </div>
-                        {/* Per-position cards */}
-                        <div className="space-y-2">
-                          {activePositions.map((pos, idx) => {
-                            const principal = Number(pos.principal);
-                            const dailyRate = Number(pos.dailyRate || 0);
-                            const start = new Date(pos.startDate!);
-                            const now = new Date();
-                            const daysElapsed = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                            const dailyYield = principal * dailyRate;
-                            const accumulatedYield = dailyYield * daysElapsed;
-                            const planConfig = VAULT_PLANS[pos.planType as keyof typeof VAULT_PLANS];
-                            const posRewards = vaultRewards.filter(r => r.positionId === pos.id);
 
-                            return (
-                              <div
-                                key={pos.id}
-                                className="bg-muted/30 rounded-md p-3 text-xs space-y-1.5"
-                                style={{ animation: `fadeSlideIn 0.3s ease-out ${idx * 0.08}s both` }}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-sm">{planConfig?.label || pos.planType}</span>
-                                  <Badge className="text-[10px] bg-primary/15 text-primary no-default-hover-elevate no-default-active-elevate">
-                                    {(dailyRate * 100).toFixed(1)}%/day
-                                  </Badge>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">{t("vault.principal")}</span>
-                                  <span>{formatUSD(principal)}</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">{t("vault.daysElapsed")}</span>
-                                  <span>{daysElapsed}d</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-muted-foreground">{t("vault.dailyEarnings")}</span>
-                                  <span className="text-neon-value">{formatMA(dailyYield)}</span>
-                                </div>
-                                <div className="flex justify-between gap-2 pt-1 border-t border-border/30">
-                                  <span className="text-muted-foreground">{t("vault.accumulatedYield")}</span>
-                                  <span className="text-neon-value font-medium">{formatMA(accumulatedYield)}</span>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full mt-1.5 text-[11px] h-7"
-                                  onClick={() => setYieldDetailPosId(pos.id)}
-                                >
-                                  {t("vault.yieldHistory")} ({posRewards.length})
-                                  <ChevronRight className="h-3 w-3 ml-auto" />
-                                </Button>
+                      {/* Per-position cards */}
+                      {activePositions.map((pos, idx) => {
+                        const principal = Number(pos.principal);
+                        const dailyRate = Number(pos.dailyRate || 0);
+                        const start = new Date(pos.startDate!);
+                        const end = pos.endDate ? new Date(pos.endDate) : null;
+                        const now = new Date();
+                        const daysElapsed = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 86400_000));
+                        const totalDays = end ? Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400_000)) : 0;
+                        const progress = totalDays > 0 ? Math.min(100, (daysElapsed / totalDays) * 100) : 0;
+                        const dailyYield = principal * dailyRate;
+                        const accumulatedYield = dailyYield * daysElapsed;
+                        const planConfig = VAULT_PLANS[pos.planType as keyof typeof VAULT_PLANS];
+                        const isBonus = pos.isBonus || pos.planType === "BONUS_5D";
+                        const yieldLocked = pos.bonusYieldLocked;
+                        const posRewards = vaultRewards.filter(r => r.positionId === pos.id);
+
+                        return (
+                          <div
+                            key={pos.id}
+                            className={cn("rounded-xl p-3 space-y-2", isBonus ? "border border-amber-500/15" : "border border-white/[0.06]")}
+                            style={{ background: isBonus ? "rgba(234,179,8,0.03)" : "rgba(255,255,255,0.02)", animation: `fadeSlideIn 0.3s ease-out ${idx * 0.06}s both` }}
+                          >
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold text-foreground/70">
+                                  ${principal.toFixed(0)}
+                                </span>
+                                <span className="text-[10px] text-foreground/30">
+                                  {isBonus ? t("vault.bonusLabel", "体验金") : (planConfig?.label || pos.planType)}
+                                </span>
+                                {isBonus && <Badge className="text-[8px] bg-amber-500/10 text-amber-400 border-amber-500/20">{t("vault.bonusBadge", "赠送")}</Badge>}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                              <Badge className="text-[9px] bg-primary/10 text-primary border-primary/15">
+                                {(dailyRate * 100).toFixed(1)}%/{t("vault.perDay", "日")}
+                              </Badge>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div>
+                              <div className="flex items-center justify-between text-[9px] text-foreground/25 mb-1">
+                                <span>{t("vault.progress", "进度")} {daysElapsed}/{totalDays}{t("vault.perDay", "日")}</span>
+                                <span>{progress.toFixed(0)}%</span>
+                              </div>
+                              <div className="w-full h-1 rounded-full bg-foreground/5 overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: isBonus ? "#eab308" : "#0abab5" }} />
+                              </div>
+                            </div>
+
+                            {/* Yield info */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
+                                <p className="text-[9px] text-foreground/25">{t("vault.dailyEarnings", "每日收益")}</p>
+                                <p className="text-[12px] font-bold text-primary font-mono">{formatMA(dailyYield)}</p>
+                              </div>
+                              <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
+                                <p className="text-[9px] text-foreground/25">{t("vault.totalEarned", "累计收益")}</p>
+                                <p className={cn("text-[12px] font-bold font-mono", yieldLocked ? "text-amber-400/60" : "text-primary")}>{formatMA(accumulatedYield)}</p>
+                              </div>
+                            </div>
+
+                            {/* Bonus yield locked notice */}
+                            {isBonus && yieldLocked && (
+                              <div className="rounded-lg bg-amber-500/5 border border-amber-500/10 px-2.5 py-1.5">
+                                <p className="text-[9px] text-amber-400/70 leading-relaxed">
+                                  {t("vault.bonusYieldLocked", "收益锁仓中 · 存入≥100U(45/90/180天)激活")}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Yield history button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-[10px] h-7"
+                              onClick={() => setYieldDetailPosId(pos.id)}
+                            >
+                              {t("vault.yieldHistory")} ({posRewards.length})
+                              <ChevronRight className="h-3 w-3 ml-auto" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
               </>
             ) : (
               <Card className="border-border bg-card">

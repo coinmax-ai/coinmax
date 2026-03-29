@@ -140,7 +140,7 @@
     "dailyRate": "Tỷ lệ hàng ngày",
     "lockPeriod": "Thời gian khóa",
     "daysUnit": "{{count}} ngày",
-    "positions": "Vị thế",
+    "positions": "positions",
     "start": "Bắt đầu",
     "lock": "Khóa",
     "remaining": "Còn lại",
@@ -198,7 +198,10 @@
     "bonusLabel": "Thưởng",
     "bonusBadge": "Quà",
     "bonusYieldLocked": "Lợi nhuận bị khóa · Nạp ≥100U để mở khóa",
-    "bonusGranted": "Đã tặng 500U"
+    "bonusGranted": "Đã tặng 500U",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Lỗi Nhập Liệu",
@@ -511,7 +514,7 @@
     "teamPerformance": "Hiệu suất nhóm",
     "teamSize": "Quy mô nhóm",
     "direct": "Trực tiếp",
-    "deposits": "Nạp tiền",
+    "deposits": "Tiền Gửi",
     "referralTree": "Cây giới thiệu",
     "connectToViewTeam": "Kết nối ví để xem nhóm",
     "connectToViewReferral": "Kết nối ví để xem dữ liệu giới thiệu",
@@ -600,7 +603,6 @@
     "placementCode": "Mã Xếp Chỗ",
     "placementCodePlaceholder": "Mã xếp chỗ (tùy chọn, mặc định giống người giới thiệu)",
     "placementLabel": "Xếp Chỗ (Đội)",
-    "deposits": "Tiền Gửi",
     "inviteCode": "Mã mời",
     "generateInvite": "Tạo lời mời",
     "directInvites": "Lời mời trực tiếp",

@@ -150,7 +150,7 @@
     "dailyRate": "Daily Rate",
     "lockPeriod": "Lock Period",
     "daysUnit": "{{count}} days",
-    "positions": "Positions",
+    "positions": "positions",
     "start": "Start",
     "lock": "Lock",
     "remaining": "Remaining",
@@ -208,7 +208,10 @@
     "bonusLabel": "Bonus",
     "bonusBadge": "Gift",
     "bonusYieldLocked": "Yield locked · Deposit ≥100U (45/90/180 days) to unlock",
-    "bonusGranted": "500U Bonus Granted"
+    "bonusGranted": "500U Bonus Granted",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Input Error",
@@ -678,7 +681,6 @@
     "placementCode": "Placement Code",
     "placementCodePlaceholder": "Placement code (optional, defaults to sponsor)",
     "placementLabel": "Placement (Team)",
-    "deposits": "Deposits",
     "inviteCode": "Invite Code",
     "generateInvite": "Generate Invite",
     "directInvites": "Direct Invites",

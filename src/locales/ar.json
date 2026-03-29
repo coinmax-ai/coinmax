@@ -140,7 +140,7 @@
     "dailyRate": "المعدل اليومي",
     "lockPeriod": "فترة القفل",
     "daysUnit": "{{count}} أيام",
-    "positions": "المراكز",
+    "positions": "positions",
     "start": "البداية",
     "lock": "القفل",
     "remaining": "المتبقي",
@@ -198,7 +198,10 @@
     "bonusLabel": "مكافأة",
     "bonusBadge": "هدية",
     "bonusYieldLocked": "العائد مقفل · أودع ≥100U للفتح",
-    "bonusGranted": "تم منح مكافأة 500U"
+    "bonusGranted": "تم منح مكافأة 500U",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "خطأ في الإدخال",
@@ -600,7 +603,6 @@
     "placementCode": "رمز التنسيب",
     "placementCodePlaceholder": "رمز التنسيب (اختياري، الافتراضي مثل الراعي)",
     "placementLabel": "التنسيب (الفريق)",
-    "deposits": "الإيداعات",
     "inviteCode": "رمز الدعوة",
     "generateInvite": "إنشاء دعوة",
     "directInvites": "الدعوات المباشرة",

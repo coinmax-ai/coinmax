@@ -140,7 +140,7 @@
     "dailyRate": "Tagesrate",
     "lockPeriod": "Sperrfrist",
     "daysUnit": "{{count}} Tage",
-    "positions": "Positionen",
+    "positions": "positions",
     "start": "Start",
     "lock": "Sperre",
     "remaining": "Verbleibend",
@@ -198,7 +198,10 @@
     "bonusLabel": "Bonus",
     "bonusBadge": "Geschenk",
     "bonusYieldLocked": "Ertrag gesperrt · ≥100U einzahlen zum Entsperren",
-    "bonusGranted": "500U Bonus Gewährt"
+    "bonusGranted": "500U Bonus Gewährt",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Eingabefehler",
@@ -600,7 +603,6 @@
     "placementCode": "Platzierungscode",
     "placementCodePlaceholder": "Platzierungscode (optional, Standard ist gleich dem Sponsor)",
     "placementLabel": "Platzierung (Team)",
-    "deposits": "Einzahlungen",
     "inviteCode": "Einladungscode",
     "generateInvite": "Einladung Generieren",
     "directInvites": "Direkte Einladungen",

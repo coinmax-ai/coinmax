@@ -140,7 +140,7 @@
     "dailyRate": "Дневная Ставка",
     "lockPeriod": "Период Блокировки",
     "daysUnit": "{{count}} дней",
-    "positions": "Позиции",
+    "positions": "positions",
     "start": "Старт",
     "lock": "Блокировка",
     "remaining": "Осталось",
@@ -198,7 +198,10 @@
     "bonusLabel": "Бонус",
     "bonusBadge": "Подарок",
     "bonusYieldLocked": "Доход заблокирован · Внесите ≥100U для разблокировки",
-    "bonusGranted": "500U Бонус Выдан"
+    "bonusGranted": "500U Бонус Выдан",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Ошибка Ввода",
@@ -511,7 +514,7 @@
     "teamPerformance": "Показатели Команды",
     "teamSize": "Размер Команды",
     "direct": "Прямой",
-    "deposits": "Внесения",
+    "deposits": "Депозиты",
     "referralTree": "Реферальное Дерево",
     "connectToViewTeam": "Подключите кошелёк для просмотра команды",
     "connectToViewReferral": "Подключите кошелёк для просмотра реферальных данных",
@@ -600,7 +603,6 @@
     "placementCode": "Код Размещения",
     "placementCodePlaceholder": "Код размещения (необязательно, по умолчанию совпадает со спонсором)",
     "placementLabel": "Размещение (Команда)",
-    "deposits": "Депозиты",
     "inviteCode": "Код Приглашения",
     "generateInvite": "Сгенерировать Приглашение",
     "directInvites": "Прямые Приглашения",

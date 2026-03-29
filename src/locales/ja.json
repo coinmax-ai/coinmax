@@ -140,7 +140,7 @@
     "dailyRate": "日次レート",
     "lockPeriod": "ロック期間",
     "daysUnit": "{{count}} 日",
-    "positions": "ポジション",
+    "positions": "positions",
     "start": "開始",
     "lock": "ロック",
     "remaining": "残り",
@@ -198,7 +198,10 @@
     "bonusLabel": "ボーナス",
     "bonusBadge": "贈呈",
     "bonusYieldLocked": "収益ロック中 · ≥100U入金(45/90/180日)で解除",
-    "bonusGranted": "500Uボーナス付与"
+    "bonusGranted": "500Uボーナス付与",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "入力エラー",
@@ -600,7 +603,6 @@
     "placementCode": "配置コード",
     "placementCodePlaceholder": "配置コード（任意、デフォルトはスポンサーと同じ）",
     "placementLabel": "配置（チーム）",
-    "deposits": "入金",
     "inviteCode": "招待コード",
     "generateInvite": "招待を生成",
     "directInvites": "直接招待",

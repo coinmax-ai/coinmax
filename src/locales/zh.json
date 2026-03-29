@@ -150,7 +150,7 @@
     "dailyRate": "日利率",
     "lockPeriod": "锁仓期",
     "daysUnit": "{{count}} 天",
-    "positions": "仓位",
+    "positions": "笔持仓",
     "start": "开始",
     "lock": "锁定",
     "remaining": "剩余",
@@ -208,7 +208,10 @@
     "bonusLabel": "体验金",
     "bonusBadge": "赠送",
     "bonusYieldLocked": "收益锁仓中 · 存入≥100U(45/90/180天)激活",
-    "bonusGranted": "500U 体验金已赠送"
+    "bonusGranted": "500U 体验金已赠送",
+    "progress": "进度",
+    "perDay": "日",
+    "totalEarned": "累计收益"
   },
   "deposit": {
     "inputError": "输入错误",
@@ -578,7 +581,7 @@
     "teamPerformance": "团队业绩",
     "teamSize": "团队规模",
     "direct": "直推",
-    "deposits": "存款",
+    "deposits": "存入",
     "rewardSummary": "奖励汇总",
     "directReferralReward": "直推奖励",
     "teamDiffReward": "团队级差",
@@ -694,7 +697,6 @@
     "placementCode": "安置码",
     "placementCodePlaceholder": "安置码（可选，默认与推荐人相同）",
     "placementLabel": "安置（团队）",
-    "deposits": "存入",
     "inviteCode": "邀请码",
     "generateInvite": "生成邀请",
     "directInvites": "直推人数",

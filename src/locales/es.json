@@ -140,7 +140,7 @@
     "dailyRate": "Tasa Diaria",
     "lockPeriod": "Período de Bloqueo",
     "daysUnit": "{{count}} días",
-    "positions": "Posiciones",
+    "positions": "positions",
     "start": "Inicio",
     "lock": "Bloqueo",
     "remaining": "Restante",
@@ -198,7 +198,10 @@
     "bonusLabel": "Bono",
     "bonusBadge": "Regalo",
     "bonusYieldLocked": "Rendimiento bloqueado · Deposite ≥100U para desbloquear",
-    "bonusGranted": "500U Bono Otorgado"
+    "bonusGranted": "500U Bono Otorgado",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Error de Entrada",
@@ -600,7 +603,6 @@
     "placementCode": "Código de Colocación",
     "placementCodePlaceholder": "Código de colocación (opcional, por defecto igual al patrocinador)",
     "placementLabel": "Colocación (Equipo)",
-    "deposits": "Depósitos",
     "inviteCode": "Código de Invitación",
     "generateInvite": "Generar Invitación",
     "directInvites": "Invitaciones Directas",

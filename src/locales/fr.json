@@ -140,7 +140,7 @@
     "dailyRate": "Taux Journalier",
     "lockPeriod": "Période de Verrouillage",
     "daysUnit": "{{count}} jours",
-    "positions": "Positions",
+    "positions": "positions",
     "start": "Début",
     "lock": "Verrou",
     "remaining": "Restant",
@@ -198,7 +198,10 @@
     "bonusLabel": "Bonus",
     "bonusBadge": "Cadeau",
     "bonusYieldLocked": "Rendement verrouillé · Déposez ≥100U pour débloquer",
-    "bonusGranted": "500U Bonus Accordé"
+    "bonusGranted": "500U Bonus Accordé",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "Erreur de Saisie",
@@ -600,7 +603,6 @@
     "placementCode": "Code de Placement",
     "placementCodePlaceholder": "Code de placement (optionnel, par défaut identique au parrain)",
     "placementLabel": "Placement (Équipe)",
-    "deposits": "Dépôts",
     "inviteCode": "Code d'Invitation",
     "generateInvite": "Générer une Invitation",
     "directInvites": "Invitations Directes",

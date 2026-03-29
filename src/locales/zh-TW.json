@@ -140,7 +140,7 @@
     "dailyRate": "日利率",
     "lockPeriod": "鎖倉期",
     "daysUnit": "{{count}} 天",
-    "positions": "倉位",
+    "positions": "positions",
     "start": "開始",
     "lock": "鎖定",
     "remaining": "剩餘",
@@ -198,7 +198,10 @@
     "bonusLabel": "Bonus",
     "bonusBadge": "Gift",
     "bonusYieldLocked": "Yield locked · Deposit ≥100U (45/90/180 days) to unlock",
-    "bonusGranted": "500U Bonus Granted"
+    "bonusGranted": "500U Bonus Granted",
+    "progress": "Progress",
+    "perDay": "day",
+    "totalEarned": "Total Earned"
   },
   "deposit": {
     "inputError": "輸入錯誤",
@@ -511,7 +514,7 @@
     "teamPerformance": "團隊業績",
     "teamSize": "團隊規模",
     "direct": "直推",
-    "deposits": "存款",
+    "deposits": "存入",
     "referralTree": "推薦樹",
     "connectToViewTeam": "連接錢包查看團隊",
     "connectToViewReferral": "連接錢包查看推薦數據",
@@ -600,7 +603,6 @@
     "placementCode": "安置碼",
     "placementCodePlaceholder": "安置碼（可選，默認與推薦人相同）",
     "placementLabel": "安置（團隊）",
-    "deposits": "存入",
     "inviteCode": "邀請碼",
     "generateInvite": "生成邀請",
     "directInvites": "直推人數",
