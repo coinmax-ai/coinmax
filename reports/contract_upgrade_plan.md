@@ -34,7 +34,7 @@
 
 | 合约 | 问题 | 处置方案 | 阶段 |
 |------|------|---------|------|
-| **BatchBridge** | 配好了但跨链失败 (Stargate quoteSend revert) | Phase 3: 修复 Stargate V2 参数 + Owner 转回 deployer; 或改用 thirdweb Bridge SDK | P2 |
+| **BatchBridge** | 跨链失败: bridgeToARB()是payable需带BNB, thirdweb所有钱包(4337/7702)都无法发payable交易. Owner卡在中继器(0xcb41)上 | Phase 3: 方案A)改合约去掉payable,fee从合约BNB余额扣; 方案B)用deployer私钥直接发(不走thirdweb); 方案C)改用thirdweb Universal Bridge SDK在后端跨链 | P2 |
 | **Gateway** | 写了没接入前端 | Phase 3: 评估是否用 thirdweb Pay 替代; 若不用则标记 deprecated 并 pause | P2 |
 | **InterestEngine** | 利息走 DB 结算不走链上 | Phase 3: 评估链上利息的必要性; 若保持 DB 则标记 deprecated; 若需链上验证则接入 | P3 |
 | **cUSD** | Vault 直接收 USDT 不用 cUSD 记账 | Phase 3: Vault 重构时决定是否恢复 cUSD 记账; 当前标记 deprecated | P3 |
