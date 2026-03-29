@@ -27,9 +27,8 @@ const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "vt_ac
 const SERVER_WALLET = Deno.env.get("SERVER_WALLET") || "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b";
 
 // Contract addresses — use env vars with fallbacks
-const MA_TOKEN = Deno.env.get("MA_TOKEN_ADDRESS") || "0xdFaC84b2f9cfD02b3f44760E0Ff88b4EeC0e1593";
-const RELEASE_CONTRACT = Deno.env.get("RELEASE_ADDRESS") || "0x842b48a616fA107bcd18e3656edCe658D4279f92";
-const NODE_ENGINE = Deno.env.get("NODE_ENGINE_ADDRESS") || "0x9C8308603f319713c5aF2D0bF1CB53C6106f4d51";
+const MA_TOKEN = Deno.env.get("MA_TOKEN_ADDRESS") || "0x4f71f2d1bD1480EC002e5c7A331BfA5F7A6c5C5b";
+const RELEASE_CONTRACT = Deno.env.get("RELEASE_ADDRESS") || "0xC80724a4133c90824A64914323fE856019D52B67";
 const BSC_RPC = Deno.env.get("BSC_RPC") || "https://bsc-dataseed1.binance.org";
 
 // Max batch size per thirdweb call
@@ -203,34 +202,31 @@ serve(async (req) => {
       const batch = entries.slice(i, i + BATCH_SIZE);
       const calls: Array<{ contractAddress: string; method: string; params: unknown[] }> = [];
 
-      // Prepare batch arrays for NodeEngine.batchMintNodeRewards
-      const batchUsers: string[] = [];
-      const batchAmounts: string[] = [];
-      const batchTypes: string[] = [];
-
       for (const entry of batch) {
         const maAmount = entry.totalUsd / maPrice;
         if (maAmount <= 0) continue;
 
-        // USD amount in 18 decimals (e.g. 9 USD = 9e18)
-        const usdWei = BigInt(Math.floor(entry.totalUsd * 1e18)).toString();
+        const maWei = BigInt(Math.floor(maAmount * 1e18)).toString();
 
-        batchUsers.push(entry.walletAddress);
-        batchAmounts.push(usdWei);
-        batchTypes.push(entry.nodeType);
+        if (entry.nodeType === "MAX") {
+          // MAX: mint MA directly to Release contract + addAccumulated (claimable)
+          calls.push({
+            contractAddress: MA_TOKEN,
+            method: "function mintTo(address to, uint256 amount)",
+            params: [RELEASE_CONTRACT, maWei],
+          });
+          calls.push({
+            contractAddress: RELEASE_CONTRACT,
+            method: "function addAccumulated(address user, uint256 amount)",
+            params: [entry.walletAddress, maWei],
+          });
+        }
+        // MINI: earnings are locked in DB (node_memberships.locked_earnings)
+        // No on-chain mint until V2 qualification unlocks them
 
         totalMintedMA += maAmount;
         totalProcessed++;
         processedRewardIds.push(...entry.rewardIds);
-      }
-
-      // Call NodeEngine.batchMintNodeRewards — it handles mintTo + addAccumulated
-      if (batchUsers.length > 0) {
-        calls.push({
-          contractAddress: NODE_ENGINE,
-          method: "function batchMintNodeRewards(address[] users, uint256[] usdAmounts, string[] nodeTypes)",
-          params: [batchUsers, batchAmounts, batchTypes],
-        });
       }
 
       if (calls.length > 0) {
