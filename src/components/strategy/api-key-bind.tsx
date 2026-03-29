@@ -29,14 +29,15 @@ const EXCHANGES: Array<{
   icon: string;
   needsPassphrase: boolean;
   hasTestnet: boolean;
+  comingSoon?: boolean;
 }> = [
-  { id: "binance", name: "Binance", icon: "₿", needsPassphrase: false, hasTestnet: true },
-  { id: "bybit", name: "Bybit", icon: "▲", needsPassphrase: false, hasTestnet: true },
-  { id: "okx", name: "OKX", icon: "◎", needsPassphrase: true, hasTestnet: true },
-  { id: "bitget", name: "Bitget", icon: "◆", needsPassphrase: true, hasTestnet: false },
-  { id: "hyperliquid", name: "HyperLiquid", icon: "H", needsPassphrase: false, hasTestnet: true },
-  { id: "dydx", name: "dYdX v4", icon: "D", needsPassphrase: false, hasTestnet: true },
-  { id: "aster", name: "Aster DEX", icon: "✦", needsPassphrase: false, hasTestnet: true },
+  { id: "binance", name: "Binance", icon: "B", needsPassphrase: false, hasTestnet: true },
+  { id: "bybit", name: "Bybit", icon: "BY", needsPassphrase: false, hasTestnet: true },
+  { id: "okx", name: "OKX", icon: "OK", needsPassphrase: true, hasTestnet: true },
+  { id: "bitget", name: "Bitget", icon: "BG", needsPassphrase: true, hasTestnet: false },
+  { id: "hyperliquid", name: "HyperLiquid", icon: "HL", needsPassphrase: false, hasTestnet: true },
+  { id: "dydx", name: "dYdX v4", icon: "dY", needsPassphrase: false, hasTestnet: true, comingSoon: true },
+  { id: "aster", name: "Aster DEX", icon: "AS", needsPassphrase: false, hasTestnet: true },
 ];
 
 export function ApiKeyBind({ userId }: { userId?: string }) {
@@ -199,16 +200,20 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
               {EXCHANGES.map(ex => (
                 <button
                   key={ex.id}
-                  onClick={() => setSelectedExchange(ex.id)}
+                  onClick={() => !ex.comingSoon && setSelectedExchange(ex.id)}
+                  disabled={ex.comingSoon}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] transition-colors",
-                    selectedExchange === ex.id
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "bg-white/[0.02] text-foreground/40 border border-white/[0.04] hover:bg-white/[0.04]"
+                    "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] transition-colors relative",
+                    ex.comingSoon
+                      ? "bg-white/[0.01] text-foreground/20 border border-white/[0.03] cursor-not-allowed"
+                      : selectedExchange === ex.id
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-white/[0.02] text-foreground/40 border border-white/[0.04] hover:bg-white/[0.04]"
                   )}
                 >
-                  <span className="text-sm">{ex.icon}</span>
+                  <span className="text-[10px] font-bold">{ex.icon}</span>
                   <span className="font-semibold truncate">{ex.name}</span>
+                  {ex.comingSoon && <span className="absolute -top-1 -right-1 text-[7px] bg-foreground/10 text-foreground/30 px-1 rounded">Soon</span>}
                 </button>
               ))}
             </div>

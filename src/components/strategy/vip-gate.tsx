@@ -8,15 +8,16 @@
  *   4. If trial expired + not VIP → show "购买VIP" dialog ($100-$2000)
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
-import { Shield, Sparkles, Clock, Crown, Zap } from "lucide-react";
+import { Shield, Sparkles, Clock, Crown, Zap, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { usePayment } from "@/hooks/use-payment";
+import { VIP_PLANS } from "@/lib/data";
 
 interface VipGateProps {
   walletAddress: string;
@@ -30,6 +31,7 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
   const [showTrialDialog, setShowTrialDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [activating, setActivating] = useState(false);
+  const { payVIPSubscribe, status: payStatus, reset: resetPayment } = usePayment();
 
   const { data: vipStatus, isLoading } = useQuery({
     queryKey: ["vip-status", walletAddress],
@@ -183,7 +185,7 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
       </Dialog>
 
       {/* VIP Payment Dialog */}
-      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+      <Dialog open={showPayDialog} onOpenChange={(open) => { setShowPayDialog(open); if (!open) resetPayment(); }}>
         <DialogContent className="bg-card border-border max-w-sm">
           <DialogHeader>
             <div className="flex items-center gap-2">
@@ -198,30 +200,44 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
           </DialogHeader>
 
           <div className="space-y-2 py-2">
-            {[
-              { amount: 100, periodKey: "strategy.period1m", limit: "$2,500" },
-              { amount: 300, periodKey: "strategy.period3m", limit: "$7,500" },
-              { amount: 500, periodKey: "strategy.period6m", limit: "$12,500" },
-              { amount: 1000, periodKey: "strategy.period12m", limit: "$25,000" },
-              { amount: 2000, periodKey: "strategy.period24m", limit: "$50,000" },
-            ].map((plan) => (
+            {([
+              { key: "monthly" as const, amount: VIP_PLANS.monthly.price, period: VIP_PLANS.monthly.period },
+              { key: "halfyear" as const, amount: VIP_PLANS.halfyear.price, period: VIP_PLANS.halfyear.period },
+            ]).map((plan) => (
               <button
-                key={plan.amount}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all"
-                onClick={() => {
-                  toast({ title: t("strategy.vipPayment"), description: `$${plan.amount} USDT — ${t(plan.periodKey)}` });
-                  // TODO: integrate with VIP contract payment
-                  setShowPayDialog(false);
+                key={plan.key}
+                disabled={payStatus !== "idle" && payStatus !== "error"}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all disabled:opacity-50"
+                onClick={async () => {
+                  try {
+                    await payVIPSubscribe(plan.key);
+                    toast({ title: t("strategy.vipActivated"), description: `${plan.period} VIP` });
+                    setShowPayDialog(false);
+                    queryClient.invalidateQueries({ queryKey: ["vip-status", walletAddress] });
+                  } catch (e: any) {
+                    toast({ title: t("strategy.paymentFailed"), description: e?.message, variant: "destructive" });
+                  }
                 }}
               >
                 <div>
                   <div className="text-[13px] font-bold text-foreground/70">${plan.amount} USDT</div>
-                  <div className="text-[10px] text-foreground/30">{t(plan.periodKey)} · {t("strategy.positionLimit")} {plan.limit}</div>
+                  <div className="text-[10px] text-foreground/30">{plan.period}</div>
                 </div>
                 <div className="text-[11px] text-primary font-semibold">{t("common.select")}</div>
               </button>
             ))}
           </div>
+
+          {payStatus !== "idle" && payStatus !== "error" && (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span className="text-[11px] text-foreground/40">
+                {payStatus === "paying" && t("strategy.paying")}
+                {payStatus === "confirming" && t("strategy.confirming")}
+                {payStatus === "recording" && t("strategy.activatingVip")}
+              </span>
+            </div>
+          )}
 
           <p className="text-[10px] text-foreground/20 text-center">
             {t("strategy.revenueShare")}
