@@ -100,15 +100,16 @@
 ```
 
 **金库入金改动:**
-- [ ] 前端: `vault-deposit-dialog.tsx` 改用 thirdweb Pay
-- [ ] Vault 合约: 确认 `depositFrom()` 可被 Server Wallet 调用
-- [ ] 废弃: SwapRouter 的 `swapAndDepositVault()` 不再需要
+- [x] 前端: `vault-deposit-dialog.tsx` 加 payModal (buyWithCrypto + buyWithFiat)
+- [x] 去掉手动 approve 步骤 (thirdweb SDK 自动处理)
+- [ ] Vault 合约: 确认 `depositFrom()` 可被 Server Wallet 调用 (Phase 3)
+- [ ] 废弃 SwapRouter (Phase 3, 需要合约改动)
 - [ ] 测试: USDT/USDC/BNB/信用卡 入金
 
 **节点购买改动:**
-- [ ] 前端: `node-purchase-section.tsx` 改用 thirdweb Pay
-- [ ] NodesV2 合约: 确认可直接收 USDC (不经过 SwapRouter)
-- [ ] 废弃: SwapRouter 的 `swapAndPurchaseNode()` 不再需要
+- [x] 前端: `use-payment.ts` 加 payModal (覆盖节点购买)
+- [ ] NodesV2 合约: 确认可直接收 USDC (Phase 3)
+- [ ] 废弃 SwapRouter (Phase 3)
 - [ ] 测试: 各代币购买 MINI/MAX 节点
 
 **VIP购买改动 (两种方案可选):**
@@ -230,42 +231,38 @@ Day 90:    同时考核 V4
 ##### 节点改动清单
 
 **DB 函数修改：**
-- [ ] `check_node_activation()`: 更新激活条件表
-  - MAX V1: 100U + 3 个 MINI 推荐
-  - MAX V2-V6: 仅金库存入门槛
-  - MINI V1-V4: 仅金库存入门槛
-- [ ] `settle_node_fixed_yield()`:
-  - 检查 `activated_rank IS NOT NULL` 才产生收益
-  - MAX: 直接领取 54U/天
-  - MINI: 锁仓 9U/天 (`locked_earnings`)
-- [ ] `check_node_milestones()`:
-  - MAX: Day 15(V1), 30(V2), 60(V4), 120(V6) 四个检查点
-  - MINI: Day 30(V2解锁), 90(V2全解/V4解锁冻结) 三个检查点
-  - 不达标: `earnings_paused = true`, `rank` 降为实际等级
+- [x] `check_node_activation()`: 激活条件已更新
+- [x] `settle_node_fixed_yield()`: MAX=released, MINI=locked
+- [x] `check_node_milestones()`: pass/fail + rank demotion
 
 **system_config 更新：**
-- [ ] `MAX_ACTIVATION_TIERS`: 更新为 V1-V6 条件
-- [ ] `MINI_ACTIVATION_TIERS`: 更新为 V1-V4 条件
-- [ ] `MAX_MILESTONES`: Day 15/30/60/120 四个里程碑
-- [ ] `MINI_MILESTONES`: Day 30/90 里程碑 + V4 解锁
+- [x] `MAX_ACTIVATION_TIERS`: V1-V6
+- [x] `MINI_ACTIVATION_TIERS`: V1-V4
+- [x] `MAX_MILESTONES`: Day 15/30/60/120
+- [x] `MINI_MILESTONES`: Day 30/90
 
 **前端修改：**
-- [ ] 节点详情页: 显示激活状态 + 考核时间线
-- [ ] 收益页: MAX 显示可领取, MINI 显示锁仓中
-- [ ] 里程碑进度条: 当前天数 / 下个考核点
+- [x] 节点详情页: 激活状态 + 考核时间线 (已有)
+- [x] 收益页: MAX 可领取 / MINI 锁仓 (已有)
+- [x] 里程碑进度条 (已有)
 
 **Edge function 修改：**
-- [ ] `settle-node-interest`: 根据 MAX/MINI 分别处理
-- [ ] `check-node-activation`: 金库存入达标时自动激活
-- [ ] `check-node-qualification`: 达标考核 cron (每日检查)
+- [x] `settle-node-interest`: MA V2 + MAX直接mint / MINI锁仓
+- [x] `check-node-activation`: 金库存入触发 (vault-record调用)
+- [x] `check-node-qualification`: 达标考核 cron
 
-**测试计划：**
-- [ ] MAX 节点完整 120 天周期模拟
-- [ ] MINI 节点完整 90 天周期模拟
-- [ ] V2 不达标 → 收益暂停验证
-- [ ] MINI Day 90 V2 不达标 → 收益销毁验证
-- [ ] V6/V4 达标 → 冻结金额解锁验证
-- [ ] 等级降级 → 实际等级验证
+**重要规则：倒计时从金库存入激活节点那天开始计算，不是购买节点那天。**
+**日收益也从激活次日开始，未激活不产生收益。**
+
+**测试结果：**
+- [x] MAX Day 1: 收益直接释放 54U ✅
+- [x] MAX V1 达标: 继续领取 ✅
+- [x] MAX V1 不达标: 收益暂停 (earnings_paused=true) ✅
+- [x] MINI Day 1: 收益锁仓 9U ✅
+- [x] MINI Day 30 V2 达标: 解锁锁仓 ✅
+- [x] MINI Day 90 V2 不达标: 收益销毁 (destroyed_earnings=810) ✅
+- [ ] V6/V4 达标 → 冻结金额解锁验证 (待测试)
+- [ ] 等级降级 → 实际等级验证 (待测试)
 
 ---
 
