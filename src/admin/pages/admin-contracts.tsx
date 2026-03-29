@@ -776,23 +776,7 @@ export default function AdminContracts() {
             onRefresh={() => {}}
           />
 
-          <ContractSection
-            title="Cron 定时任务"
-            icon={<Zap className="h-4 w-4 text-purple-400" />}
-            address=""
-            items={[
-              { label: "batch-bridge", value: "每4小时 — BSC→ARB Stargate跨链" },
-              { label: "flush-node-pool", value: "每30分钟 — NodePool→节点钱包" },
-              { label: "ma-price-feed", value: "每5分钟 — Oracle价格喂价" },
-              { label: "daily-settlement", value: "每天 — 利息结算+等级检查" },
-              { label: "simulate-trading", value: "每5分钟 — AI策略模拟" },
-              { label: "copy-trade-executor", value: "每5分钟 — 跟单执行" },
-              { label: "resolve-predictions", value: "每5分钟 — 预测结算" },
-            ]}
-            loading={false}
-            onRefresh={() => {}}
-            defaultOpen={false}
-          />
+          <CronPanel />
         </div>
       )}
 
@@ -1588,6 +1572,184 @@ function CrossChainPanel() {
 }
 
 // ── Vault Flow Diagram ──
+
+// ── Cron Jobs Panel (editable) ──
+
+const CRON_DESCRIPTIONS: Record<string, string> = {
+  "simulate-trading-5min": "AI策略模拟开单",
+  "resolve-predictions-5min": "预测结算",
+  "adjust-weights-hourly": "模型权重调整",
+  "close-expired-paper-trades": "关闭过期模拟单",
+  "batch-bridge": "BSC→ARB Stargate跨链",
+  "flush-node-pool": "NodePool→节点钱包",
+  "ma-price-feed": "Oracle MA价格喂价",
+  "daily-settlement": "利息结算+等级检查",
+  "copy-trade-executor": "跟单执行下单",
+  "copy-trade-notify": "Telegram推送",
+};
+
+function CronPanel() {
+  const { toast } = useToast();
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingJob, setEditingJob] = useState<string | null>(null);
+  const [editSchedule, setEditSchedule] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchJobs = async () => {
+    setLoading(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_cron_jobs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: "{}",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(Array.isArray(data) ? data : []);
+      } else {
+        // Fallback: try direct query
+        setJobs([]);
+      }
+    } catch {
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchJobs(); }, []);
+
+  const handleSaveSchedule = async (jobName: string) => {
+    setSaving(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/rest/v1/rpc/update_cron_schedule`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ job_name: jobName, new_schedule: editSchedule }),
+      });
+      toast({ title: "已更新", description: `${jobName} → ${editSchedule}` });
+      setEditingJob(null);
+      fetchJobs();
+    } catch (e: any) {
+      toast({ title: "更新失败", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTrigger = async (jobName: string) => {
+    // Find the edge function URL from the job command
+    const job = jobs.find(j => j.jobname === jobName);
+    const fnMatch = job?.command?.match(/functions\/v1\/([a-z-]+)/);
+    if (fnMatch) {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnMatch[1]}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        const data = await res.json();
+        toast({ title: `${fnMatch[1]}`, description: data.error ? `失败: ${data.error}` : "已触发" });
+      } catch (e: any) {
+        toast({ title: "触发失败", description: e.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "无法触发", description: "非 edge function 任务", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-purple-500/15 overflow-hidden" style={{ background: "rgba(147,51,234,0.02)" }}>
+      <div className="px-4 py-3 border-b border-purple-500/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-purple-400" />
+          <span className="text-[13px] font-bold text-foreground/80">Cron 定时任务</span>
+          <Badge className="text-[9px] bg-purple-500/10 text-purple-400 border-purple-500/20">{jobs.length}</Badge>
+        </div>
+        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={fetchJobs}>
+          <RefreshCw className="h-3 w-3 mr-1" />刷新
+        </Button>
+      </div>
+      <div className="divide-y divide-white/[0.03]">
+        {loading ? (
+          <div className="p-4 text-[11px] text-foreground/30">加载中...</div>
+        ) : jobs.length === 0 ? (
+          <div className="p-4 space-y-2">
+            <p className="text-[11px] text-foreground/30">无法读取 cron 任务（需要 RPC 函数）</p>
+            <p className="text-[10px] text-foreground/20">请在 Supabase SQL Editor 执行以下函数：</p>
+            <pre className="text-[9px] text-foreground/20 bg-white/[0.02] p-2 rounded overflow-x-auto">{`CREATE OR REPLACE FUNCTION get_cron_jobs()
+RETURNS TABLE(jobid bigint, jobname text, schedule text, command text, active boolean)
+LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT jobid, jobname, schedule, command, active FROM cron.job ORDER BY jobname;
+$$;
+
+CREATE OR REPLACE FUNCTION update_cron_schedule(job_name text, new_schedule text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE cron.job SET schedule = new_schedule WHERE jobname = job_name;
+END;
+$$;`}</pre>
+          </div>
+        ) : (
+          jobs.map((job: any) => (
+            <div key={job.jobid} className="px-4 py-2.5 flex items-center gap-3">
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${job.active !== false ? "bg-green-400" : "bg-red-400"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-foreground/70 truncate">{job.jobname}</span>
+                  <span className="text-[9px] text-foreground/25">{CRON_DESCRIPTIONS[job.jobname] || ""}</span>
+                </div>
+                {editingJob === job.jobname ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      value={editSchedule}
+                      onChange={(e) => setEditSchedule(e.target.value)}
+                      className="h-6 text-[10px] font-mono w-32 px-1.5"
+                      placeholder="*/5 * * * *"
+                    />
+                    <Button size="sm" className="h-6 text-[9px] px-2" disabled={saving} onClick={() => handleSaveSchedule(job.jobname)}>
+                      {saving ? "..." : "保存"}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-1.5" onClick={() => setEditingJob(null)}>取消</Button>
+                  </div>
+                ) : (
+                  <span className="text-[10px] font-mono text-foreground/30">{job.schedule}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  size="sm" variant="ghost" className="h-6 text-[9px] px-1.5 text-foreground/30 hover:text-foreground/60"
+                  onClick={() => { setEditingJob(job.jobname); setEditSchedule(job.schedule); }}
+                >
+                  编辑
+                </Button>
+                <Button
+                  size="sm" variant="ghost" className="h-6 text-[9px] px-1.5 text-purple-400 hover:text-purple-300"
+                  onClick={() => handleTrigger(job.jobname)}
+                >
+                  触发
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 function VaultFlowDiagram() {
   return (
