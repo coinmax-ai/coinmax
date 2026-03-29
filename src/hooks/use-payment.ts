@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { approve, transfer } from "thirdweb/extensions/erc20";
-import { prepareContractCall, waitForReceipt } from "thirdweb";
+import { prepareContractCall, waitForReceipt, getContract } from "thirdweb";
 import { useThirdwebClient } from "./use-thirdweb";
 import {
   getUsdtContract,
@@ -12,6 +12,7 @@ import {
   VAULT_CONTRACT_ADDRESS,
   NODE_CONTRACT_ADDRESS,
   SWAP_ROUTER_ADDRESS,
+  VAULT_V3_ADDRESS,
   VAULT_ABI,
   NODE_ABI,
   SWAP_ROUTER_ABI,
@@ -159,30 +160,52 @@ export function usePayment() {
     [client, _executePayment],
   );
 
-  // ── Node purchase V2 (USDT → SwapRouter → PancakeSwap V3 → USDC → NodesV2) ──
+  // ── Node purchase V2 (thirdweb Pay → USDC → Vault.purchaseNodePublic → BatchBridge → ARB) ──
   const payNodePurchaseV2 = useCallback(
     async (nodeType: string): Promise<string> => {
-      if (!SWAP_ROUTER_ADDRESS) throw new Error("SwapRouter not configured");
       if (!client) throw new Error("Thirdweb client not ready");
+      if (!account) throw new Error("Wallet not connected");
 
-      const contributions: Record<string, number> = { MINI: 100, MAX: 600 };
-      const amountUsd = contributions[nodeType] || 0;
+      const prices: Record<string, number> = { MINI: 100, MAX: 600 };
+      const amountUsd = prices[nodeType] || 0;
       if (!amountUsd) throw new Error("Invalid node type");
 
-      const usdtAmount = usdToUsdtUnits(amountUsd);
-      // minUsdcOut = 99.5% of input (0.5% slippage for stablecoin pair)
-      const minUsdcOut = usdtAmount * BigInt(995) / BigInt(1000);
+      const usdcAmount = BigInt(Math.floor(amountUsd * 1e18));
 
-      // Approve USDT to SwapRouter, then SwapRouter handles the rest
-      return _executePayment(SWAP_ROUTER_ADDRESS, amountUsd, () =>
-        prepareContractCall({
-          contract: getSwapRouterContract(client),
-          method: SWAP_ROUTER_ABI[0], // swapAndPurchaseNode
-          params: [usdtAmount, nodeType, minUsdcOut],
-        }),
-      );
+      setStatus("paying");
+      setError(null);
+      setTxHash(null);
+
+      try {
+        // Vault.purchaseNodePublic — thirdweb Pay auto-swaps USDT→USDC
+        const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
+        const tx = prepareContractCall({
+          contract: vault,
+          method: "function purchaseNodePublic(string nodeType, uint256 usdcAmount)",
+          params: [nodeType, usdcAmount],
+        });
+        const payResult = await sendTransaction(tx);
+
+        setStatus("confirming");
+        const receipt = await waitForReceipt({
+          client,
+          chain: BSC_CHAIN,
+          transactionHash: payResult.transactionHash,
+        });
+
+        if (receipt.status === "reverted") throw new Error("Transaction reverted");
+
+        const confirmedHash = receipt.transactionHash;
+        setTxHash(confirmedHash);
+        setStatus("recording");
+        return confirmedHash;
+      } catch (err: any) {
+        setError(err?.message || "Payment failed");
+        setStatus("error");
+        throw err;
+      }
     },
-    [client, _executePayment],
+    [account, client, sendTransaction],
   );
 
   // ── VIP subscribe (BSC USDT → server wallet → splitter → distribution) ──

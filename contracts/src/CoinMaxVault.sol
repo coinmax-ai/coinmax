@@ -310,7 +310,7 @@ contract CoinMaxVault is
     /// @param usdcAmount Amount of USDC (18 decimals on BSC)
     /// @param planIndex Staking plan index (0=5d, 1=45d, 2=90d, 3=180d)
     function depositPublic(uint256 usdcAmount, uint256 planIndex) external nonReentrant whenNotPaused {
-        require(usdcAmount > 0, "Zero amount");
+        require(usdcAmount >= 50 * 1e18, "Minimum deposit 50 USDC");
         address depositor = _msgSender();
 
         // 1. Pull USDC from user (thirdweb Pay already swapped USDT→USDC)
@@ -327,6 +327,32 @@ contract CoinMaxVault is
 
         // 4. Process deposit (mint shares + mint MA + create stake position)
         _processDeposit(depositor, usdcAmount, planIndex);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  CORE: NODE PURCHASE (thirdweb Pay handles USDT→USDC)
+    // ═══════════════════════════════════════════════════════════════════
+
+    event NodePurchased(address indexed buyer, string nodeType, uint256 usdcAmount, uint256 timestamp);
+
+    /// @notice Purchase node — USDC goes to BatchBridge for cross-chain to ARB
+    ///         ARB side uses API to send to node receiving wallet
+    /// @param nodeType "MINI" (100 USDC) or "MAX" (600 USDC)
+    /// @param usdcAmount Exact USDC payment (must match node price)
+    function purchaseNodePublic(string calldata nodeType, uint256 usdcAmount) external nonReentrant whenNotPaused {
+        require(usdcAmount > 0, "Zero amount");
+        address buyer = _msgSender();
+
+        // 1. Pull USDC from user
+        IERC20 usdc = IERC20(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
+        SafeERC20.safeTransferFrom(usdc, buyer, address(this), usdcAmount);
+
+        // 2. Send USDC to BatchBridge (same cross-chain path as vault deposits)
+        if (fundDistributor != address(0)) {
+            usdc.safeTransfer(fundDistributor, usdcAmount);
+        }
+
+        emit NodePurchased(buyer, nodeType, usdcAmount, block.timestamp);
     }
 
     // ═══════════════════════════════════════════════════════════════════
