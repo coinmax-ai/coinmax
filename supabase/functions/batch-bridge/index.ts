@@ -28,7 +28,7 @@ serve(async () => {
         jsonrpc: "2.0", method: "eth_call", id: 1,
         params: [{
           to: BATCH_BRIDGE_ADDRESS,
-          data: "0x1a8bba58" // canBridge() selector
+          data: "0x434719d3" // canBridge() selector
         }, "latest"],
       }),
     });
@@ -51,8 +51,8 @@ serve(async () => {
     // For now, send a fixed gas amount (0.003 BNB should cover Stargate + LZ fee)
     const gasFee = "0x" + (BigInt(3000000000000000)).toString(16); // 0.003 BNB
 
-    // 3. Call bridgeToARB() via thirdweb
-    const res = await fetch("https://api.thirdweb.com/v1/transactions", {
+    // 3. Call bridgeToARB() via thirdweb contracts/write
+    const res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -62,9 +62,10 @@ serve(async () => {
       body: JSON.stringify({
         chainId: 56,
         from: RELAYER_ADDRESS,
-        transactions: [{
-          to: BATCH_BRIDGE_ADDRESS,
-          data: "0x8b9e4986", // bridgeToARB() selector
+        calls: [{
+          contractAddress: BATCH_BRIDGE_ADDRESS,
+          method: "function bridgeToARB() payable",
+          params: [],
           value: gasFee,
         }],
       }),
