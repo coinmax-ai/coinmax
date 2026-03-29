@@ -105,7 +105,7 @@ const FLASH_SWAP_READ_ABI = {
 
 // ── Server Wallets for gas monitoring ──
 const SERVER_WALLETS = [
-  { label: "Server Wallet (ERC-4337·MINTER/FEEDER/ENGINE)", address: "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b" },
+  { label: "Server Wallet (ERC-4337·MINTER/FEEDER/ENGINE)", address: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b" },
   { label: "Deployer (EOA·合约admin·跨链)", address: "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1" },
   { label: "Relayer (EIP-7702·BSC不可用)", address: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA" },
   { label: "VIP接收钱包", address: "0x927eDe64b4B8a7C08Cf4225924Fa9c6759943E0A" },
@@ -666,7 +666,7 @@ export default function AdminContracts() {
             address=""
             items={[
               { label: "── 执行钱包 ──", value: "" },
-              { label: "Server Wallet (ERC-4337·主执行)", value: "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b", type: "address" },
+              { label: "Server Wallet (ERC-4337·主执行)", value: "0xeBAB6D22278c9839A46B86775b3AC9469710F84b", type: "address" },
               { label: "Deployer (EOA·跨链+紧急恢复)", value: "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1", type: "address" },
               { label: "Relayer (EIP-7702·BSC不可用)", value: "0xcb41F3C3eD6C255F57Cda1bA3fd42389B0f0F0aA", type: "address" },
               { label: "── 接收钱包 ──", value: "" },
@@ -1279,7 +1279,7 @@ function BatchGasPanel() {
 
 const THIRDWEB_SECRET = import.meta.env.VITE_THIRDWEB_SECRET_KEY || "";
 const THIRDWEB_VAULT_TOKEN = import.meta.env.VITE_THIRDWEB_VAULT_TOKEN || "";
-const EXECUTOR_ADDR = "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b";
+const EXECUTOR_ADDR = "0xeBAB6D22278c9839A46B86775b3AC9469710F84b";
 const FEEDER_ROLE_HASH = "0x80a586cc4ecf40a390b370be075aa38ab3cc512c5c1a7bc1007974dbdf2663c7";
 
 async function callExecutor(calls: { contractAddress: string; method: string; params: string[] }[]) {
