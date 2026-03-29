@@ -1,12 +1,12 @@
 /**
- * Vault Deposit Dialog — Plan selection cards + USDT deposit via Gateway contract
+ * Vault Deposit Dialog — Plan selection cards + USDT deposit via SwapRouter
  *
  * Flow:
  *   1. User selects staking plan (5d/45d/90d/180d visual cards)
  *   2. Enters USDT amount
  *   3. Preview: MA to mint, daily yield, total yield
- *   4. Approve USDT → Gateway.depositVault() on-chain
- *   5. Gateway swaps USDT→USDC, mints cUSD, deposits to Vault
+ *   4. Approve USDT → SwapRouter.swapAndDepositVault() on-chain
+ *   5. SwapRouter swaps USDT→USDC via PancakeSwap, calls Vault.depositFrom
  */
 
 import { useState } from "react";
@@ -16,10 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
-import { prepareContractCall, readContract, waitForReceipt } from "thirdweb";
-import { approve } from "thirdweb/extensions/erc20";
+import { prepareContractCall, waitForReceipt } from "thirdweb";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
-import { getUsdtContract, getUsdcContract, getSwapRouterContract, getGatewayContract, SWAP_ROUTER_ADDRESS, GATEWAY_ADDRESS, BSC_CHAIN, USDC_ADDRESS } from "@/lib/contracts";
+import { getUsdtContract, getSwapRouterContract, SWAP_ROUTER_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { VAULT_PLANS } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -60,7 +59,6 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
 
     try {
       const usdt = getUsdtContract(client);
-      const usdc = getUsdcContract(client);
       const amountWei = BigInt(Math.floor(usdtAmount * 1e18));
       const minUsdcOut = BigInt(Math.floor(usdtAmount * 0.995 * 1e18));
       const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");

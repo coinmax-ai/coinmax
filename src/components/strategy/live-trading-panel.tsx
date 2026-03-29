@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { createClient } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ interface Position {
 }
 
 export function LiveTradingPanel() {
+  const { t } = useTranslation();
   const [signals, setSignals] = useState<TradeSignal[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [connected, setConnected] = useState(false);
@@ -147,15 +149,15 @@ export function LiveTradingPanel() {
       <div className="flex items-center justify-between px-4 py-2 rounded-xl bg-white/[0.02]" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-2">
           <div className={cn("w-2 h-2 rounded-full", connected ? "bg-green-400 animate-pulse" : "bg-red-400")} />
-          <span className="text-xs text-foreground/40">{connected ? "实时连接" : "断开连接"}</span>
+          <span className="text-xs text-foreground/40">{connected ? t("strategy.liveConnected") : t("strategy.liveDisconnected")}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-foreground/25">{signals.length} 条信号</span>
+          <span className="text-[10px] text-foreground/25">{signals.length} {t("strategy.signalsCount")}</span>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={cn("text-[10px] px-2 py-0.5 rounded", autoRefresh ? "bg-primary/10 text-primary" : "bg-foreground/5 text-foreground/30")}
           >
-            {autoRefresh ? "自动刷新" : "已暂停"}
+            {autoRefresh ? t("strategy.autoRefresh") : t("strategy.paused")}
           </button>
         </div>
       </div>
@@ -163,7 +165,7 @@ export function LiveTradingPanel() {
       {/* Open positions */}
       {positions.length > 0 && (
         <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 className="text-xs font-bold text-foreground/50 mb-3">持仓中</h3>
+          <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.openPositions")}</h3>
           <div className="space-y-2">
             {positions.filter(p => p.status === "OPEN").map(p => (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.02]">
@@ -186,10 +188,10 @@ export function LiveTradingPanel() {
 
       {/* Signal feed */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 className="text-xs font-bold text-foreground/50 mb-3">信号流</h3>
+        <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.signalStream")}</h3>
         <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
           {signals.length === 0 ? (
-            <p className="text-xs text-foreground/20 text-center py-8">等待信号...</p>
+            <p className="text-xs text-foreground/20 text-center py-8">{t("strategy.waitingSignals")}</p>
           ) : (
             signals.map(s => (
               <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">

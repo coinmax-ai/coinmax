@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -28,45 +29,45 @@ const MODEL_META: Record<string, { name: string; provider: string; icon: string 
   "llama-3.1-8b": { name: "Llama 3.1 8B", provider: "Cloudflare", icon: "🦙" },
 };
 
-const STRATEGY_GROUPS: { group: string; strategies: { id: string; name: string; desc: string }[] }[] = [
+const STRATEGY_GROUPS: { groupKey: string; strategies: { id: string; nameKey: string; descKey: string }[] }[] = [
   {
-    group: "趋势跟踪",
+    groupKey: "strategy.groupTrendFollowing",
     strategies: [
-      { id: "trend_following", name: "趋势跟踪", desc: "顺势而为，追随主要趋势" },
-      { id: "momentum", name: "动量交易", desc: "捕捉价格加速运动" },
-      { id: "breakout", name: "突破交易", desc: "关键价位突破入场" },
-      { id: "swing", name: "波段交易", desc: "中期波段反转捕捉" },
-      { id: "ichimoku", name: "一目均衡表", desc: "多维度趋势确认" },
-      { id: "donchian", name: "唐奇安通道", desc: "通道突破系统" },
+      { id: "trend_following", nameKey: "strategy.trendFollowing", descKey: "strategy.trendFollowingDesc" },
+      { id: "momentum", nameKey: "strategy.momentum", descKey: "strategy.momentumDesc" },
+      { id: "breakout", nameKey: "strategy.breakout", descKey: "strategy.breakoutDesc" },
+      { id: "swing", nameKey: "strategy.swing", descKey: "strategy.swingDesc" },
+      { id: "ichimoku", nameKey: "strategy.ichimoku", descKey: "strategy.ichimokuDesc" },
+      { id: "donchian", nameKey: "strategy.donchian", descKey: "strategy.donchianDesc" },
     ],
   },
   {
-    group: "均值回归",
+    groupKey: "strategy.groupMeanReversion",
     strategies: [
-      { id: "mean_reversion", name: "均值回归", desc: "偏离均值后回归交易" },
-      { id: "bb_squeeze", name: "布林带挤压", desc: "波动率收缩后爆发" },
-      { id: "rsi_divergence", name: "RSI背离", desc: "RSI与价格背离信号" },
-      { id: "vwap_reversion", name: "VWAP回归", desc: "成交量加权均价回归" },
-      { id: "stochastic", name: "随机指标", desc: "超买超卖区间交易" },
+      { id: "mean_reversion", nameKey: "strategy.meanReversion", descKey: "strategy.meanReversionDesc" },
+      { id: "bb_squeeze", nameKey: "strategy.bbSqueeze", descKey: "strategy.bbSqueezeDesc" },
+      { id: "rsi_divergence", nameKey: "strategy.rsiDivergence", descKey: "strategy.rsiDivergenceDesc" },
+      { id: "vwap_reversion", nameKey: "strategy.vwapReversion", descKey: "strategy.vwapReversionDesc" },
+      { id: "stochastic", nameKey: "strategy.stochastic", descKey: "strategy.stochasticDesc" },
     ],
   },
   {
-    group: "量化策略",
+    groupKey: "strategy.groupQuantitative",
     strategies: [
-      { id: "grid", name: "网格交易", desc: "固定区间自动网格" },
-      { id: "dca", name: "定投策略", desc: "分批建仓降低成本" },
-      { id: "scalping", name: "剥头皮", desc: "高频小利润交易" },
-      { id: "market_making", name: "做市策略", desc: "双边挂单赚取价差" },
-      { id: "twap", name: "TWAP", desc: "时间加权平均价执行" },
-      { id: "avellaneda", name: "Avellaneda", desc: "最优做市模型" },
+      { id: "grid", nameKey: "strategy.grid", descKey: "strategy.gridDesc" },
+      { id: "dca", nameKey: "strategy.dca", descKey: "strategy.dcaDesc" },
+      { id: "scalping", nameKey: "strategy.scalping", descKey: "strategy.scalpingDesc" },
+      { id: "market_making", nameKey: "strategy.marketMaking", descKey: "strategy.marketMakingDesc" },
+      { id: "twap", nameKey: "strategy.twap", descKey: "strategy.twapDesc" },
+      { id: "avellaneda", nameKey: "strategy.avellaneda", descKey: "strategy.avellanedaDesc" },
     ],
   },
   {
-    group: "其他",
+    groupKey: "strategy.groupOther",
     strategies: [
-      { id: "pattern", name: "形态识别", desc: "经典图表形态交易" },
-      { id: "arbitrage", name: "套利策略", desc: "跨市场价差套利" },
-      { id: "position_executor", name: "仓位执行", desc: "智能仓位管理" },
+      { id: "pattern", nameKey: "strategy.pattern", descKey: "strategy.patternDesc" },
+      { id: "arbitrage", nameKey: "strategy.arbitrage", descKey: "strategy.arbitrageDesc" },
+      { id: "position_executor", nameKey: "strategy.positionExecutor", descKey: "strategy.positionExecutorDesc" },
     ],
   },
 ];
@@ -79,6 +80,7 @@ interface Props {
 }
 
 export function ModelStrategySelector({ selectedModels, selectedStrategies, onModelsChange, onStrategiesChange }: Props) {
+  const { t } = useTranslation();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<"models" | "strategies">("models");
@@ -142,7 +144,7 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
             section === "models" ? "bg-primary/10 text-primary" : "text-foreground/30"
           )}
         >
-          AI 模型 ({selectedModels.length}/5)
+          {t("strategy.aiModels")} ({selectedModels.length}/5)
         </button>
         <button
           onClick={() => setSection("strategies")}
@@ -151,13 +153,13 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
             section === "strategies" ? "bg-primary/10 text-primary" : "text-foreground/30"
           )}
         >
-          策略 ({selectedStrategies.length}/20)
+          {t("strategy.strategies")} ({selectedStrategies.length}/20)
         </button>
       </div>
 
       {section === "models" && (
         <div className="space-y-2">
-          <p className="text-[10px] text-foreground/25 px-1">选择要跟随的 AI 模型，系统将综合所选模型的共识进行交易</p>
+          <p className="text-[10px] text-foreground/25 px-1">{t("strategy.selectModels")}</p>
           {loading ? (
             <div className="space-y-2">
               {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-white/[0.03] animate-pulse" />)}
@@ -189,11 +191,11 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
                         <p className={cn("text-xs font-bold", model.accuracy7d > 60 ? "text-green-400" : model.accuracy7d > 40 ? "text-yellow-400" : "text-foreground/40")}>
                           {model.accuracy7d.toFixed(1)}%
                         </p>
-                        <p className="text-[9px] text-foreground/20">7日准确率</p>
+                        <p className="text-[9px] text-foreground/20">{t("strategy.accuracy7d")}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[11px] font-semibold text-foreground/40">{model.totalTrades}</p>
-                        <p className="text-[9px] text-foreground/20">交易数</p>
+                        <p className="text-[9px] text-foreground/20">{t("strategy.tradeCount")}</p>
                       </div>
                       <div className={cn(
                         "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
@@ -209,7 +211,7 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
           )}
 
           {selectedModels.length === 0 && !loading && (
-            <p className="text-[10px] text-yellow-400/60 text-center py-2">请至少选择 1 个 AI 模型</p>
+            <p className="text-[10px] text-yellow-400/60 text-center py-2">{t("strategy.selectAtLeast1")}</p>
           )}
         </div>
       )}
@@ -217,18 +219,18 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
       {section === "strategies" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <p className="text-[10px] text-foreground/25">选择要跟随的交易策略</p>
+            <p className="text-[10px] text-foreground/25">{t("strategy.selectStrategies")}</p>
             <button
               onClick={selectAllStrategies}
               className="text-[10px] text-primary/60 hover:text-primary transition-colors"
             >
-              {selectedStrategies.length === 20 ? "取消全选" : "全选"}
+              {selectedStrategies.length === 20 ? t("strategy.deselectAll") : t("strategy.selectAll")}
             </button>
           </div>
 
           {STRATEGY_GROUPS.map(group => (
-            <div key={group.group} className="rounded-xl bg-white/[0.02] p-3" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-              <h4 className="text-[11px] font-bold text-foreground/40 mb-2">{group.group}</h4>
+            <div key={group.groupKey} className="rounded-xl bg-white/[0.02] p-3" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              <h4 className="text-[11px] font-bold text-foreground/40 mb-2">{t(group.groupKey)}</h4>
               <div className="flex flex-wrap gap-1.5">
                 {group.strategies.map(s => {
                   const selected = selectedStrategies.includes(s.id);
@@ -236,7 +238,7 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
                     <button
                       key={s.id}
                       onClick={() => toggleStrategy(s.id)}
-                      title={s.desc}
+                      title={t(s.descKey)}
                       className={cn(
                         "px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors",
                         selected
@@ -244,7 +246,7 @@ export function ModelStrategySelector({ selectedModels, selectedStrategies, onMo
                           : "bg-white/[0.03] text-foreground/30 border border-white/[0.04] hover:text-foreground/50"
                       )}
                     >
-                      {s.name}
+                      {t(s.nameKey)}
                     </button>
                   );
                 })}

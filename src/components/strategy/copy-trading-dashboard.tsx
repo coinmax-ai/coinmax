@@ -3,11 +3,13 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { BarChart3, TrendingUp, TrendingDown, Clock, DollarSign, Target, AlertTriangle } from "lucide-react";
 
 export function CopyTradingDashboard({ wallet }: { wallet: string }) {
+  const { t } = useTranslation();
   const { data: openPositions } = useQuery({
     queryKey: ["copy-open", wallet],
     queryFn: async () => {
@@ -68,32 +70,32 @@ export function CopyTradingDashboard({ wallet }: { wallet: string }) {
             : "bg-red-500/10 text-red-400 border border-red-500/20"
         )}>
           <div className={cn("w-1.5 h-1.5 rounded-full", config?.is_active ? "bg-green-400 animate-pulse" : "bg-red-400")} />
-          {config?.is_active ? "跟单运行中" : "已暂停"}
+          {config?.is_active ? t("strategy.copyRunning") : t("strategy.copyPaused")}
         </div>
         <span className="text-[10px] text-foreground/25">
-          {config?.execution_mode === "paper" ? "模拟模式" :
-           config?.execution_mode === "signal" ? "信号模式" :
-           config?.execution_mode === "semi-auto" ? "半自动" : "全自动"}
-          {" · "}{config?.exchange || "未配置"}
+          {config?.execution_mode === "paper" ? t("strategy.modePaper") :
+           config?.execution_mode === "signal" ? t("strategy.modeSignal") :
+           config?.execution_mode === "semi-auto" ? t("strategy.modeSemiAuto") : t("strategy.modeFullAuto")}
+          {" · "}{config?.exchange || t("strategy.notConfigured")}
         </span>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-2">
-        <StatCard icon={<DollarSign className="h-3 w-3" />} label="总盈亏" value={`$${totalPnl.toFixed(2)}`} color={totalPnl >= 0 ? "green" : "red"} />
-        <StatCard icon={<Target className="h-3 w-3" />} label="胜率" value={`${winRate.toFixed(0)}%`} color={winRate >= 50 ? "green" : "yellow"} />
-        <StatCard icon={<BarChart3 className="h-3 w-3" />} label="总交易" value={`${totalTrades}`} color="blue" />
-        <StatCard icon={<AlertTriangle className="h-3 w-3" />} label="手续费" value={`$${totalFees.toFixed(2)}`} color="purple" />
+        <StatCard icon={<DollarSign className="h-3 w-3" />} label={t("strategy.totalPnl")} value={`$${totalPnl.toFixed(2)}`} color={totalPnl >= 0 ? "green" : "red"} />
+        <StatCard icon={<Target className="h-3 w-3" />} label={t("strategy.winRate")} value={`${winRate.toFixed(0)}%`} color={winRate >= 50 ? "green" : "yellow"} />
+        <StatCard icon={<BarChart3 className="h-3 w-3" />} label={t("strategy.totalTrades")} value={`${totalTrades}`} color="blue" />
+        <StatCard icon={<AlertTriangle className="h-3 w-3" />} label={t("strategy.fees")} value={`$${totalFees.toFixed(2)}`} color="purple" />
       </div>
 
       {/* Open Positions */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 className="text-xs font-bold text-foreground/50 mb-3 flex items-center gap-2">
           <Clock className="h-3.5 w-3.5" />
-          持仓中 ({openPositions?.length || 0})
+          {t("strategy.openPositions")} ({openPositions?.length || 0})
         </h3>
         {!openPositions?.length ? (
-          <p className="text-[11px] text-foreground/20 text-center py-4">暂无持仓</p>
+          <p className="text-[11px] text-foreground/20 text-center py-4">{t("strategy.noPositions")}</p>
         ) : (
           <div className="space-y-2">
             {openPositions.map(pos => <PositionRow key={pos.id} pos={pos} />)}
@@ -105,10 +107,10 @@ export function CopyTradingDashboard({ wallet }: { wallet: string }) {
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <h3 className="text-xs font-bold text-foreground/50 mb-3 flex items-center gap-2">
           <BarChart3 className="h-3.5 w-3.5" />
-          历史记录 ({closedTrades?.length || 0})
+          {t("strategy.history")} ({closedTrades?.length || 0})
         </h3>
         {!closedTrades?.length ? (
-          <p className="text-[11px] text-foreground/20 text-center py-4">暂无记录</p>
+          <p className="text-[11px] text-foreground/20 text-center py-4">{t("strategy.noRecords")}</p>
         ) : (
           <div className="space-y-1.5">
             {closedTrades.slice(0, 20).map(trade => <TradeRow key={trade.id} trade={trade} />)}
@@ -119,7 +121,7 @@ export function CopyTradingDashboard({ wallet }: { wallet: string }) {
       {/* Model Performance */}
       {closedTrades && closedTrades.length > 0 && (
         <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 className="text-xs font-bold text-foreground/50 mb-3">模型表现</h3>
+          <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.modelPerformance")}</h3>
           <ModelPerformance trades={closedTrades} />
         </div>
       )}
@@ -203,7 +205,7 @@ function ModelPerformance({ trades }: { trades: any[] }) {
           <div key={model} className="flex items-center justify-between px-2 py-1.5">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold text-foreground/60">{model}</span>
-              <span className="text-[9px] text-foreground/20">{total}单</span>
+              <span className="text-[9px] text-foreground/20">{total}{t("strategy.trades")}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-foreground/30">WR {wr.toFixed(0)}%</span>

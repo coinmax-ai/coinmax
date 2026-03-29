@@ -662,14 +662,12 @@ export default function StrategyPage() {
                     const noPercent = (market.noPrice * 100).toFixed(1);
                     const yesOdds = market.yesPrice > 0 ? (1 / market.yesPrice).toFixed(2) : "0";
                     const noOdds = market.noPrice > 0 ? (1 / market.noPrice).toFixed(2) : "0";
-                    const zhLang = (() => { try { return (localStorage.getItem("coinmax-lang") || "en") === "zh"; } catch { return false; } })();
-                    const vol = zhLang
-                      ? (market.volume >= 100_000_000 ? `$${(market.volume / 100_000_000).toFixed(1)}亿`
-                        : market.volume >= 10_000 ? `$${(market.volume / 10_000).toFixed(1)}万`
-                        : `$${market.volume.toFixed(0)}`)
-                      : (market.volume >= 1_000_000 ? `$${(market.volume / 1_000_000).toFixed(1)}M`
-                        : market.volume >= 1_000 ? `$${(market.volume / 1_000).toFixed(0)}K`
-                        : `$${market.volume.toFixed(0)}`);
+                    const vol = (() => {
+                      const v = market.volume;
+                      if (v >= 1e8) return `$${(v/1e8).toFixed(1)}${t("common.hundredMillion")}`;
+                      if (v >= 1e4) return `$${(v/1e4).toFixed(1)}${t("common.tenThousand")}`;
+                      return `$${v.toLocaleString()}`;
+                    })();
                     const endStr = market.endDate
                       ? new Date(market.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
                       : "";
@@ -1557,16 +1555,16 @@ export default function StrategyPage() {
             </div>
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="p-3 space-y-2">
-                <div className="text-xs font-semibold text-primary">订阅费用</div>
+                <div className="text-xs font-semibold text-primary">{t("strategy.subscriptionCost")}</div>
                 <div className="flex gap-3">
                   <div className="flex-1 text-center rounded-lg border border-border/30 bg-background/50 py-2 px-2">
                     <div className="text-lg font-bold text-foreground">$49</div>
-                    <div className="text-[10px] text-muted-foreground">/ 月</div>
+                    <div className="text-[10px] text-muted-foreground">{t("strategy.perMonth")}</div>
                   </div>
                   <div className="flex-1 text-center rounded-lg border border-primary/30 bg-primary/10 py-2 px-2 relative">
-                    <div className="absolute -top-1.5 right-1 text-[8px] bg-primary text-white px-1 rounded font-bold">优惠</div>
+                    <div className="absolute -top-1.5 right-1 text-[8px] bg-primary text-white px-1 rounded font-bold">{t("strategy.discount")}</div>
                     <div className="text-lg font-bold text-foreground">$249</div>
-                    <div className="text-[10px] text-muted-foreground">/ 半年</div>
+                    <div className="text-[10px] text-muted-foreground">{t("strategy.perHalfYear")}</div>
                   </div>
                 </div>
               </CardContent>
@@ -1755,9 +1753,9 @@ export default function StrategyPage() {
               </CardContent>
             </Card>
             <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">验证码（在 Telegram 发送 /bind 获取）</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">{t("strategy.telegramCodeLabel")}</label>
               <Input
-                placeholder="输入6位验证码"
+                placeholder={t("strategy.enterVerifyCode")}
                 value={tgBindCode}
                 onChange={(e) => setTgBindCode(e.target.value.toUpperCase())}
                 className="text-xs font-mono tracking-widest"
@@ -1800,11 +1798,11 @@ export default function StrategyPage() {
                   const result = await res.json();
                   if (result.error) throw new Error(result.error);
                   setTgBound(true);
-                  toast({ title: "绑定成功", description: "Telegram 通知已开启" });
+                  toast({ title: t("strategy.bindSuccess"), description: t("strategy.telegramEnabled") });
                   setBindTelegramOpen(false);
                   setTgBindCode("");
                 } catch (e: any) {
-                  toast({ title: "绑定失败", description: e.message || "验证码无效或已过期", variant: "destructive" });
+                  toast({ title: t("strategy.bindFailed"), description: e.message || t("strategy.codeInvalid"), variant: "destructive" });
                 } finally {
                   setTgBindLoading(false);
                 }
@@ -1812,7 +1810,7 @@ export default function StrategyPage() {
               data-testid="button-confirm-bind-telegram"
             >
               <MessageCircle className="mr-1 h-4 w-4" />
-              {tgBindLoading ? "验证中..." : "绑定 Telegram"}
+              {tgBindLoading ? t("strategy.verifying") : t("strategy.bindTelegram")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1909,7 +1907,7 @@ function CopyTradingSection({ profileId, isVip, trialUsed, walletAddr, onBack }:
   return (
     <div className="space-y-4" style={{ animation: "fadeSlideIn 0.3s ease-out" }}>
       <button onClick={onBack} className="flex items-center gap-1 text-xs text-foreground/40 hover:text-foreground/60 transition-colors">
-        <ChevronLeft className="h-3.5 w-3.5" /> 返回策略列表
+        <ChevronLeft className="h-3.5 w-3.5" /> {t("strategy.backToList")}
       </button>
       <CopyTradingFlow userId={profileId} compact />
     </div>

@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Shield, Sparkles, Clock, Crown, Zap } from "lucide-react";
@@ -23,6 +24,7 @@ interface VipGateProps {
 }
 
 export function VipGate({ walletAddress, children }: VipGateProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTrialDialog, setShowTrialDialog] = useState(false);
@@ -75,11 +77,11 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      toast({ title: "试用已激活", description: "7天免费VIP已开通，可以绑定交易所开始跟单" });
+      toast({ title: t("strategy.trialActivated"), description: t("strategy.trialActivatedDesc") });
       setShowTrialDialog(false);
       queryClient.invalidateQueries({ queryKey: ["vip-status", walletAddress] });
     } catch (e: any) {
-      toast({ title: "激活失败", description: e.message, variant: "destructive" });
+      toast({ title: t("strategy.activationFailed"), description: e.message, variant: "destructive" });
     } finally {
       setActivating(false);
     }
@@ -88,7 +90,7 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-white/[0.02] p-8 text-center" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="animate-pulse text-foreground/20 text-xs">检查 VIP 状态...</div>
+        <div className="animate-pulse text-foreground/20 text-xs">{t("strategy.checkingVip")}</div>
       </div>
     );
   }
@@ -104,7 +106,7 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
           </div>
           {vipStatus?.vip_expires_at && (
             <span className="text-[10px] text-foreground/25">
-              到期: {new Date(vipStatus.vip_expires_at).toLocaleDateString("zh-CN")}
+              {t("strategy.expiresAt")} {new Date(vipStatus.vip_expires_at).toLocaleDateString()}
             </span>
           )}
         </div>
@@ -125,15 +127,15 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
           <Shield className="h-6 w-6 text-primary" />
         </div>
         <h3 className="text-sm font-bold text-foreground/70 mb-1">
-          {trialExpired ? "VIP 已过期" : "开通 VIP 跟单"}
+          {trialExpired ? t("strategy.vipExpired") : t("strategy.activateVip")}
         </h3>
         <p className="text-[11px] text-foreground/30 mb-4">
           {trialExpired
-            ? "您的免费试用已结束，升级 VIP 继续使用 AI 跟单"
-            : "免费试用7天 AI 智能跟单，体验多模型策略组合"}
+            ? t("strategy.trialEndedDesc")
+            : t("strategy.trialPromo")}
         </p>
         <button className="px-6 py-2.5 rounded-xl bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors">
-          {trialExpired ? "购买 VIP" : "免费试用 7 天"}
+          {trialExpired ? t("strategy.buyVip") : t("strategy.freeTrial7d")}
         </button>
       </div>
 
@@ -146,19 +148,19 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-base font-bold">免费试用 7 天</DialogTitle>
-                <DialogDescription className="text-[13px]">体验 AI 智能跟单全部功能</DialogDescription>
+                <DialogTitle className="text-base font-bold">{t("strategy.freeTrial7d")}</DialogTitle>
+                <DialogDescription className="text-[13px]">{t("strategy.trialAllFeatures")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             {[
-              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: "5 个 AI 模型实时分析" },
-              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: "20 种量化策略自动跟单" },
-              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: "6 大交易所一键绑定" },
-              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: "Telegram 实时信号推送" },
-              { icon: <Clock className="h-3.5 w-3.5 text-amber-400" />, text: "试用期间仓位上限 $2,500" },
+              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: t("strategy.feature1") },
+              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: t("strategy.feature2") },
+              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: t("strategy.feature3") },
+              { icon: <Zap className="h-3.5 w-3.5 text-primary" />, text: t("strategy.feature4") },
+              { icon: <Clock className="h-3.5 w-3.5 text-amber-400" />, text: t("strategy.feature5") },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2.5 text-[12px] text-foreground/60">
                 {item.icon}
@@ -168,13 +170,13 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowTrialDialog(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setShowTrialDialog(false)}>{t("common.cancel")}</Button>
             <Button
               className="bg-primary text-black font-bold"
               disabled={activating}
               onClick={handleActivateTrial}
             >
-              {activating ? "激活中..." : "立即开通试用"}
+              {activating ? t("strategy.activating") : t("strategy.startTrial")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -189,40 +191,40 @@ export function VipGate({ walletAddress, children }: VipGateProps) {
                 <Crown className="h-4 w-4 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-base font-bold">购买 VIP</DialogTitle>
-                <DialogDescription className="text-[13px]">解锁 AI 跟单全部功能</DialogDescription>
+                <DialogTitle className="text-base font-bold">{t("strategy.buyVip")}</DialogTitle>
+                <DialogDescription className="text-[13px]">{t("strategy.unlockAllFeatures")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           <div className="space-y-2 py-2">
             {[
-              { amount: 100, period: "1个月", limit: "$2,500" },
-              { amount: 300, period: "3个月", limit: "$7,500" },
-              { amount: 500, period: "6个月", limit: "$12,500" },
-              { amount: 1000, period: "12个月", limit: "$25,000" },
-              { amount: 2000, period: "24个月", limit: "$50,000" },
+              { amount: 100, periodKey: "strategy.period1m", limit: "$2,500" },
+              { amount: 300, periodKey: "strategy.period3m", limit: "$7,500" },
+              { amount: 500, periodKey: "strategy.period6m", limit: "$12,500" },
+              { amount: 1000, periodKey: "strategy.period12m", limit: "$25,000" },
+              { amount: 2000, periodKey: "strategy.period24m", limit: "$50,000" },
             ].map((plan) => (
               <button
                 key={plan.amount}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all"
                 onClick={() => {
-                  toast({ title: "VIP 支付", description: `$${plan.amount} USDT — ${plan.period}，即将跳转支付...` });
+                  toast({ title: t("strategy.vipPayment"), description: `$${plan.amount} USDT — ${t(plan.periodKey)}` });
                   // TODO: integrate with VIP contract payment
                   setShowPayDialog(false);
                 }}
               >
                 <div>
                   <div className="text-[13px] font-bold text-foreground/70">${plan.amount} USDT</div>
-                  <div className="text-[10px] text-foreground/30">{plan.period} · 仓位上限 {plan.limit}</div>
+                  <div className="text-[10px] text-foreground/30">{t(plan.periodKey)} · {t("strategy.positionLimit")} {plan.limit}</div>
                 </div>
-                <div className="text-[11px] text-primary font-semibold">选择</div>
+                <div className="text-[11px] text-primary font-semibold">{t("common.select")}</div>
               </button>
             ))}
           </div>
 
           <p className="text-[10px] text-foreground/20 text-center">
-            收益分成: 80% 用户 / 20% 平台
+            {t("strategy.revenueShare")}
           </p>
         </DialogContent>
       </Dialog>

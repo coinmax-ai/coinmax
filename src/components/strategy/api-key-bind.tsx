@@ -70,11 +70,11 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
 
   const handleSubmit = async () => {
     if (!userId || !selectedExchange || !apiKey || !apiSecret) {
-      setError("请填写所有必填字段");
+      setError(t("exchange.fillAllFields"));
       return;
     }
     if (exchangeConfig?.needsPassphrase && !passphrase) {
-      setError("此交易所需要 Passphrase");
+      setError(t("exchange.passphraseRequired"));
       return;
     }
 
@@ -98,12 +98,12 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
 
-      setSuccess(`${exchangeConfig?.name} API Key 绑定成功`);
+      setSuccess(`${exchangeConfig?.name} ${t("exchange.bindSuccess")}`);
       setShowForm(false);
       resetForm();
       setTimeout(() => setSuccess(""), 3000);
     } catch (e: any) {
-      setError(e.message || "绑定失败");
+      setError(e.message || t("exchange.bindFailed"));
     } finally {
       setLoading(false);
     }
@@ -111,7 +111,7 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
 
   const handleDelete = async (exchange: SupportedExchange) => {
     if (!userId) return;
-    if (!confirm(`确定要删除 ${exchange} 的 API Key 吗？`)) return;
+    if (!confirm(t("exchange.confirmDelete", { exchange }))) return;
 
     await supabase
       .from("user_exchange_keys")
@@ -296,7 +296,7 @@ export function ApiKeyBind({ userId }: { userId?: string }) {
                   (!apiKey || !apiSecret) && "opacity-50 cursor-not-allowed"
                 )}
               >
-                {loading ? "验证中..." : "验证并绑定"}
+                {loading ? t("exchange.verifying") : t("exchange.verifyAndBind")}
               </button>
             </>
           )}

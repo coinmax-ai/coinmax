@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -43,10 +44,10 @@ const DEFAULT_CONFIG: RiskConfig = {
 
 const ALL_ASSETS = ["BTC", "ETH", "SOL", "BNB", "DOGE", "XRP", "AVAX", "ARB", "OP", "SUI"];
 const EXECUTION_MODES = [
-  { value: "PAPER", label: "模拟交易", desc: "仅记录，不实际下单" },
-  { value: "SIGNAL", label: "信号推送", desc: "推送信号，手动执行" },
-  { value: "SEMI_AUTO", label: "半自动", desc: "推送信号，确认后执行" },
-  { value: "FULL_AUTO", label: "全自动", desc: "完全自动化执行" },
+  { value: "PAPER", labelKey: "strategy.modePaper", descKey: "strategy.modePaperDesc" },
+  { value: "SIGNAL", labelKey: "strategy.modeSignal", descKey: "strategy.modeSignalDesc" },
+  { value: "SEMI_AUTO", labelKey: "strategy.modeSemiAuto", descKey: "strategy.modeSemiAutoDesc" },
+  { value: "FULL_AUTO", labelKey: "strategy.modeFullAuto", descKey: "strategy.modeFullAutoDesc" },
 ];
 
 interface RiskControlProps {
@@ -55,6 +56,7 @@ interface RiskControlProps {
 }
 
 export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps) {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<RiskConfig>(DEFAULT_CONFIG);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -165,8 +167,8 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
       )}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-foreground/70">紧急停止</h3>
-            <p className="text-[10px] text-foreground/25 mt-0.5">立即停止所有交易活动</p>
+            <h3 className="text-sm font-bold text-foreground/70">{t("strategy.emergencyStop")}</h3>
+            <p className="text-[10px] text-foreground/25 mt-0.5">{t("strategy.emergencyStopDesc")}</p>
           </div>
           <button
             onClick={toggleKillSwitch}
@@ -175,7 +177,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
               killSwitchActive ? "bg-red-500 text-white" : "bg-foreground/5 text-foreground/40 hover:bg-red-500/20 hover:text-red-400"
             )}
           >
-            {killSwitchActive ? "已停止 — 点击解除" : "紧急停止"}
+            {killSwitchActive ? t("strategy.stopped") : t("strategy.emergencyStop")}
           </button>
         </div>
       </div>
@@ -183,7 +185,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
       {/* Copy Trading Toggle + Mode */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-foreground/70">跟单交易</h3>
+          <h3 className="text-sm font-bold text-foreground/70">{t("strategy.copyTrading")}</h3>
           <button
             onClick={() => updateField("copyEnabled", !config.copyEnabled)}
             disabled={killSwitchActive}
@@ -211,8 +213,8 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
                   : "bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04]"
               )}
             >
-              <p className={cn("text-xs font-semibold", config.executionMode === mode.value ? "text-primary" : "text-foreground/50")}>{mode.label}</p>
-              <p className="text-[9px] text-foreground/20 mt-0.5">{mode.desc}</p>
+              <p className={cn("text-xs font-semibold", config.executionMode === mode.value ? "text-primary" : "text-foreground/50")}>{t(mode.labelKey)}</p>
+              <p className="text-[9px] text-foreground/20 mt-0.5">{t(mode.descKey)}</p>
             </button>
           ))}
         </div>
@@ -220,27 +222,27 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
 
       {/* Position Limits */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 className="text-xs font-bold text-foreground/50 mb-3">仓位限制</h3>
+        <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.positionLimits")}</h3>
         <div className="space-y-3">
-          <RangeInput label="单笔最大仓位" value={config.maxPositionSizeUsd} min={100} max={10000} step={100} unit="$" onChange={v => updateField("maxPositionSizeUsd", v)} />
-          <RangeInput label="最大同时持仓" value={config.maxConcurrentPositions} min={1} max={10} step={1} onChange={v => updateField("maxConcurrentPositions", v)} />
-          <RangeInput label="最大杠杆" value={config.maxLeverage} min={1} max={20} step={1} unit="x" onChange={v => updateField("maxLeverage", v)} />
+          <RangeInput label={t("strategy.maxPositionSize")} value={config.maxPositionSizeUsd} min={100} max={10000} step={100} unit="$" onChange={v => updateField("maxPositionSizeUsd", v)} />
+          <RangeInput label={t("strategy.maxConcurrent")} value={config.maxConcurrentPositions} min={1} max={10} step={1} onChange={v => updateField("maxConcurrentPositions", v)} />
+          <RangeInput label={t("strategy.maxLeverage")} value={config.maxLeverage} min={1} max={20} step={1} unit="x" onChange={v => updateField("maxLeverage", v)} />
         </div>
       </div>
 
       {/* Risk Limits */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 className="text-xs font-bold text-foreground/50 mb-3">风险控制</h3>
+        <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.riskControl")}</h3>
         <div className="space-y-3">
-          <RangeInput label="日最大亏损" value={config.maxDailyLossUsd} min={50} max={5000} step={50} unit="$" onChange={v => updateField("maxDailyLossUsd", v)} />
-          <RangeInput label="最大回撤" value={config.maxDrawdownPct} min={5} max={50} step={5} unit="%" onChange={v => updateField("maxDrawdownPct", v)} />
-          <RangeInput label="冷却时间" value={config.cooldownMinutes} min={0} max={60} step={1} unit="分" onChange={v => updateField("cooldownMinutes", v)} />
+          <RangeInput label={t("strategy.maxDailyLoss")} value={config.maxDailyLossUsd} min={50} max={5000} step={50} unit="$" onChange={v => updateField("maxDailyLossUsd", v)} />
+          <RangeInput label={t("strategy.maxDrawdown")} value={config.maxDrawdownPct} min={5} max={50} step={5} unit="%" onChange={v => updateField("maxDrawdownPct", v)} />
+          <RangeInput label={t("strategy.cooldown")} value={config.cooldownMinutes} min={0} max={60} step={1} unit={t("common.minutes")} onChange={v => updateField("cooldownMinutes", v)} />
         </div>
       </div>
 
       {/* Minimum signal strength */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 className="text-xs font-bold text-foreground/50 mb-3">最低信号强度</h3>
+        <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.minSignalStrength")}</h3>
         <div className="flex gap-2">
           {(["STRONG", "MEDIUM", "WEAK"] as const).map(s => (
             <button
@@ -255,7 +257,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
                   : "bg-white/[0.02] text-foreground/30 border border-white/[0.04]"
               )}
             >
-              {s === "STRONG" ? "仅强信号" : s === "MEDIUM" ? "中+强" : "全部"}
+              {s === "STRONG" ? t("strategy.strongOnly") : s === "MEDIUM" ? t("strategy.mediumUp") : t("strategy.allSignals")}
             </button>
           ))}
         </div>
@@ -263,7 +265,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
 
       {/* Allowed Assets */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-        <h3 className="text-xs font-bold text-foreground/50 mb-3">允许交易资产</h3>
+        <h3 className="text-xs font-bold text-foreground/50 mb-3">{t("strategy.allowedAssets")}</h3>
         <div className="flex flex-wrap gap-2">
           {ALL_ASSETS.map(asset => (
             <button
@@ -285,7 +287,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
       {/* Trading Hours */}
       <div className="rounded-xl bg-white/[0.02] p-4" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold text-foreground/50">交易时间限制 (UTC)</h3>
+          <h3 className="text-xs font-bold text-foreground/50">{t("strategy.tradingHours")}</h3>
           <button
             onClick={() => updateField("tradingHoursEnabled", !config.tradingHoursEnabled)}
             className={cn("w-8 h-4 rounded-full transition-colors relative", config.tradingHoursEnabled ? "bg-primary" : "bg-foreground/10")}
@@ -296,7 +298,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
         {config.tradingHoursEnabled && (
           <div className="flex items-center gap-2">
             <input type="number" min={0} max={23} value={config.tradingHoursStart} onChange={e => updateField("tradingHoursStart", Number(e.target.value))} className="w-16 bg-white/[0.04] rounded px-2 py-1 text-xs text-foreground/60 border border-white/[0.06]" />
-            <span className="text-xs text-foreground/25">至</span>
+            <span className="text-xs text-foreground/25">{t("common.to")}</span>
             <input type="number" min={0} max={23} value={config.tradingHoursEnd} onChange={e => updateField("tradingHoursEnd", Number(e.target.value))} className="w-16 bg-white/[0.04] rounded px-2 py-1 text-xs text-foreground/60 border border-white/[0.06]" />
             <span className="text-[10px] text-foreground/20">UTC</span>
           </div>
@@ -313,7 +315,7 @@ export function RiskControlPanel({ userId, initialOverrides }: RiskControlProps)
           (saving || !userId) && "opacity-50 cursor-not-allowed"
         )}
       >
-        {saving ? "保存中..." : saved ? "已保存" : "保存设置"}
+        {saving ? t("common.saving") : saved ? t("common.saved") : t("strategy.saveSettings")}
       </button>
     </div>
   );

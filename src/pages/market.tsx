@@ -121,7 +121,6 @@ function SectionHeader({ icon: Icon, title, badge, badgeClass }: {
 }
 
 /* ───────── Constants ───────── */
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /* ───────── Fear & Greed Gauge ───────── */
 function FearGreedGauge({ value, label }: { value: number; label: string }) {
@@ -199,8 +198,8 @@ function FearGreedChart({ data, coinSymbol }: { data: { date: string; fgi: numbe
   const formatPrice = (v: number) => {
     const zh = (() => { try { return (localStorage.getItem("coinmax-lang") || "en") === "zh"; } catch { return false; } })();
     if (zh) {
-      if (v >= 100_000_000) return `$${(v/100_000_000).toFixed(0)}亿`;
-      if (v >= 10_000) return `$${(v/10_000).toFixed(0)}万`;
+      if (v >= 100_000_000) return `$${(v/100_000_000).toFixed(0)}${t("common.hundredMillion")}`;
+      if (v >= 10_000) return `$${(v/10_000).toFixed(0)}${t("common.tenThousand")}`;
       if (v >= 1) return `$${v.toFixed(0)}`;
       return `$${v.toFixed(4)}`;
     }
@@ -231,13 +230,12 @@ function FearGreedChart({ data, coinSymbol }: { data: { date: string; fgi: numbe
 }
 
 /* ───────── Price Calendar ───────── */
-const WEEKDAYS_ZH = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 function PriceCalendar({ data }: { data: CalendarData | undefined }) {
   const { t, i18n } = useTranslation();
   const [monthOffset, setMonthOffset] = useState(0);
   const isZh = i18n.language?.startsWith("zh");
-  const weekdays = isZh ? WEEKDAYS_ZH : WEEKDAYS;
+  const weekdays = [t("common.sun"), t("common.mon"), t("common.tue"), t("common.wed"), t("common.thu"), t("common.fri"), t("common.sat")];
 
   const calendarData = useMemo(() => {
     if (!data?.dailyChanges?.length) return null;
@@ -355,7 +353,7 @@ function PriceCalendar({ data }: { data: CalendarData | undefined }) {
       {changes.length > 0 && (
         <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-3 text-[11px]">
-            <span className="text-muted-foreground/60">{changes.length} {isZh ? "天" : "days"}</span>
+            <span className="text-muted-foreground/60">{changes.length} {t("common.days")}</span>
             <span className="text-[#00e7a0] font-medium">{gainDays} <TrendingUp className="inline h-3 w-3" /></span>
             <span className="text-[#ff4976] font-medium">{lossDays} <TrendingDown className="inline h-3 w-3" /></span>
           </div>

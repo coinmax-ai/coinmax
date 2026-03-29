@@ -637,8 +637,10 @@ contract CoinMaxVault is
         StakePlan storage plan = stakePlans[planIndex];
         require(plan.active, "Plan not active");
 
-        // 1. Mint vault shares (1:1 with cUSD)
-        uint256 shares = previewDeposit(cUsdAmount);
+        // 1. Mint vault shares 1:1 with cUSD (direct mint, not ERC4626 preview
+        //    because cUSD is already in vault when this runs, which breaks
+        //    ERC4626's previewDeposit on first deposit — totalAssets>0, supply=0 → 0 shares)
+        uint256 shares = cUsdAmount;
         _mint(user, shares);
 
         // 2. Mint MA: maAmount = cUsdAmount(18dec) * 1e6 / maPrice(6dec) = MA(18dec)
