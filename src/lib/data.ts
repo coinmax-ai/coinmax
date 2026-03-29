@@ -29,7 +29,6 @@ export const VAULT_PLANS = {
   "180_DAYS": { days: 180, dailyRate: 0.012, label: "180天", apr: "438%",   minAmount: 50, platformFee: 0.10, planIndex: 3 },
 } as const;
 
-export const EARLY_BIRD_DEPOSIT_RATE = 0.10;
 
 export const NODE_PLANS = {
   MINI: {
