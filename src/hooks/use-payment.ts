@@ -36,7 +36,13 @@ export function usePayment() {
 
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
-  const { mutateAsync: sendTransaction } = useSendTransaction();
+  const { mutateAsync: sendTransaction } = useSendTransaction({
+    payModal: {
+      theme: "dark",
+      buyWithCrypto: {},
+      buyWithFiat: {},
+    },
+  });
 
   const reset = useCallback(() => {
     setStatus("idle");

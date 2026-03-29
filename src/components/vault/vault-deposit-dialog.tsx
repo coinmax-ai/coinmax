@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, waitForReceipt } from "thirdweb";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
-import { getUsdtContract, getSwapRouterContract, SWAP_ROUTER_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
+import { getSwapRouterContract, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { VAULT_PLANS } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -37,12 +37,18 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
   const { toast } = useToast();
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
-  const { mutateAsync: sendTx } = useSendTransaction();
+  const { mutateAsync: sendTx } = useSendTransaction({
+    payModal: {
+      theme: "dark",
+      buyWithCrypto: {},
+      buyWithFiat: {},
+    },
+  });
   const { price: maPrice, usdcToMA } = useMaPrice();
 
   const [selectedPlan, setSelectedPlan] = useState<keyof typeof VAULT_PLANS>("5_DAYS");
   const [amount, setAmount] = useState("");
-  const [step, setStep] = useState<"select" | "approving" | "depositing" | "success">("select");
+  const [step, setStep] = useState<"select" | "depositing" | "success">("select");
 
   const plan = VAULT_PLANS[selectedPlan];
   const usdtAmount = parseFloat(amount) || 0;
@@ -58,22 +64,11 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
     }
 
     try {
-      const usdt = getUsdtContract(client);
       const amountWei = BigInt(Math.floor(usdtAmount * 1e18));
       const minUsdcOut = BigInt(Math.floor(usdtAmount * 0.995 * 1e18));
-      const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-      // ═══ Step 1: Approve USDT to SwapRouter ═══
-      setStep("approving");
-      const approveTx = prepareContractCall({
-        contract: usdt,
-        method: "function approve(address spender, uint256 amount) returns (bool)",
-        params: [SWAP_ROUTER_ADDRESS, maxUint],
-      });
-      const approveResult = await sendTx(approveTx);
-      await waitForReceipt({ client: client!, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
-
-      // ═══ Step 2: SwapRouter swap USDT → USDC (proven working) ═══
+      // ═══ SwapRouter: USDT → USDC → Vault deposit ═══
+      // thirdweb Pay modal auto-triggers if wallet balance insufficient
       setStep("depositing");
       const swapRouter = getSwapRouterContract(client);
       const swapTx = prepareContractCall({
@@ -240,7 +235,7 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
               {step !== "select" && (
                 <div className="w-full flex items-center gap-2 text-xs text-foreground/40 mb-2">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>{step === "approving" ? t("deposit.approvingUsdt", "授权 USDT...") : t("deposit.depositingVault", "存入金库...")}</span>
+                  <span>{t("deposit.depositingVault", "存入金库...")}</span>
                 </div>
               )}
               <Button
