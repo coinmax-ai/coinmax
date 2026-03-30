@@ -304,27 +304,33 @@ contract CoinMaxVault is
     //  CORE: PUBLIC USDC DEPOSIT (thirdweb Pay handles USDT→USDC swap)
     // ═══════════════════════════════════════════════════════════════════
 
-    /// @notice Public deposit — anyone can call with USDT
-    /// @param usdtAmount Amount of USDT (18 decimals on BSC)
+    /// @notice Public deposit — accepts USDT or USDC
+    ///         thirdweb Pay on frontend auto-swaps if user has different token
+    /// @param token USDT or USDC address
+    /// @param amount Amount (18 decimals on BSC)
     /// @param planIndex Staking plan index (0=5d, 1=45d, 2=90d, 3=180d)
-    function depositPublic(uint256 usdtAmount, uint256 planIndex) external nonReentrant whenNotPaused {
-        require(usdtAmount >= 50 * 1e18, "Minimum deposit 50 USDT");
+    function depositPublic(address token, uint256 amount, uint256 planIndex) external nonReentrant whenNotPaused {
+        require(amount >= 50 * 1e18, "Minimum deposit 50");
+        require(
+            token == 0x55d398326f99059fF775485246999027B3197955 || // USDT
+            token == 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,  // USDC
+            "Only USDT or USDC"
+        );
         address depositor = _msgSender();
 
-        // 1. Pull USDT from user
-        IERC20 usdt = IERC20(0x55d398326f99059fF775485246999027B3197955);
-        SafeERC20.safeTransferFrom(usdt, depositor, address(this), usdtAmount);
+        // 1. Pull token from user
+        SafeERC20.safeTransferFrom(IERC20(token), depositor, address(this), amount);
 
-        // 2. Send USDT to BatchBridge for cross-chain (bridge handles USDT→USDC swap)
+        // 2. Send to BatchBridge for cross-chain
         if (fundDistributor != address(0)) {
-            usdt.safeTransfer(fundDistributor, usdtAmount);
+            IERC20(token).safeTransfer(fundDistributor, amount);
         }
 
         // 3. Mint cUSD 1:1 for ERC4626 share accounting
-        ICUSD(asset()).mintTo(address(this), usdtAmount);
+        ICUSD(asset()).mintTo(address(this), amount);
 
         // 4. Process deposit (mint shares + mint MA + create stake position)
-        _processDeposit(depositor, usdtAmount, planIndex);
+        _processDeposit(depositor, amount, planIndex);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -333,23 +339,26 @@ contract CoinMaxVault is
 
     event NodePurchased(address indexed buyer, string nodeType, uint256 usdcAmount, uint256 timestamp);
 
-    /// @notice Purchase node — USDT goes to BatchBridge for cross-chain to ARB
-    /// @param nodeType "MINI" (100 USDT) or "MAX" (600 USDT)
-    /// @param usdtAmount Exact USDT payment
-    function purchaseNodePublic(string calldata nodeType, uint256 usdtAmount) external nonReentrant whenNotPaused {
-        require(usdtAmount > 0, "Zero amount");
+    /// @notice Purchase node — accepts USDT or USDC
+    /// @param nodeType "MINI" or "MAX"
+    /// @param token USDT or USDC address
+    /// @param amount Exact payment amount
+    function purchaseNodePublic(string calldata nodeType, address token, uint256 amount) external nonReentrant whenNotPaused {
+        require(amount > 0, "Zero amount");
+        require(
+            token == 0x55d398326f99059fF775485246999027B3197955 || // USDT
+            token == 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,  // USDC
+            "Only USDT or USDC"
+        );
         address buyer = _msgSender();
 
-        // 1. Pull USDT from user
-        IERC20 usdt = IERC20(0x55d398326f99059fF775485246999027B3197955);
-        SafeERC20.safeTransferFrom(usdt, buyer, address(this), usdtAmount);
+        SafeERC20.safeTransferFrom(IERC20(token), buyer, address(this), amount);
 
-        // 2. Send USDT to BatchBridge (cross-chain, bridge handles swap)
         if (fundDistributor != address(0)) {
-            usdt.safeTransfer(fundDistributor, usdtAmount);
+            IERC20(token).safeTransfer(fundDistributor, amount);
         }
 
-        emit NodePurchased(buyer, nodeType, usdtAmount, block.timestamp);
+        emit NodePurchased(buyer, nodeType, amount, block.timestamp);
     }
 
     // ═══════════════════════════════════════════════════════════════════

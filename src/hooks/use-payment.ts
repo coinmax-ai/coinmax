@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { approve, transfer } from "thirdweb/extensions/erc20";
-import { prepareContractCall, waitForReceipt, getContract } from "thirdweb";
+import { prepareContractCall, waitForReceipt, getContract, readContract } from "thirdweb";
 import { useThirdwebClient } from "./use-thirdweb";
 import {
   getUsdtContract,
@@ -18,6 +18,7 @@ import {
   SWAP_ROUTER_ABI,
   BSC_CHAIN,
   USDT_ADDRESS,
+  USDC_ADDRESS,
 } from "@/lib/contracts";
 import { VIP_PLANS } from "@/lib/data";
 
@@ -177,19 +178,28 @@ export function usePayment() {
       setTxHash(null);
 
       try {
-        // Step 1: Approve USDT to Vault
-        const usdtContract = getUsdtContract(client);
-        const approveTx = approve({ contract: usdtContract, spender: VAULT_V3_ADDRESS, amountWei: usdcAmount });
+        // Detect token: prefer USDC, fallback USDT
+        const usdcC = getContract({ client, chain: BSC_CHAIN, address: USDC_ADDRESS });
+        const usdtC = getUsdtContract(client);
+        let payToken = USDC_ADDRESS;
+        let tokenC = usdcC;
+        try {
+          const usdcBal = await readContract({ contract: usdcC, method: "function balanceOf(address) view returns (uint256)", params: [account.address] });
+          if (BigInt(usdcBal.toString()) < usdcAmount) { payToken = USDT_ADDRESS; tokenC = usdtC; }
+        } catch { payToken = USDT_ADDRESS; tokenC = usdtC; }
+
+        // Step 1: Approve token to Vault
+        const approveTx = approve({ contract: tokenC, spender: VAULT_V3_ADDRESS, amountWei: usdcAmount });
         const approveResult = await sendTransaction(approveTx);
         await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
 
-        // Step 2: Vault.purchaseNodePublic — pull USDT
+        // Step 2: Vault.purchaseNodePublic
         setStatus("paying");
         const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
         const tx = prepareContractCall({
           contract: vault,
-          method: "function purchaseNodePublic(string nodeType, uint256 usdtAmount)",
-          params: [nodeType, usdcAmount],
+          method: "function purchaseNodePublic(string nodeType, address token, uint256 amount)",
+          params: [nodeType, payToken, usdcAmount],
         });
         const payResult = await sendTransaction(tx);
 

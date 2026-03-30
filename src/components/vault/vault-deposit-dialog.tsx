@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, waitForReceipt, getContract } from "thirdweb";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
-import { VAULT_V3_ADDRESS, USDT_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
+import { VAULT_V3_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { VAULT_PLANS } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -65,30 +65,44 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
 
     try {
       const amountWei = BigInt(Math.floor(usdtAmount * 1e18));
-      const approveAmount = amountWei;
-      const usdt = getContract({ client, chain: BSC_CHAIN, address: USDT_ADDRESS });
       const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
 
-      // ═══ Step 1: Approve USDT to Vault ═══
+      // ═══ Detect token: prefer USDC, fallback USDT ═══
       setStep("depositing");
+      const usdcC = getContract({ client, chain: BSC_CHAIN, address: USDC_ADDRESS });
+      const usdtC = getContract({ client, chain: BSC_CHAIN, address: USDT_ADDRESS });
+      let payToken = USDC_ADDRESS;
+      let tokenContract = usdcC;
+      try {
+        const { readContract: rc } = await import("thirdweb");
+        const usdcBal = await rc({ contract: usdcC, method: "function balanceOf(address) view returns (uint256)", params: [account.address] });
+        if (BigInt(usdcBal.toString()) < amountWei) {
+          payToken = USDT_ADDRESS;
+          tokenContract = usdtC;
+        }
+      } catch {
+        payToken = USDT_ADDRESS;
+        tokenContract = usdtC;
+      }
+
+      // ═══ Step 1: Approve token to Vault ═══
       try {
         const approveTx = prepareContractCall({
-          contract: usdt,
+          contract: tokenContract,
           method: "function approve(address spender, uint256 amount) returns (bool)",
-          params: [VAULT_V3_ADDRESS, approveAmount],
+          params: [VAULT_V3_ADDRESS, amountWei],
         });
         const approveResult = await sendTx(approveTx);
         await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
       } catch (approveErr: any) {
-        // If approve fails (e.g. user rejected), stop here
-        throw new Error(approveErr?.message || "USDT approve failed");
+        throw new Error(approveErr?.message || "Approve failed");
       }
 
-      // ═══ Step 2: Vault.depositPublic — pull USDT ═══
+      // ═══ Step 2: Vault.depositPublic(token, amount, planIndex) ═══
       const depositTx = prepareContractCall({
         contract: vault,
-        method: "function depositPublic(uint256 usdtAmount, uint256 planIndex)",
-        params: [amountWei, BigInt(plan.planIndex)],
+        method: "function depositPublic(address token, uint256 amount, uint256 planIndex)",
+        params: [payToken, amountWei, BigInt(plan.planIndex)],
         gas: BigInt(500000),
       });
       const depositResult = await sendTx(depositTx);
