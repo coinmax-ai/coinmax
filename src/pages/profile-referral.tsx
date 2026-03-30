@@ -282,7 +282,7 @@ export default function ProfileReferralPage() {
               </div>
             </div>
             <div className="text-[24px] font-black text-white mb-3">
-              {formatCompact(totalCommission)} <span className="text-[14px] text-primary">MA</span>
+              {formatCompact(usdcToMA(totalCommission))} <span className="text-[14px] text-primary">MA</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -294,7 +294,7 @@ export default function ProfileReferralPage() {
                 <div key={i} className="rounded-lg p-2.5"
                   style={{ background: `rgba(10,186,181,${item.opacity * 0.06})`, border: `1px solid rgba(10,186,181,${item.opacity * 0.15})` }}>
                   <div className="text-[10px] mb-0.5" style={{ color: `rgba(10,186,181,${item.opacity * 0.6})` }}>{item.label}</div>
-                  <div className="text-[15px] font-bold" style={{ color: `rgba(10,186,181,${0.4 + item.opacity * 0.6})` }}>{formatCompact(item.value)} MA</div>
+                  <div className="text-[15px] font-bold" style={{ color: `rgba(10,186,181,${0.4 + item.opacity * 0.6})` }}>{formatCompact(usdcToMA(item.value))} MA</div>
                 </div>
               ))}
             </div>
@@ -779,7 +779,7 @@ export default function ProfileReferralPage() {
               <div className="space-y-2">
                 {filteredRecords.map((record: any) => {
                   const rType = record.details?.type || "unknown";
-                  const amount = Number(record.amount || 0);
+                  const amount = usdcToMA(Number(record.amount || 0));
                   const depth = record.details?.depth || 0;
                   const createdAt = record.createdAt
                     ? new Date(record.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
