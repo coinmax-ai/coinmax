@@ -179,8 +179,7 @@ export function usePayment() {
       try {
         // Step 1: Approve USDT to Vault
         const usdtContract = getUsdtContract(client);
-        const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        const approveTx = approve({ contract: usdtContract, spender: VAULT_V3_ADDRESS, amountWei: maxUint });
+        const approveTx = approve({ contract: usdtContract, spender: VAULT_V3_ADDRESS, amountWei: usdcAmount });
         const approveResult = await sendTransaction(approveTx);
         await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
 
