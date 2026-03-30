@@ -117,9 +117,9 @@ export default function ProfilePage() {
   const nodeFixedYield = Number(nodeOverview?.rewards?.fixedYield || 0);
   const nodePoolDividend = Number(nodeOverview?.rewards?.poolDividend || 0);
   const nodeEarnings = nodeFixedYield + nodePoolDividend;
-  // Broker/referral earnings = team commission from node_rewards + legacy referral_earnings
-  const teamCommission = Number(nodeOverview?.rewards?.teamCommission || 0);
-  const referralEarnings = Number(profile?.referralEarnings || 0) + teamCommission;
+  // Broker/referral earnings = profiles.referral_earnings
+  // (auto-updated by DB trigger when node_rewards TEAM_COMMISSION inserted)
+  const referralEarnings = Number(profile?.referralEarnings || 0);
   // Available earnings for release = node + vault + broker commissions
   const totalEarnings = nodeEarnings + vaultYield + referralEarnings;
   const net = deposited - withdrawn;

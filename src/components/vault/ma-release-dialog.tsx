@@ -133,15 +133,11 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
         vaultYieldUsd += Number(pos.principal) * Number(pos.daily_rate) * days;
       }
 
-      // 2. Broker commissions (direct referral + differential + same rank + override)
-      const { data: commissions } = await supabase.from("node_rewards").select("amount")
-        .eq("user_id", profile.id).eq("reward_type", "TEAM_COMMISSION");
-      const commissionUsd = (commissions || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+      // 2. Broker commissions = profiles.referral_earnings
+      // (auto-updated by DB trigger when node_rewards are inserted, already includes all commissions)
+      const brokerUsd = Number(profile.referral_earnings || 0);
 
-      // 3. Legacy referral_earnings
-      const legacyUsd = Number(profile.referral_earnings || 0);
-
-      return vaultYieldUsd + commissionUsd + legacyUsd;
+      return vaultYieldUsd + brokerUsd;
     },
     enabled: !!account?.address,
   });
