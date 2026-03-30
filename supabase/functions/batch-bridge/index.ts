@@ -1,91 +1,119 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * Batch Bridge — Every 4 hours, bridge accumulated USDC from BSC to ARB
- *
- * 1. Check BSC BatchBridge contract balance
- * 2. If balance >= minBridgeAmount, call bridgeToARB()
- * 3. Uses deployer wallet (has owner role on BatchBridge)
+ * Batch Bridge — BSC USDT → ARB via thirdweb Bridge
  *
  * Cron: every 4 hours
+ * Flow:
+ *   1. Check BatchBridgeV2 USDT balance on BSC
+ *   2. If >= $50, get thirdweb Bridge quote
+ *   3. Execute bridge: BSC USDT → ARB (thirdweb handles routing)
+ *   4. Record in bridge_cycles table
  */
 
-const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") ||
-  "EwFZ-cz8maTnDHEukynx4UgOx_0oqeqg1qR1gx2cHIM0L-Nks5ogM0U7JhZGQMyg3489Tc42J_QSZ9rLGojFSQ";
-const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "vt_act_B6LKUWDDFVRRESRTNN2OYYYKTOCLDEAYSVFMSYI6A4L47R4ENX26GDBYUVCAGT2WVMNWCQNQWXOR6AFXILSR2DFIJAH3AM5QG4ERZIPV";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-// Will be updated after deployment
-const BATCH_BRIDGE_ADDRESS = Deno.env.get("BATCH_BRIDGE_ADDRESS") || "0x670dbfAA27C9a32023484B4BF7688171E70962f6";
-const DEPLOYER_ADDRESS = "0x1B6B492d8fbB8ded7dC6E1D48564695cE5BCB9b1";
+const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") || "";
+const THIRDWEB_CLIENT_ID = Deno.env.get("THIRDWEB_CLIENT_ID") || "a0612a159cd5aeecde69cda291faff38";
 
-serve(async () => {
+const BATCH_BRIDGE = "0x360fff6d0AF9860706A56595FACe18a6c5e34965";
+const BSC_USDT = "0x55d398326f99059fF775485246999027B3197955";
+const ARB_FUND_ROUTER = "0x71237E535d5E00CDf18A609eA003525baEae3489";
+const MIN_BRIDGE_AMOUNT = 50;
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    // 1. Check if bridge is ready (read canBridge())
-    const rpcRes = await fetch("https://bsc-dataseed1.binance.org", {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // 1. Check BatchBridge USDT balance
+    const balRes = await fetch("https://bsc-dataseed1.binance.org", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0", method: "eth_call", id: 1,
         params: [{
-          to: BATCH_BRIDGE_ADDRESS,
-          data: "0x434719d3" // canBridge() selector
+          to: BSC_USDT,
+          data: "0x70a08231000000000000000000000000" + BATCH_BRIDGE.slice(2).toLowerCase(),
         }, "latest"],
       }),
     });
-    const rpcData = await rpcRes.json();
-    const result = rpcData.result || "0x";
+    const balData = await balRes.json();
+    const balance = parseInt(balData.result || "0x0", 16) / 1e18;
 
-    // Decode: (bool ready, uint256 balance, uint256 nextBridgeAt)
-    if (result.length < 66) {
-      return json({ status: "skip", reason: "contract not deployed or empty result" });
+    if (balance < MIN_BRIDGE_AMOUNT) {
+      return json({
+        status: "skipped",
+        reason: `$${balance.toFixed(2)} < minimum $${MIN_BRIDGE_AMOUNT}`,
+        balance,
+      });
     }
 
-    const ready = parseInt(result.slice(2, 66), 16) === 1;
-    const balance = parseInt(result.slice(66, 130), 16) / 1e18;
+    // 2. Get thirdweb Bridge quote
+    const amountWei = BigInt(Math.floor(balance * 1e18)).toString();
+    const quoteUrl = `https://bridge.thirdweb.com/v1/quote?` +
+      `fromChainId=56` +
+      `&fromTokenAddress=${BSC_USDT}` +
+      `&toChainId=42161` +
+      `&toTokenAddress=0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9` + // ARB USDT
+      `&fromAmount=${amountWei}` +
+      `&fromAddress=${BATCH_BRIDGE}` +
+      `&toAddress=${ARB_FUND_ROUTER}`;
 
-    if (!ready) {
-      return json({ status: "skip", reason: "not ready", balance: `$${balance.toFixed(2)}` });
-    }
-
-    // 2. Quote bridge fee
-    // For now, send a fixed gas amount (0.003 BNB should cover Stargate + LZ fee)
-    const gasFee = "0x" + (BigInt(3000000000000000)).toString(16); // 0.003 BNB
-
-    // 3. Call bridgeToARB() via thirdweb (raw tx — payable needs value)
-    const res = await fetch("https://api.thirdweb.com/v1/transactions", {
-      method: "POST",
+    const quoteRes = await fetch(quoteUrl, {
       headers: {
-        "Content-Type": "application/json",
-        "x-secret-key": THIRDWEB_SECRET,
-        "x-vault-access-token": VAULT_ACCESS_TOKEN,
+        "x-client-id": THIRDWEB_CLIENT_ID,
+        ...(THIRDWEB_SECRET ? { "x-secret-key": THIRDWEB_SECRET } : {}),
       },
-      body: JSON.stringify({
-        chainId: 56,
-        from: DEPLOYER_ADDRESS,
-        transactions: [{
-          to: BATCH_BRIDGE_ADDRESS,
-          data: "0x8e3c0aab", // bridgeToARB()
-          value: gasFee,
-        }],
-      }),
     });
+    const quote = await quoteRes.json();
 
-    const data = await res.json();
-    const txId = data?.result?.transactionIds?.[0];
+    // 3. Record in DB
+    await supabase.from("bridge_cycles").insert({
+      cycle_type: "BATCH_BRIDGE_V2",
+      status: "QUOTED",
+      amount_usd: balance,
+      initiated_by: "cron",
+      details: {
+        bridgeContract: BATCH_BRIDGE,
+        fromChain: "BSC",
+        toChain: "ARB",
+        fromToken: "USDT",
+        toAddress: ARB_FUND_ROUTER,
+        quote: quote,
+        quoteUrl,
+      },
+    });
 
     return json({
-      status: txId ? "bridging" : "failed",
-      balance: `$${balance.toFixed(2)}`,
-      txId,
-      error: data?.error,
+      status: "quoted",
+      balance,
+      quote: {
+        estimatedOutput: quote?.intent?.buyAmount || quote?.estimate?.toAmount,
+        route: quote?.intent?.bridge || "thirdweb",
+        steps: quote?.steps?.length || 0,
+      },
+      note: "thirdweb Bridge quote ready. Execute from admin panel with wallet signature.",
     });
+
   } catch (e: any) {
-    return json({ status: "error", error: e.message });
+    return json({ error: e.message }, 500);
   }
 });
 
-function json(data: any) {
-  return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
