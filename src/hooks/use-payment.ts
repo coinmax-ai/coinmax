@@ -177,7 +177,15 @@ export function usePayment() {
       setTxHash(null);
 
       try {
-        // Vault.purchaseNodePublic — thirdweb Pay auto-swaps USDT→USDC
+        // Step 1: Approve USDT to Vault
+        const usdtContract = getUsdtContract(client);
+        const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        const approveTx = approve({ contract: usdtContract, spender: VAULT_V3_ADDRESS, amountWei: maxUint });
+        const approveResult = await sendTransaction(approveTx);
+        await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
+
+        // Step 2: Vault.purchaseNodePublic — pull USDT
+        setStatus("paying");
         const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
         const tx = prepareContractCall({
           contract: vault,
