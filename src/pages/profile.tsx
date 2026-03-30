@@ -120,8 +120,9 @@ export default function ProfilePage() {
   // Broker/referral earnings = team commission from node_rewards + legacy referral_earnings
   const teamCommission = Number(nodeOverview?.rewards?.teamCommission || 0);
   const referralEarnings = Number(profile?.referralEarnings || 0) + teamCommission;
+  // Available earnings for release = node + vault + broker commissions
   const totalEarnings = nodeEarnings + vaultYield + referralEarnings;
-  const net = deposited - withdrawn + referralEarnings;
+  const net = deposited - withdrawn;
 
   // Query claimed yield to calculate available balance
   const { data: claimedYield = 0 } = useQuery({

@@ -113,35 +113,44 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
   const onChainAccumulated = Number(accumulatedRaw || BigInt(0)) / 1e18;
   const totalClaimable = Number(totalClaimableRaw || BigInt(0)) / 1e18;
 
-  // Also read DB-based yield in USD (vault interest calculated off-chain)
+  // Read DB-based yield in USD (vault interest + broker commissions)
   const { price: maPrice } = useMaPrice();
-  const { data: dbYieldUsd = 0 } = useQuery({
-    queryKey: ["vault-db-yield-usd", account?.address],
+  const { data: dbTotalUsd = 0 } = useQuery({
+    queryKey: ["release-db-total-usd", account?.address],
     queryFn: async () => {
       if (!account?.address) return 0;
-      const { data: profile } = await supabase.from("profiles").select("id").eq("wallet_address", account.address).single();
+      const { data: profile } = await supabase.from("profiles").select("id, referral_earnings").eq("wallet_address", account.address).single();
       if (!profile) return 0;
+
+      // 1. Vault yield
       const { data: positions } = await supabase.from("vault_positions").select("*").eq("user_id", profile.id).eq("status", "ACTIVE");
-      if (!positions) return 0;
-      let total = 0;
+      let vaultYieldUsd = 0;
       const now = new Date();
-      for (const pos of positions) {
-        // Skip bonus positions with locked yield (same as profile page)
+      for (const pos of (positions || [])) {
         if (pos.bonus_yield_locked) continue;
         const start = new Date(pos.start_date);
         const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 86400_000));
-        total += Number(pos.principal) * Number(pos.daily_rate) * days;
+        vaultYieldUsd += Number(pos.principal) * Number(pos.daily_rate) * days;
       }
-      return total; // returns USD value
+
+      // 2. Broker commissions (direct referral + differential + same rank + override)
+      const { data: commissions } = await supabase.from("node_rewards").select("amount")
+        .eq("user_id", profile.id).eq("reward_type", "TEAM_COMMISSION");
+      const commissionUsd = (commissions || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+
+      // 3. Legacy referral_earnings
+      const legacyUsd = Number(profile.referral_earnings || 0);
+
+      return vaultYieldUsd + commissionUsd + legacyUsd;
     },
     enabled: !!account?.address,
   });
 
-  // Convert DB yield USD to MA using live price (same formula as Profile page)
-  const dbYieldMA = maPrice > 0 ? dbYieldUsd / maPrice : 0;
+  // Convert total USD to MA using live price
+  const dbTotalMA = maPrice > 0 ? dbTotalUsd / maPrice : 0;
 
-  // Use whichever is higher: on-chain accumulated or DB yield
-  const accumulated = Math.max(onChainAccumulated, dbYieldMA);
+  // Use whichever is higher: on-chain accumulated or DB total
+  const accumulated = Math.max(onChainAccumulated, dbTotalMA);
   const inputAmount = parseFloat(amount) || 0;
   const plan = PLANS.find(p => p.index === selectedPlan)!;
   const releaseMA = inputAmount * plan.release / 100;
