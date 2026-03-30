@@ -113,8 +113,13 @@ export default function ProfilePage() {
 
   const deposited = Number(profile?.totalDeposited || 0);
   const withdrawn = Number(profile?.totalWithdrawn || 0);
-  const referralEarnings = Number(profile?.referralEarnings || 0);
-  const nodeEarnings = Number(nodeOverview?.rewards?.totalEarnings || 0);
+  // Node earnings = fixed yield + pool dividend (NOT team commission)
+  const nodeFixedYield = Number(nodeOverview?.rewards?.fixedYield || 0);
+  const nodePoolDividend = Number(nodeOverview?.rewards?.poolDividend || 0);
+  const nodeEarnings = nodeFixedYield + nodePoolDividend;
+  // Broker/referral earnings = team commission from node_rewards + legacy referral_earnings
+  const teamCommission = Number(nodeOverview?.rewards?.teamCommission || 0);
+  const referralEarnings = Number(profile?.referralEarnings || 0) + teamCommission;
   const totalEarnings = nodeEarnings + vaultYield + referralEarnings;
   const net = deposited - withdrawn + referralEarnings;
 
