@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveAccount, useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, waitForReceipt, getContract } from "thirdweb";
-import { approve } from "thirdweb/extensions/erc20";
 import { useThirdwebClient } from "@/hooks/use-thirdweb";
 import { VAULT_V3_ADDRESS, USDT_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
@@ -66,21 +65,32 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
 
     try {
       const amountWei = BigInt(Math.floor(usdtAmount * 1e18));
-      const maxUint = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+      // Use a large but safe approval amount (avoid MaxUint256 BigInt conversion issues in thirdweb)
+      const approveAmount = BigInt("1000000000000000000000000000"); // 1 billion USDT
+      const usdt = getContract({ client, chain: BSC_CHAIN, address: USDT_ADDRESS });
+      const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
 
       // ═══ Step 1: Approve USDT to Vault ═══
       setStep("depositing");
-      const usdt = getContract({ client, chain: BSC_CHAIN, address: USDT_ADDRESS });
-      const approveTx = approve({ contract: usdt, spender: VAULT_V3_ADDRESS, amountWei: maxUint });
-      const approveResult = await sendTx(approveTx);
-      await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
+      try {
+        const approveTx = prepareContractCall({
+          contract: usdt,
+          method: "function approve(address spender, uint256 amount) returns (bool)",
+          params: [VAULT_V3_ADDRESS, approveAmount],
+        });
+        const approveResult = await sendTx(approveTx);
+        await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
+      } catch (approveErr: any) {
+        // If approve fails (e.g. user rejected), stop here
+        throw new Error(approveErr?.message || "USDT approve failed");
+      }
 
       // ═══ Step 2: Vault.depositPublic — pull USDT ═══
-      const vault = getContract({ client, chain: BSC_CHAIN, address: VAULT_V3_ADDRESS });
       const depositTx = prepareContractCall({
         contract: vault,
         method: "function depositPublic(uint256 usdtAmount, uint256 planIndex)",
         params: [amountWei, BigInt(plan.planIndex)],
+        gas: BigInt(500000),
       });
       const depositResult = await sendTx(depositTx);
       const receipt = await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: depositResult.transactionHash });
