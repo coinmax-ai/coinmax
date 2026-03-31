@@ -131,10 +131,9 @@ export default function ProfilePage() {
 
   const deposited = personalHolding; // excludes bonus
   const withdrawn = Number(profile?.totalWithdrawn || 0);
-  // Node earnings (USD from DB)
-  const nodeFixedYield = Number(nodeOverview?.rewards?.fixedYield || 0);
-  const nodePoolDividend = Number(nodeOverview?.rewards?.poolDividend || 0);
-  const nodeEarnings = nodeFixedYield + nodePoolDividend;
+  // Node earnings in MA (from node_memberships available_balance)
+  const nodeAvailableMA = Number(nodeOverview?.availableBalance || 0);
+  const nodeEarnings = nodeAvailableMA;
   // Broker/referral earnings (already in MA from settle_team_commission)
   const referralEarnings = Number(profile?.referralEarnings || 0);
   // Total available earnings in MA (all sources already in MA)
