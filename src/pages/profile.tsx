@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const { t } = useTranslation();
   const account = useActiveAccount();
   const { toast } = useToast();
-  const { formatMA, formatCompactMA } = useMaPrice();
+  const { price: maPrice, formatMA, formatCompactMA } = useMaPrice();
   const [, navigate] = useLocation();
   const walletAddr = account?.address || "";
   const isConnected = !!walletAddr;
@@ -137,15 +137,16 @@ export default function ProfilePage() {
 
   const deposited = personalHolding; // excludes bonus
   const withdrawn = Number(profile?.totalWithdrawn || 0);
-  // Node earnings = fixed yield + pool dividend (NOT team commission)
+  // Node earnings (USD from DB)
   const nodeFixedYield = Number(nodeOverview?.rewards?.fixedYield || 0);
   const nodePoolDividend = Number(nodeOverview?.rewards?.poolDividend || 0);
   const nodeEarnings = nodeFixedYield + nodePoolDividend;
-  // Broker/referral earnings = profiles.referral_earnings
-  // (auto-updated by DB trigger when node_rewards TEAM_COMMISSION inserted)
+  // Broker/referral earnings (already in MA from settle_team_commission)
   const referralEarnings = Number(profile?.referralEarnings || 0);
-  // Available earnings for release = node + vault + broker commissions
-  const totalEarnings = nodeEarnings + vaultYield + referralEarnings;
+  // Convert vault yield USD to MA
+  const vaultYieldMA = maPrice > 0 ? vaultYield / maPrice : 0;
+  // Total available earnings in MA
+  const totalEarnings = nodeEarnings + vaultYieldMA + referralEarnings;
   const net = deposited - withdrawn;
 
   // Claimed yield = sum of YIELD_CLAIM transactions
@@ -332,7 +333,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[
                     { label: t("profile.nodeEarningsLabel"), value: formatCompactMA(nodeEarnings) },
-                    { label: t("profile.vaultEarningsLabel"), value: formatCompactMA(vaultYield) },
+                    { label: t("profile.vaultEarningsLabel"), value: formatCompactMA(vaultYieldMA) },
                     { label: t("profile.brokerEarningsLabel"), value: formatCompactMA(referralEarnings) },
                   ].map((item, i) => (
                     <div key={i} className="rounded-xl p-2.5" style={{ background: "#1c1c1c" }}>
