@@ -170,12 +170,52 @@ serve(async (req) => {
     }
 
     // ──────────────────────────────────────────
-    // Step 3B: Read unprocessed node rewards (FIXED_YIELD + TEAM_COMMISSION)
+    // Step 3B: Mint broker rewards (direct/differential/same-rank/override) to Release
+    // ──────────────────────────────────────────
+    const { data: unprocessedBroker } = await supabase
+      .from("broker_rewards")
+      .select("id, user_id, amount, reward_type, profiles!inner(wallet_address)")
+      .is("on_chain_processed", null)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    if (unprocessedBroker && unprocessedBroker.length > 0) {
+      const brokerCalls: any[] = [];
+      for (const br of unprocessedBroker) {
+        const addr = (br as any).profiles?.wallet_address;
+        if (!addr) continue;
+        const maWei = BigInt(Math.floor(Number(br.amount) * 1e18)).toString();
+        if (maWei === "0") continue;
+
+        brokerCalls.push({
+          contractAddress: MA_TOKEN,
+          method: "function mintTo(address to, uint256 amount)",
+          params: [RELEASE_CONTRACT, maWei],
+        });
+        brokerCalls.push({
+          contractAddress: RELEASE_CONTRACT,
+          method: "function addAccumulated(address user, uint256 amount)",
+          params: [addr, maWei],
+        });
+      }
+
+      if (brokerCalls.length > 0) {
+        const brokerResult = await callThirdweb(brokerCalls);
+        if (!brokerResult?.error) {
+          for (const br of unprocessedBroker) {
+            await supabase.from("broker_rewards").update({ on_chain_processed: true }).eq("id", br.id);
+          }
+        }
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // Step 3C: Read unprocessed node rewards (FIXED_YIELD only)
     // ──────────────────────────────────────────
     let query = supabase
       .from("node_rewards")
       .select("id, user_id, amount, reward_type, details, profiles!inner(wallet_address)")
-      .in("reward_type", ["FIXED_YIELD", "TEAM_COMMISSION"])
+      .eq("reward_type", "FIXED_YIELD")
       .is("details->on_chain_processed", null)
       .order("created_at", { ascending: true })
       .limit(200);
