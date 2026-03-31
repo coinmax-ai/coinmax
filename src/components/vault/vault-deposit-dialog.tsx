@@ -85,26 +85,23 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
         tokenContract = usdtC;
       }
 
-      // ═══ Step 1: Approve token to Vault ═══
-      // BSC USDT requires approve(0) before setting new value if allowance > 0
+      // ═══ Step 1: Approve token to Vault (skip if already enough) ═══
       try {
-        const resetTx = prepareContractCall({
-          contract: tokenContract,
-          method: "function approve(address spender, uint256 amount) returns (bool)",
-          params: [VAULT_V3_ADDRESS, BigInt(0)],
-        });
-        const resetResult = await sendTx(resetTx);
-        await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: resetResult.transactionHash });
-      } catch { /* ignore if already 0 */ }
+        const { readContract: rc } = await import("thirdweb");
+        const currentAllowance = await rc({ contract: tokenContract, method: "function allowance(address owner, address spender) view returns (uint256)", params: [account.address, VAULT_V3_ADDRESS] });
 
-      try {
-        const approveTx = prepareContractCall({
-          contract: tokenContract,
-          method: "function approve(address spender, uint256 amount) returns (bool)",
-          params: [VAULT_V3_ADDRESS, amountWei],
-        });
-        const approveResult = await sendTx(approveTx);
-        await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
+        if (BigInt(currentAllowance.toString()) < amountWei) {
+          // BSC USDT: must approve(0) first if allowance > 0
+          if (BigInt(currentAllowance.toString()) > BigInt(0)) {
+            const resetTx = prepareContractCall({ contract: tokenContract, method: "function approve(address spender, uint256 amount) returns (bool)", params: [VAULT_V3_ADDRESS, BigInt(0)] });
+            const resetResult = await sendTx(resetTx);
+            await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: resetResult.transactionHash });
+          }
+          const approveTx = prepareContractCall({ contract: tokenContract, method: "function approve(address spender, uint256 amount) returns (bool)", params: [VAULT_V3_ADDRESS, amountWei] });
+          const approveResult = await sendTx(approveTx);
+          await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: approveResult.transactionHash });
+        }
+        // else: allowance already enough, skip approve (save gas)
       } catch (approveErr: any) {
         throw new Error(approveErr?.message || "Approve failed");
       }
