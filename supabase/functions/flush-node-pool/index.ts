@@ -25,7 +25,7 @@ const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "";
 
 const BSC_USDT = "0x55d398326f99059fF775485246999027B3197955";
 const BATCH_BRIDGE = "0x1Baa40837a253DA171a458A979f87b9A29CE0Efa";
-const SERVER_WALLET_A = "0xeBAB6D22278c9839A46B86775b3AC9469710F84b"; // vault admin
+const EOA_WALLET = "0xeBAB6D22278c9839A46B86775b3AC9469710F84b"; // vault admin
 const SERVER_WALLET_B = "0x0831e8875685C796D05F2302D3c5C2Dd77fAc3B6"; // trade server
 const NODE_WALLET = "0xeb8AbD9b47F9Ca0d20e22636B2004B75E84BdcD9";    // final destination
 
@@ -74,7 +74,7 @@ serve(async (req) => {
         jsonrpc: "2.0", method: "eth_call", id: 1,
         params: [{
           to: BSC_USDT,
-          data: "0x70a08231000000000000000000000000" + SERVER_WALLET_A.slice(2).toLowerCase(),
+          data: "0x70a08231000000000000000000000000" + EOA_WALLET.slice(2).toLowerCase(),
         }, "latest"],
       }),
     });
@@ -91,7 +91,7 @@ serve(async (req) => {
     }
 
     // 3. Hop 2: Server Wallet A → Server Wallet B
-    const hop2Res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
+    const hop2Res = await fetch("https://engine.thirdweb.com/v1/write/contract", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,9 +99,8 @@ serve(async (req) => {
         "x-vault-access-token": VAULT_ACCESS_TOKEN,
       },
       body: JSON.stringify({
-        chainId: 56,
-        from: SERVER_WALLET_A,
-        calls: [{
+        executionOptions: { type: "EOA", from: EOA_WALLET, chainId: "56" },
+        params: [{
           contractAddress: BSC_USDT,
           method: TRANSFER_METHOD,
           params: [SERVER_WALLET_B, amountWei],
@@ -119,7 +118,7 @@ serve(async (req) => {
     await new Promise(r => setTimeout(r, 5000));
 
     // 4. Hop 3: Server Wallet B → Node Wallet
-    const hop3Res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
+    const hop3Res = await fetch("https://engine.thirdweb.com/v1/write/contract", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,9 +126,8 @@ serve(async (req) => {
         "x-vault-access-token": VAULT_ACCESS_TOKEN,
       },
       body: JSON.stringify({
-        chainId: 56,
-        from: SERVER_WALLET_B,
-        calls: [{
+        executionOptions: { type: "EOA", from: SERVER_WALLET_B, chainId: "56" },
+        params: [{
           contractAddress: BSC_USDT,
           method: TRANSFER_METHOD,
           params: [NODE_WALLET, amountWei],

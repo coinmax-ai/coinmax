@@ -62,37 +62,31 @@ export default function ProfilePage() {
       .reduce((s, p) => s + Number(p.principal || 0), 0);
   }, [vaultPositions]);
 
-  // Vault yield calculated from DB (for display)
-  const vaultYield = useMemo(() => {
-    if (!vaultPositions) return 0;
-    const now = new Date();
-    let yieldSum = 0;
-    for (const p of vaultPositions) {
-      if (p.status !== "ACTIVE") continue;
-      if (p.bonusYieldLocked) continue;
-      const amt = Number(p.principal || 0);
-      const start = new Date(p.startDate!);
-      const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-      yieldSum += amt * Number(p.dailyRate || 0) * days;
-    }
-    return yieldSum;
-  }, [vaultPositions]);
-
-  // Locked bonus yield (bonus positions with locked yield)
-  const lockedBonusYield = useMemo(() => {
-    if (!vaultPositions) return 0;
-    const now = new Date();
-    let sum = 0;
-    for (const p of vaultPositions) {
-      if (p.status !== "ACTIVE") continue;
-      if (!p.bonusYieldLocked) continue;
-      const amt = Number(p.principal || 0);
-      const start = new Date(p.startDate!);
-      const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-      sum += amt * Number(p.dailyRate || 0) * days;
-    }
-    return sum;
-  }, [vaultPositions]);
+  // Vault yield from settled vault_rewards (actual, not estimated)
+  const { data: vaultYieldData = { unlocked: 0, locked: 0 } } = useQuery({
+    queryKey: ["vault-yield-settled", walletAddr],
+    queryFn: async () => {
+      if (!walletAddr) return { unlocked: 0, locked: 0 };
+      const { data: prof } = await supabase.from("profiles").select("id").eq("wallet_address", walletAddr).single();
+      if (!prof) return { unlocked: 0, locked: 0 };
+      const { data: rewards } = await supabase
+        .from("vault_rewards")
+        .select("ar_amount, position_id, vault_positions!inner(plan_type, bonus_yield_locked)")
+        .eq("user_id", prof.id)
+        .eq("reward_type", "DAILY_YIELD");
+      let unlocked = 0, locked = 0;
+      for (const r of (rewards || [])) {
+        const vp = (r as any).vault_positions;
+        const isLocked = vp?.plan_type === "BONUS_5D" && vp?.bonus_yield_locked;
+        if (isLocked) { locked += Number(r.ar_amount || 0); }
+        else { unlocked += Number(r.ar_amount || 0); }
+      }
+      return { unlocked, locked };
+    },
+    enabled: !!walletAddr,
+  });
+  const vaultYieldMA = vaultYieldData.unlocked; // already in MA
+  const lockedBonusYield = vaultYieldData.locked; // locked MA
 
   const payment = usePayment();
   const [showVipPlans, setShowVipPlans] = useState(false);
@@ -143,9 +137,7 @@ export default function ProfilePage() {
   const nodeEarnings = nodeFixedYield + nodePoolDividend;
   // Broker/referral earnings (already in MA from settle_team_commission)
   const referralEarnings = Number(profile?.referralEarnings || 0);
-  // Convert vault yield USD to MA
-  const vaultYieldMA = maPrice > 0 ? vaultYield / maPrice : 0;
-  // Total available earnings in MA
+  // Total available earnings in MA (all sources already in MA)
   const totalEarnings = nodeEarnings + vaultYieldMA + referralEarnings;
   const net = deposited - withdrawn;
 

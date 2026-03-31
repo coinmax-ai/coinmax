@@ -21,7 +21,7 @@ const corsHeaders = {
 
 const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") || "EwFZ-cz8maTnDHEukynx4UgOx_0oqeqg1qR1gx2cHIM0L-Nks5ogM0U7JhZGQMyg3489Tc42J_QSZ9rLGojFSQ";
 const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "vt_act_B6LKUWDDFVRRESRTNN2OYYYKTOCLDEAYSVFMSYI6A4L47R4ENX26GDBYUVCAGT2WVMNWCQNQWXOR6AFXILSR2DFIJAH3AM5QG4ERZIPV";
-const SERVER_WALLET = "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b";
+const EOA_WALLET = "0xeBAB6D22278c9839A46B86775b3AC9469710F84b";
 const MA_TOKEN = "0xdFaC84b2f9cfD02b3f44760E0Ff88b4EeC0e1593";
 const RELEASE_CONTRACT = "0x842b48a616fA107bcd18e3656edCe658D4279f92";
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -36,14 +36,14 @@ const PLANS: Record<number, { releasePct: number; burnPct: number; days: number 
 };
 
 async function callThirdweb(calls: any[]) {
-  const res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
+  const res = await fetch("https://engine.thirdweb.com/v1/write/contract", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-secret-key": THIRDWEB_SECRET,
       "x-vault-access-token": VAULT_ACCESS_TOKEN,
     },
-    body: JSON.stringify({ chainId: 56, from: SERVER_WALLET, calls }),
+    body: JSON.stringify({ executionOptions: { type: "EOA", from: EOA_WALLET, chainId: "56" }, params: calls }),
   });
   return res.json();
 }

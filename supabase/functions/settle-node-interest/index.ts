@@ -24,7 +24,7 @@ const corsHeaders = {
 // thirdweb Engine config
 const THIRDWEB_SECRET = Deno.env.get("THIRDWEB_SECRET_KEY") || "";
 const VAULT_ACCESS_TOKEN = Deno.env.get("THIRDWEB_VAULT_ACCESS_TOKEN") || "vt_act_B6LKUWDDFVRRESRTNN2OYYYKTOCLDEAYSVFMSYI6A4L47R4ENX26GDBYUVCAGT2WVMNWCQNQWXOR6AFXILSR2DFIJAH3AM5QG4ERZIPV";
-const SERVER_WALLET = Deno.env.get("SERVER_WALLET") || "0x85e44A8Be3B0b08e437B16759357300A4Cd1d95b";
+const EOA_WALLET = Deno.env.get("EOA_WALLET") || "0xeBAB6D22278c9839A46B86775b3AC9469710F84b";
 
 // Contract addresses — use env vars with fallbacks
 const MA_TOKEN = Deno.env.get("MA_TOKEN_ADDRESS") || "0xdFaC84b2f9cfD02b3f44760E0Ff88b4EeC0e1593";
@@ -63,7 +63,7 @@ async function callThirdweb(calls: Array<{ contractAddress: string; method: stri
     return { result: { transactionIds: [] }, simulated: true };
   }
 
-  const res = await fetch("https://api.thirdweb.com/v1/contracts/write", {
+  const res = await fetch("https://engine.thirdweb.com/v1/write/contract", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -71,9 +71,8 @@ async function callThirdweb(calls: Array<{ contractAddress: string; method: stri
       "x-vault-access-token": VAULT_ACCESS_TOKEN,
     },
     body: JSON.stringify({
-      chainId: 56,
-      from: SERVER_WALLET,
-      calls,
+      executionOptions: { type: "EOA", from: EOA_WALLET, chainId: "56" },
+      params: calls,
     }),
   });
 
