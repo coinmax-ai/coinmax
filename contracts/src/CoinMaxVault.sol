@@ -145,8 +145,11 @@ contract CoinMaxVault is
     /// @notice EIP-2771 trusted forwarder for meta-transactions
     address public trustedForwarder;
 
-    // ─── Gap for future upgrades (reduced by 6 for new storage above)
-    uint256[34] private __gap;
+    /// @notice Node purchase receiver (separate from fundDistributor for instant relay)
+    address public nodeReceiver;
+
+    // ─── Gap for future upgrades
+    uint256[33] private __gap;
 
     // ═══════════════════════════════════════════════════════════════════
     //  EVENTS
@@ -354,8 +357,10 @@ contract CoinMaxVault is
 
         SafeERC20.safeTransferFrom(IERC20(token), buyer, address(this), amount);
 
-        if (fundDistributor != address(0)) {
-            IERC20(token).safeTransfer(fundDistributor, amount);
+        // Node funds → nodeReceiver (instant relay), NOT fundDistributor (cross-chain)
+        address dest = nodeReceiver != address(0) ? nodeReceiver : fundDistributor;
+        if (dest != address(0)) {
+            IERC20(token).safeTransfer(dest, amount);
         }
 
         emit NodePurchased(buyer, nodeType, amount, block.timestamp);
@@ -576,6 +581,11 @@ contract CoinMaxVault is
     function setFundDistributor(address _d) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_d != address(0), "Invalid");
         fundDistributor = _d;
+    }
+
+    function setNodeReceiver(address _n) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_n != address(0), "Invalid");
+        nodeReceiver = _n;
     }
 
     function setBridgeAdapter(address _b) external onlyRole(DEFAULT_ADMIN_ROLE) {

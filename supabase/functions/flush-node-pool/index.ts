@@ -63,11 +63,10 @@ serve(async (req) => {
 
     const amountWei = "0x" + BigInt(Math.floor(totalAmount * 1e18)).toString(16);
 
-    // 2. Hop 1: BatchBridgeV2 → Server Wallet A (owner withdraws)
-    //    This requires deployer to call withdraw() — done via thirdweb Engine
-    //    For now, if BatchBridge has enough USDT, we proceed with the relay
-
-    // Check Server Wallet A USDT balance (may already have funds from manual withdraw)
+    // 2. Hop 1: Vault sends node funds to nodeReceiver (Server Wallet A)
+    //    Vault.purchaseNodePublic → nodeReceiver = Server Wallet A
+    //    So USDT is already in Server Wallet A after purchase
+    //    Check Server Wallet A USDT balance
     const balRes = await fetch("https://bsc-dataseed1.binance.org", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
