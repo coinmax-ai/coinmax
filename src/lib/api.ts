@@ -450,19 +450,24 @@ export async function getInsurancePool() {
 
 export async function getCommissionRecords(walletAddress: string) {
   const profile = await getProfile(walletAddress);
-  if (!profile) return { totalCommission: "0", directReferralTotal: "0", differentialTotal: "0", records: [] };
+  if (!profile) return { totalCommission: "0", directReferralTotal: "0", differentialTotal: "0", sameRankTotal: "0", overrideTotal: "0", records: [] };
 
   const { data, error } = await supabase
-    .from("node_rewards")
+    .from("broker_rewards")
     .select("*")
     .eq("user_id", profile.id)
-    .eq("reward_type", "TEAM_COMMISSION")
+    .in("reward_type", ["DIRECT_REFERRAL", "DIFFERENTIAL", "SAME_RANK", "OVERRIDE"])
     .order("created_at", { ascending: false });
   if (error) throw error;
 
   const records = (data ?? []).map((r: any) => {
     const rec = toCamel(r);
     rec.details = r.details || {};
+    // Normalize type field for frontend compatibility
+    if (r.reward_type === "DIRECT_REFERRAL") rec.details.type = "direct_referral";
+    else if (r.reward_type === "DIFFERENTIAL") rec.details.type = "differential";
+    else if (r.reward_type === "SAME_RANK") rec.details.type = "same_rank";
+    else if (r.reward_type === "OVERRIDE") rec.details.type = "override";
     return rec;
   });
 

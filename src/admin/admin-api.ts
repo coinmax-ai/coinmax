@@ -415,9 +415,8 @@ export async function adminGetPerformanceStats() {
       .select("id", { count: "exact", head: true })
       .eq("status", "ACTIVE"),
     supabase
-      .from("node_rewards")
-      .select("amount")
-      .eq("reward_type", "TEAM_COMMISSION"),
+      .from("broker_rewards")
+      .select("amount"),
   ]);
 
   const totalUsers = profilesRes.count ?? 0;
@@ -438,7 +437,7 @@ export async function adminGetPerformanceStats() {
 }
 
 // ─────────────────────────────────────────────
-// Commissions (TEAM_COMMISSION rewards)
+// Broker Commissions (经纪人奖励: 直推+级差+同级+越级)
 // ─────────────────────────────────────────────
 
 export async function adminGetCommissions(page: number, pageSize: number) {
@@ -446,9 +445,9 @@ export async function adminGetCommissions(page: number, pageSize: number) {
   const to = from + pageSize - 1;
 
   const { data, error, count } = await supabase
-    .from("node_rewards")
+    .from("broker_rewards")
     .select("*", { count: "exact" })
-    .eq("reward_type", "TEAM_COMMISSION")
+    .in("reward_type", ["DIRECT_REFERRAL", "DIFFERENTIAL", "SAME_RANK", "OVERRIDE"])
     .order("created_at", { ascending: false })
     .range(from, to);
 
