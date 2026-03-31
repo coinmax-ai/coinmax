@@ -128,13 +128,55 @@ serve(async (req) => {
     }
 
     // ──────────────────────────────────────────
-    // Step 3: Read unprocessed node rewards
+    // Step 3A: Mint vault daily yields to Release contract
+    // ──────────────────────────────────────────
+    const { data: unprocessedYields } = await supabase
+      .from("vault_rewards")
+      .select("id, user_id, ar_amount, profiles!inner(wallet_address)")
+      .is("on_chain_processed", null)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    if (unprocessedYields && unprocessedYields.length > 0) {
+      const maPrice = await getMAPrice();
+      const yieldCalls: any[] = [];
+
+      for (const yr of unprocessedYields) {
+        const addr = (yr as any).profiles?.wallet_address;
+        if (!addr) continue;
+        const maWei = BigInt(Math.floor(Number(yr.ar_amount) * 1e18)).toString();
+        if (maWei === "0") continue;
+
+        yieldCalls.push({
+          contractAddress: MA_TOKEN,
+          method: "function mintTo(address to, uint256 amount)",
+          params: [RELEASE_CONTRACT, maWei],
+        });
+        yieldCalls.push({
+          contractAddress: RELEASE_CONTRACT,
+          method: "function addAccumulated(address user, uint256 amount)",
+          params: [addr, maWei],
+        });
+      }
+
+      if (yieldCalls.length > 0) {
+        const yieldResult = await callThirdweb(yieldCalls);
+        if (!yieldResult?.error) {
+          for (const yr of unprocessedYields) {
+            await supabase.from("vault_rewards").update({ on_chain_processed: true }).eq("id", yr.id);
+          }
+        }
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // Step 3B: Read unprocessed node rewards (FIXED_YIELD + TEAM_COMMISSION)
     // ──────────────────────────────────────────
     let query = supabase
       .from("node_rewards")
       .select("id, user_id, amount, reward_type, details, profiles!inner(wallet_address)")
-      .eq("reward_type", "FIXED_YIELD")
-      .is("details->on_chain_processed", null) // not yet minted on-chain
+      .in("reward_type", ["FIXED_YIELD", "TEAM_COMMISSION"])
+      .is("details->on_chain_processed", null)
       .order("created_at", { ascending: true })
       .limit(200);
 
@@ -208,8 +250,14 @@ serve(async (req) => {
 
         const maWei = BigInt(Math.floor(maAmount * 1e18)).toString();
 
-        if (entry.nodeType === "MAX") {
-          // MAX: mint MA directly to Release contract + addAccumulated (claimable)
+        // All rewards → mint MA to Release contract (待释放)
+        // Exception: MINI FIXED_YIELD stays locked in DB until qualification
+        const isMiniYield = entry.nodeType === "MINI" && entry.rewardIds.some(id => {
+          const r = rewards?.find(x => x.id === id);
+          return r?.reward_type === "FIXED_YIELD";
+        });
+
+        if (!isMiniYield) {
           calls.push({
             contractAddress: MA_TOKEN,
             method: "function mintTo(address to, uint256 amount)",
@@ -221,8 +269,7 @@ serve(async (req) => {
             params: [entry.walletAddress, maWei],
           });
         }
-        // MINI: earnings are locked in DB (node_memberships.locked_earnings)
-        // No on-chain mint until V2 qualification unlocks them
+        // MINI FIXED_YIELD: locked in DB until V2 qualification
 
         totalMintedMA += maAmount;
         totalProcessed++;
