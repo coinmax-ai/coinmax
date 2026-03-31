@@ -86,6 +86,17 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
       }
 
       // ═══ Step 1: Approve token to Vault ═══
+      // BSC USDT requires approve(0) before setting new value if allowance > 0
+      try {
+        const resetTx = prepareContractCall({
+          contract: tokenContract,
+          method: "function approve(address spender, uint256 amount) returns (bool)",
+          params: [VAULT_V3_ADDRESS, BigInt(0)],
+        });
+        const resetResult = await sendTx(resetTx);
+        await waitForReceipt({ client, chain: BSC_CHAIN, transactionHash: resetResult.transactionHash });
+      } catch { /* ignore if already 0 */ }
+
       try {
         const approveTx = prepareContractCall({
           contract: tokenContract,
