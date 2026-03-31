@@ -113,37 +113,34 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
   const onChainAccumulated = Number(accumulatedRaw || BigInt(0)) / 1e18;
   const totalClaimable = Number(totalClaimableRaw || BigInt(0)) / 1e18;
 
-  // Read DB-based yield in USD (vault interest + broker commissions)
-  const { price: maPrice } = useMaPrice();
-  const { data: dbTotalUsd = 0 } = useQuery({
-    queryKey: ["release-db-total-usd", account?.address],
+  // Read settled yield from vault_rewards + broker commissions (already in MA)
+  const { data: dbTotalMA = 0 } = useQuery({
+    queryKey: ["release-db-total-ma", account?.address],
     queryFn: async () => {
       if (!account?.address) return 0;
       const { data: profile } = await supabase.from("profiles").select("id, referral_earnings").eq("wallet_address", account.address).single();
       if (!profile) return 0;
 
-      // 1. Vault yield
-      const { data: positions } = await supabase.from("vault_positions").select("*").eq("user_id", profile.id).eq("status", "ACTIVE");
-      let vaultYieldUsd = 0;
-      const now = new Date();
-      for (const pos of (positions || [])) {
-        if (pos.bonus_yield_locked) continue;
-        const start = new Date(pos.start_date);
-        const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 86400_000));
-        vaultYieldUsd += Number(pos.principal) * Number(pos.daily_rate) * days;
+      // 1. Vault yield from vault_rewards (settled, in MA)
+      const { data: rewards } = await supabase
+        .from("vault_rewards")
+        .select("ar_amount, vault_positions!inner(plan_type, bonus_yield_locked)")
+        .eq("user_id", profile.id)
+        .eq("reward_type", "DAILY_YIELD");
+      let vaultMA = 0;
+      for (const r of (rewards || [])) {
+        const vp = (r as any).vault_positions;
+        if (vp?.plan_type === "BONUS_5D" && vp?.bonus_yield_locked) continue;
+        vaultMA += Number(r.ar_amount || 0);
       }
 
-      // 2. Broker commissions = profiles.referral_earnings
-      // (auto-updated by DB trigger when node_rewards are inserted, already includes all commissions)
-      const brokerUsd = Number(profile.referral_earnings || 0);
+      // 2. Broker commissions (already in MA from settle_team_commission)
+      const brokerMA = Number(profile.referral_earnings || 0);
 
-      return vaultYieldUsd + brokerUsd;
+      return vaultMA + brokerMA;
     },
     enabled: !!account?.address,
   });
-
-  // Convert total USD to MA using live price
-  const dbTotalMA = maPrice > 0 ? dbTotalUsd / maPrice : 0;
 
   // Use whichever is higher: on-chain accumulated or DB total
   const accumulated = Math.max(onChainAccumulated, dbTotalMA);
