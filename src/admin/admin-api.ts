@@ -362,16 +362,27 @@ export async function adminGetVaultPositions(
 // Node Memberships
 // ─────────────────────────────────────────────
 
-export async function adminGetNodeMemberships(page: number, pageSize: number) {
+export async function adminGetNodeMemberships(
+  page: number, pageSize: number,
+  sourceFilter?: "onchain" | "manual" | "all",
+  tagFilter?: string,
+) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("node_memberships")
     .select("*", { count: "exact" })
-    .order("start_date", { ascending: false })
-    .range(from, to);
+    .order("start_date", { ascending: false });
 
+  // Filter by source: onchain (has tx_hash) vs manual (no tx_hash)
+  if (sourceFilter === "onchain") query = query.not("tx_hash", "is", null);
+  else if (sourceFilter === "manual") query = query.is("tx_hash", null);
+
+  // Filter by tag
+  if (tagFilter) query = query.eq("tag", tagFilter);
+
+  const { data, error, count } = await query.range(from, to);
   if (error) throw error;
 
   const memberships = data ?? [];
@@ -397,6 +408,7 @@ export async function adminGetNodeMemberships(page: number, pageSize: number) {
   const enriched = memberships.map((m: any) => ({
     ...toCamel(m),
     userWallet: userMap[m.user_id] ?? null,
+    source: m.tx_hash ? "onchain" : "manual",
   }));
 
   return { data: enriched, total: count ?? 0 };
