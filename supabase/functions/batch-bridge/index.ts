@@ -147,7 +147,7 @@ serve(async (req) => {
       initiated_by: "cron",
       bsc_tx: withdrawTxId,
       arb_tx: bridgeTxId,
-      details: {
+      metadata: {
         bridgeContract: BATCH_BRIDGE,
         fromChain: "BSC",
         toChain: "ARB",

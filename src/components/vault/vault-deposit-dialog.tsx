@@ -137,9 +137,9 @@ export function VaultDepositDialog({ open, onOpenChange }: VaultDepositDialogPro
         });
       } catch { /* non-critical */ }
 
-      // Auto-flush Splitter (distribute USDC to wallets)
+      // Auto-trigger batch bridge (BSC → ARB)
       try {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/splitter-flush`, {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-bridge`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
