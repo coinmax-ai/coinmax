@@ -12,6 +12,8 @@ import { submitTicket, listTickets, assignTicket } from "./tools/tickets";
 import { viewLogs } from "./tools/logs";
 import { diagnose } from "./tools/diagnose";
 import { triggerBridge } from "./tools/bridge";
+import { queryTeam, queryEarnings } from "./tools/team";
+import { verifyOnchain } from "./tools/onchain";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -106,25 +108,118 @@ app.post("/webhook", async (c) => {
     return c.text("ok");
   }
 
-  // Handle image/document (vision)
+  // Handle image/document (vision + file analysis)
   if (msg.photo?.length || msg.document) {
-    const fileId = msg.photo ? msg.photo[msg.photo.length - 1].file_id : msg.document!.file_id;
-    await sendMessage(env, chatId, "🔍 正在分析图片/文档...");
+    const isPhoto = !!msg.photo?.length;
+    const fileId = isPhoto ? msg.photo![msg.photo!.length - 1].file_id : msg.document!.file_id;
+    const fileName = msg.document?.file_name || "photo";
+    const mimeType = msg.document?.mime_type || "image/jpeg";
+    const isImage = mimeType.startsWith("image/") || isPhoto;
+    const isPdf = mimeType === "application/pdf";
+    const isSpreadsheet = mimeType.includes("spreadsheet") || mimeType.includes("excel") || fileName.endsWith(".xlsx") || fileName.endsWith(".csv");
+    const isText = mimeType.startsWith("text/") || fileName.endsWith(".txt") || fileName.endsWith(".json") || fileName.endsWith(".log") || fileName.endsWith(".csv");
+
+    await sendMessage(env, chatId, isImage ? "🔍 正在识别图片..." : `📄 正在分析文件 ${fileName}...`);
 
     const fileData = await downloadFile(env, fileId);
     if (!fileData) {
-      await sendMessage(env, chatId, "无法下载文件");
+      await sendMessage(env, chatId, "无法下载文件，可能文件过大（>20MB限制）");
       return c.text("ok");
     }
 
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(fileData)));
-    const mimeType = msg.document?.mime_type || "image/jpeg";
-    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const history = await loadConversation(env, chatId);
+    const historyContext = history.slice(-3).map(h => `${h.role}: ${h.content}`).join("\n");
 
-    const prompt = text || "请描述这张图片/文档的内容，如果是截图请识别关键信息";
-    const analysis = await analyzeImage(env, dataUrl, prompt);
+    let analysis: string;
+    const userPrompt = text || "";
 
-    await saveMessage(env, chatId, "user", `[发送了图片] ${text || ""}`);
+    if (isImage) {
+      // GPT-4o Vision for images/screenshots
+      const bytes = new Uint8Array(fileData);
+      // Chunk base64 encoding to avoid stack overflow on large files
+      let base64 = "";
+      for (let i = 0; i < bytes.length; i += 8192) {
+        base64 += btoa(String.fromCharCode(...bytes.slice(i, i + 8192)));
+      }
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      analysis = await chat(env, [
+        {
+          role: "system",
+          content: `你是 CoinMax 的智能助手"小C"。用户发了一张图片，请仔细识别内容。
+你擅长识别：
+- 交易截图（提取钱包地址、金额、时间、交易hash）
+- 错误截图（识别错误信息、分析原因、建议修复方案）
+- 区块链浏览器截图（提取交易详情）
+- 表格/数据截图（提取数据整理成文字）
+- 聊天截图（提取关键信息）
+- 任何其他内容（描述并分析）
+
+如果识别到钱包地址或交易hash，主动提供可以进一步查询的建议。
+用 HTML 格式回复（<b>粗体</b> <code>代码</code>），中文。
+
+对话上下文：
+${historyContext}`,
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt || "请识别并分析这张图片的内容" },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ], { model: "gpt-4o", maxTokens: 2000 });
+
+    } else if (isText || isSpreadsheet) {
+      // Text/CSV/JSON files — read content directly
+      const decoder = new TextDecoder("utf-8");
+      let content = decoder.decode(fileData);
+      if (content.length > 10000) content = content.slice(0, 10000) + "\n...(截断，共" + content.length + "字符)";
+
+      analysis = await chat(env, [
+        {
+          role: "system",
+          content: `你是 CoinMax 的智能助手"小C"。用户上传了文件 "${fileName}" (${mimeType})。
+分析文件内容，提取关键信息。如果是：
+- CSV/表格数据：整理成可读格式，统计关键数据
+- JSON：解析并总结结构和关键字段
+- 日志文件：找出错误和异常
+- 配置文件：检查是否有问题
+用 HTML 格式回复，中文。
+
+对话上下文：
+${historyContext}`,
+        },
+        { role: "user", content: `${userPrompt ? userPrompt + "\n\n" : ""}文件内容:\n${content}` },
+      ], { maxTokens: 2000 });
+
+    } else if (isPdf) {
+      // PDF — can't parse directly, use vision if small enough
+      const bytes = new Uint8Array(fileData);
+      if (bytes.length > 5 * 1024 * 1024) {
+        analysis = "PDF 文件过大（>5MB），暂时无法分析。请截图发送关键页面，或转成文本/CSV格式。";
+      } else {
+        let base64 = "";
+        for (let i = 0; i < bytes.length; i += 8192) {
+          base64 += btoa(String.fromCharCode(...bytes.slice(i, i + 8192)));
+        }
+        // Try sending PDF as image to GPT-4o (works for single-page PDFs)
+        analysis = await chat(env, [
+          { role: "system", content: `分析用户上传的PDF文件。用 HTML 格式中文回复。\n对话上下文：\n${historyContext}` },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: userPrompt || `请分析这个PDF文件 "${fileName}"` },
+              { type: "image_url", image_url: { url: `data:application/pdf;base64,${base64}` } },
+            ],
+          },
+        ], { model: "gpt-4o", maxTokens: 2000 });
+      }
+    } else {
+      analysis = `暂不支持 ${mimeType} 格式的文件分析。支持的格式：图片(jpg/png/gif)、文本(txt/csv/json/log)、PDF`;
+    }
+
+    await saveMessage(env, chatId, "user", `[上传${isImage ? "图片" : "文件"}: ${fileName}] ${userPrompt}`);
     await saveMessage(env, chatId, "assistant", analysis);
     await sendMessage(env, chatId, analysis);
     return c.text("ok");
@@ -227,6 +322,9 @@ async function executeTool(env: Env, user: BotUser, tool: string, params: Record
     case "diagnose": return diagnose(env, user, params);
     case "bridge_flush": return triggerBridge(env, user);
     case "manage_role": return manageRole(env, user, params);
+    case "query_team": return queryTeam(env, user, params);
+    case "query_earnings": return queryEarnings(env, user, params);
+    case "verify_onchain": return verifyOnchain(env, user, params);
     default: return { text: params.message || "我不太理解你的意思，请再说详细一些？" };
   }
 }

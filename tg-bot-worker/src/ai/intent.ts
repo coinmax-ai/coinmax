@@ -15,6 +15,9 @@ Available tools (respond with JSON):
 - query_vault: 查询金库入金详情 {wallet?: "0x...", summary?: "true"} — requires: query. 不传wallet返回全局总览（按方案统计+最近入金）; 传wallet返回该用户所有仓位+入金记录+赠送仓位+收益锁定状态
 - query_node: 查询节点+激活状态 {wallet?: "0x...", summary?: "true"} — requires: query. 不传wallet返回全局总览（激活率+等级分布）; 传wallet返回节点详情+激活等级+收益容量+里程碑+团队数据
 - query_transaction: 查询交易记录 {wallet?: "0x...", type?: "VAULT_DEPOSIT"|"NODE_PURCHASE", limit?: 10} — requires: query
+- query_team: 查询直推/团队/安置详情 {wallet: "0x..."} — requires: query. 直推列表、安置列表、团队业绩、节点统计、佣金记录
+- query_earnings: 查询收益明细 {wallet: "0x..."} — requires: query. 金库产出、节点收益、推荐佣金、团队佣金汇总
+- verify_onchain: 链上数据验证 {check: "funds"|"wallet"|"tx"|"vault_fd"|"all", wallet?: "0x...", txHash?: "0x..."} — requires: diagnose. 链上余额验证、TX验证、合约配置验证
 - create_node: 创建节点订单 {wallet: "0x...", nodeType: "MAX"|"MINI", tag?: "string"} — requires: create_node, CONFIRM
 - modify_data: 修改数据库 {table: "...", id: "...", updates: {...}} — requires: modify, CONFIRM
 - submit_ticket: 提交工单 {title: "...", description: "...", priority?: "critical"|"high"|"medium"|"low", category?: "bug"|"feature"|"inquiry"} — requires: tickets
@@ -58,10 +61,13 @@ ${walletsHint}
 
 Rules:
 - 0x addresses + "查", "看", "数据", "信息", "有没有" → query_user (full user info)
-- "金库", "入金", "存入", "仓位" → query_vault (金库入金详情)
-- "节点", "激活", "activation" → query_node (节点+激活状态)
-- "金库总览", "入金统计" (no wallet) → query_vault with summary=true
-- "节点总览", "激活统计" (no wallet) → query_node with summary=true
+- "金库", "入金", "存入", "仓位" → query_vault
+- "节点", "激活", "activation" → query_node
+- "直推", "团队", "推荐", "安置", "下线" → query_team
+- "收益", "佣金", "产出", "日产", "earnings" → query_earnings
+- "链上", "验证", "on-chain", "TX", "交易hash" → verify_onchain
+- "资金状态", "链上余额" → verify_onchain with check=funds
+- 总览类(no wallet): summary=true
 - "补充", "创建", "添加", "开通" + "节点" → create_node (confirmRequired=true)
 - Multiple addresses: put all in wallet param comma-separated for query_user
 - For modifications (create/update/delete), ALWAYS set confirmRequired=true
