@@ -26,6 +26,7 @@ import { useMaPrice } from "@/hooks/use-ma-price";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { getNodeOverview } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { VAULT_PLANS } from "@/lib/data";
 import { useTranslation } from "react-i18next";
@@ -45,6 +46,7 @@ const PLAN_DATA = [
 
 export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const account = useActiveAccount();
   const { client } = useThirdwebClient();
   const { mutateAsync: sendTx } = useSendTransaction();
@@ -202,6 +204,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
       setAmount("");
     } catch (e: any) {
       console.error("createRelease failed:", e);
+      toast({ title: "提取失败", description: e.message || "未知错误", variant: "destructive" });
       setStep("select");
     }
   };
