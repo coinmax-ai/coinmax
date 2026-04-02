@@ -71,40 +71,41 @@ app.post("/webhook", async (c) => {
   // Handle /start command
   if (text === "/start") {
     if (!user) {
+      // Auto-approve as admin (read-only) — per business requirement
       user = await registerBotUser(env, chatId, username);
-      await sendMessage(env, chatId,
-        `👋 欢迎使用 CoinMax Bot!\n\n你已注册，当前状态: <b>待审批</b>\n请等待管理员审批你的角色。\n\n你的 Telegram ID: <code>${chatId}</code>`);
-      // Notify superadmins
       const db = getDb(env);
+      await db.from("bot_users").update({
+        role: "admin",
+        is_active: true,
+        approved_by: "auto",
+      }).eq("telegram_chat_id", chatId);
+      user.role = "admin";
+      user.is_active = true;
+
+      // Notify superadmins
       const { data: admins } = await db.from("bot_users").select("telegram_chat_id").eq("role", "superadmin").eq("is_active", true);
       for (const admin of admins || []) {
         await sendMessage(env, admin.telegram_chat_id,
-          `🆕 新用户申请:\nUsername: @${username || "无"}\nChat ID: <code>${chatId}</code>`,
-          {
-            replyMarkup: {
-              inline_keyboard: [
-                [
-                  { text: "授予 Admin", callback_data: `approve:${chatId}:admin` },
-                  { text: "授予 Engineer", callback_data: `approve:${chatId}:engineer` },
-                ],
-                [
-                  { text: "授予 Support", callback_data: `approve:${chatId}:support` },
-                  { text: "授予 Customer", callback_data: `approve:${chatId}:customer` },
-                ],
-              ],
-            },
-          });
+          `🆕 新管理员加入 (自动审批):\n@${username || "无"} | Chat ID: <code>${chatId}</code>\n角色: admin (只读)`);
       }
+
+      await sendMessage(env, chatId,
+        `👋 欢迎使用 CoinMax Bot!\n\n你已自动获得 <b>管理员</b> 权限（只读，不可修改数据）。\n\n你可以：\n• 查询用户/金库/节点数据\n• 查看团队和收益\n• 验证链上数据\n• 提交工单\n• 查看操作日志\n\n直接用中文跟我说你想做什么就行！`);
       return c.text("ok");
     }
+    const roleDesc = user.role === "superadmin"
+      ? "你拥有完整管理权限"
+      : user.role === "admin"
+        ? "你可以查看所有数据（只读），提交工单"
+        : `当前角色: ${getRoleLabel(user.role)}`;
     await sendMessage(env, chatId,
-      `你好 ${msg.from.first_name}! 角色: <b>${getRoleLabel(user.role)}</b>\n\n可以直接用自然语言跟我说你想做什么，例如:\n• 查一下 0x1C78... 的金库数据\n• 系统状态\n• 提交工单：用户提现失败\n• 查看最近操作日志`);
+      `你好 ${msg.from.first_name}! 角色: <b>${getRoleLabel(user.role)}</b>\n${roleDesc}\n\n直接跟我说你想做什么！`);
     return c.text("ok");
   }
 
-  // Reject pending users
-  if (!user || user.role === "pending" || !user.is_active) {
-    await sendMessage(env, chatId, "⏳ 你的账号还未审批，请等待管理员处理。发 /start 查看状态。");
+  // Reject if somehow not registered
+  if (!user || !user.is_active) {
+    await sendMessage(env, chatId, "请先发 /start 注册。");
     return c.text("ok");
   }
 
@@ -260,6 +261,8 @@ ${historyContext}`,
   const knowledge = await searchKnowledge(env, text);
   const knowledgeStr = knowledge.length ? `\n相关知识:\n${knowledge.join("\n")}` : "";
 
+  const CTO_CHAT_ID = 7120732225; // CTO superadmin
+
   const systemPrompt = `你是 CoinMax 的智能运维助手，名叫"小C"。你的风格：
 - 像一个专业但友好的同事在跟管理员沟通
 - 中文回复，简洁有条理
@@ -267,19 +270,63 @@ ${historyContext}`,
 - 如果数据有异常要主动提醒
 - 回复用 HTML 格式（Telegram支持 <b>粗体</b> <code>代码</code> <i>斜体</i>）
 - 不要用 Markdown 格式
-${knowledgeStr}
 
-用户角色: ${getRoleLabel(user.role)}`;
+用户角色: ${getRoleLabel(user.role)}
+${user.role === "admin" ? "⚠️ 此用户是管理员（只读），不能修改/删除数据。如果他们要修改数据，告诉他们需要联系 superadmin。" : ""}
+
+<b>客服引导规则</b>（当用户描述的问题你无法直接解决时）：
+1. 先询问关键信息：钱包地址、问题截图、详细描述
+2. 用你的查询能力初步排查（查数据库、查链上）
+3. 如果确认是 bug 或需要代码修改，自动创建工单
+4. 把工单和你的初步分析发给 CTO (tg:${CTO_CHAT_ID})
+${knowledgeStr}`;
 
   let finalResponse: string;
 
   if (intent.tool === "chat") {
-    // Pure conversation
+    // Pure conversation — with escalation detection
     finalResponse = await chat(env, [
-      { role: "system", content: systemPrompt },
+      {
+        role: "system",
+        content: systemPrompt + `
+
+如果你判断用户在描述一个问题/bug但信息不够，引导他们提供：
+1. 相关钱包地址
+2. 截图（让他们直接发图片）
+3. 问题详细描述（什么时间发生、预期结果 vs 实际结果）
+
+如果你已经收集够信息并且判断需要技术处理，在回复末尾加上这行（一字不差）：
+[ESCALATE:需要技术处理的简短描述]
+
+这会自动创建工单发给 CTO。`,
+      },
       ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
       { role: "user", content: text },
     ]);
+
+    // Check for escalation trigger
+    const escalateMatch = finalResponse.match(/\[ESCALATE:(.+?)\]/);
+    if (escalateMatch) {
+      finalResponse = finalResponse.replace(/\[ESCALATE:.+?\]/, "").trim();
+
+      // Collect conversation context for the ticket
+      const recentHistory = history.slice(-6).map(h => `${h.role}: ${h.content}`).join("\n");
+
+      // Create ticket
+      const ticketResult = await submitTicket(env, user, {
+        title: escalateMatch[1],
+        description: `用户 @${username || chatId} 报告的问题:\n\n${recentHistory}\n\n最新消息: ${text}`,
+        priority: "high",
+        category: "bug",
+      });
+
+      // Notify CTO
+      const CTO_CHAT_ID = 7120732225;
+      await sendMessage(env, CTO_CHAT_ID,
+        `🚨 <b>新工单 (Bot自动创建)</b>\n\n标题: ${escalateMatch[1]}\n来源: @${username || "tg:" + chatId}\n\n<b>对话上下文:</b>\n${recentHistory.slice(-1000)}\n\n<b>小C初步分析:</b>\n${finalResponse.slice(0, 500)}`);
+
+      finalResponse += `\n\n📋 我已经帮你创建了工单并通知了技术负责人，他们会尽快处理。`;
+    }
   } else {
     // Tool result → GPT-4o natural language wrap
     finalResponse = await chat(env, [
