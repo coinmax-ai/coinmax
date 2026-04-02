@@ -53,6 +53,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
   const [amount, setAmount] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(4); // default: instant
   const [step, setStep] = useState<"select" | "creating" | "success">("select");
+  const [successInfo, setSuccessInfo] = useState({ releaseMA: 0, burnMA: 0, days: 0 });
 
   const PLANS = PLAN_DATA.map(p => ({
     ...p,
@@ -195,6 +196,7 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
       }
 
       // Instant release: MA already minted to wallet by edge function
+      setSuccessInfo({ releaseMA: Number(data.releaseMA || 0), burnMA: Number(data.burnMA || 0), days: Number(data.planDays || 0) });
       setStep("success");
       refetchAccumulated();
       refetchClaimable();
@@ -251,9 +253,9 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
             <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
             <p className="text-sm font-bold text-foreground/80">{t("release.planCreated", "释放计划已创建")}</p>
             <p className="text-xs text-foreground/40 mt-1">
-              {plan.days === 0 ? t("release.instantSuccess", "{{amount}} MA 已到账", { amount: releaseMA.toFixed(2) }) : t("release.linearSuccess", "{{amount}} MA 将在 {{days}} 天内线性释放", { amount: releaseMA.toFixed(2), days: plan.days })}
+              {successInfo.days === 0 ? t("release.instantSuccess", "{{amount}} MA 已到账", { amount: successInfo.releaseMA.toFixed(2) }) : t("release.linearSuccess", "{{amount}} MA 将在 {{days}} 天内线性释放", { amount: successInfo.releaseMA.toFixed(2), days: successInfo.days })}
             </p>
-            {burnMA > 0 && <p className="text-xs text-red-400/60 mt-1">{t("release.burned", "{{amount}} MA 已销毁", { amount: burnMA.toFixed(2) })}</p>}
+            {successInfo.burnMA > 0 && <p className="text-xs text-red-400/60 mt-1">{t("release.burned", "{{amount}} MA 已销毁", { amount: successInfo.burnMA.toFixed(2) })}</p>}
             <Button className="mt-4" onClick={resetAndClose}>{t("release.done", "完成")}</Button>
           </div>
         ) : (
