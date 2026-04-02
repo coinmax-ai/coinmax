@@ -93,6 +93,15 @@ serve(async (req) => {
     const brokerMA = Number(profile.referral_earnings || 0);
     totalYieldMA += brokerMA;
 
+    // Also add node earnings (available_balance from node_memberships, already in MA)
+    const { data: nodeRows } = await supabase
+      .from("node_memberships")
+      .select("available_balance")
+      .eq("user_id", profile.id)
+      .in("status", ["ACTIVE", "PENDING_MILESTONES"]);
+    const nodeMA = (nodeRows || []).reduce((s: number, n: any) => s + Number(n.available_balance || 0), 0);
+    totalYieldMA += nodeMA;
+
     const maPrice = await getMAPrice();
 
     // Use requested amount or total available

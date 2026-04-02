@@ -25,6 +25,7 @@ import { RELEASE_ADDRESS, BSC_CHAIN } from "@/lib/contracts";
 import { useMaPrice } from "@/hooks/use-ma-price";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
+import { getNodeOverview } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { VAULT_PLANS } from "@/lib/data";
 import { useTranslation } from "react-i18next";
@@ -137,7 +138,14 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
       // 2. Broker commissions (already in MA from settle_team_commission)
       const brokerMA = Number(profile.referral_earnings || 0);
 
-      return vaultMA + brokerMA;
+      // 3. Node earnings (available_balance from node_memberships, already in MA)
+      let nodeMA = 0;
+      try {
+        const nodeOverview = await getNodeOverview(account.address);
+        nodeMA = Number(nodeOverview?.availableBalance || 0);
+      } catch { /* no node = 0 */ }
+
+      return vaultMA + brokerMA + nodeMA;
     },
     enabled: !!account?.address,
   });
