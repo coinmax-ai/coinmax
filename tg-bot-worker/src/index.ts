@@ -5,7 +5,7 @@ import { sendMessage, confirmButtons, answerCallback, downloadFile } from "./tel
 import { hasPermission, getRoleLabel, canQuery } from "./auth";
 import { chat, analyzeImage } from "./ai/openai";
 import { parseIntent } from "./ai/intent";
-import { searchKnowledge } from "./ai/memory";
+import { searchKnowledge, addKnowledge } from "./ai/memory";
 import { queryUser, queryVault, queryNode, queryTransaction } from "./tools/query";
 import { createNode, modifyData } from "./tools/modify";
 import { submitTicket, listTickets, assignTicket } from "./tools/tickets";
@@ -161,27 +161,54 @@ app.post("/webhook", async (c) => {
   // Execute tool
   const result = await executeTool(env, user, intent.tool, intent.params);
 
-  // For chat tool, use GPT-4o to generate natural response
-  if (intent.tool === "chat") {
-    const knowledge = await searchKnowledge(env, text);
-    const knowledgeStr = knowledge.length ? `\n相关知识:\n${knowledge.join("\n")}` : "";
+  // ALL responses go through GPT-4o for natural language formatting
+  const knowledge = await searchKnowledge(env, text);
+  const knowledgeStr = knowledge.length ? `\n相关知识:\n${knowledge.join("\n")}` : "";
 
-    const response = await chat(env, [
-      {
-        role: "system",
-        content: `你是 CoinMax Bot 助手。用户角色: ${getRoleLabel(user.role)}。用中文回复，简洁专业。${knowledgeStr}`,
-      },
+  const systemPrompt = `你是 CoinMax 的智能运维助手，名叫"小C"。你的风格：
+- 像一个专业但友好的同事在跟管理员沟通
+- 中文回复，简洁有条理
+- 查询结果用清晰的格式展示，但不要太机械
+- 如果数据有异常要主动提醒
+- 回复用 HTML 格式（Telegram支持 <b>粗体</b> <code>代码</code> <i>斜体</i>）
+- 不要用 Markdown 格式
+${knowledgeStr}
+
+用户角色: ${getRoleLabel(user.role)}`;
+
+  let finalResponse: string;
+
+  if (intent.tool === "chat") {
+    // Pure conversation
+    finalResponse = await chat(env, [
+      { role: "system", content: systemPrompt },
       ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
       { role: "user", content: text },
     ]);
-
-    await saveMessage(env, chatId, "assistant", response);
-    await sendMessage(env, chatId, response);
-    return c.text("ok");
+  } else {
+    // Tool result → GPT-4o natural language wrap
+    finalResponse = await chat(env, [
+      { role: "system", content: systemPrompt + "\n\n你刚刚执行了一个操作，下面是原始数据结果。请用自然、专业的语言重新组织这些信息回复用户。保留关键数据但让表达更人性化。如果数据显示有问题要指出。" },
+      ...history.slice(-4).map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
+      { role: "user", content: text },
+      { role: "assistant", content: `[工具 ${intent.tool} 执行结果]\n${result.text}` },
+      { role: "user", content: "请用自然语言重新整理上面的结果回复给我" },
+    ], { maxTokens: 2000 });
   }
 
-  await saveMessage(env, chatId, "assistant", result.text);
-  await sendMessage(env, chatId, result.text);
+  await saveMessage(env, chatId, "assistant", finalResponse);
+  await sendMessage(env, chatId, finalResponse);
+
+  // Auto-learn: save useful interactions to knowledge base
+  if (intent.tool !== "chat" && result.text.length > 50) {
+    try {
+      await addKnowledge(env,
+        intent.tool.startsWith("query") ? "faq" : "workflow",
+        `${intent.rawIntent}`,
+        `用户问: ${text.slice(0, 200)}\n工具: ${intent.tool}\n结果摘要: ${result.text.slice(0, 500)}`
+      );
+    } catch { /* non-critical */ }
+  }
   return c.text("ok");
 });
 

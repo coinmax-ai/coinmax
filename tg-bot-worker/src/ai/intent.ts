@@ -41,6 +41,12 @@ export async function parseIntent(env: Env, user: BotUser, message: string, conv
     manage_roles: hasPermission(user.role, "manage_roles"),
   }).filter(([, v]) => v).map(([k]) => k);
 
+  // Pre-parse: extract wallet addresses
+  const walletMatches = message.match(/0x[a-fA-F0-9]{40}/g);
+  const walletsHint = walletMatches?.length
+    ? `\nDetected wallets: ${walletMatches.join(", ")}\nUse query_user with wallet="${walletMatches.join(",")}" to check all at once.`
+    : "";
+
   const prompt = `You are an intent parser for CoinMax admin bot.
 User role: ${user.role} (permissions: ${permList.join(", ")})
 
@@ -48,11 +54,16 @@ Recent conversation:
 ${conversationHistory}
 
 ${TOOL_DESCRIPTIONS}
+${walletsHint}
 
-Parse the user's message into a tool call. If the user doesn't have permission, use "chat" tool and explain they need a higher role.
-If the message is general conversation/question, use "chat" tool.
+Rules:
+- If message contains 0x addresses → likely query_user (check their data: vault, nodes, transactions)
+- "没有显示", "查一下", "数据", "信息", "有没有" + addresses → query_user
+- For modifications (create/update/delete), set confirmRequired=true
+- If no permission, use "chat" and explain
+- General questions → "chat"
 
-Respond ONLY with JSON: {"tool": "...", "params": {...}, "confirmRequired": true/false, "rawIntent": "one-line summary"}
+Respond ONLY with JSON: {"tool":"...","params":{...},"confirmRequired":false,"rawIntent":"简短中文描述"}
 
 User message: ${message}`;
 

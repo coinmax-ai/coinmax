@@ -4,52 +4,80 @@ import { shouldMaskData } from "../auth";
 
 export async function queryUser(env: Env, user: BotUser, params: Record<string, string>): Promise<ToolResult> {
   const db = getDb(env);
-  const wallet = params.wallet;
-  if (!wallet) return { text: "请提供钱包地址" };
+  const walletInput = params.wallet || params.wallets || "";
 
-  const { data: profile } = await db
-    .from("profiles")
-    .select("id, wallet_address, display_name, rank, node_type, referrer_id, total_deposited, referral_earnings, created_at")
-    .ilike("wallet_address", wallet)
-    .single();
+  // Support multiple wallets (comma or space separated)
+  const wallets = walletInput.split(/[,\s\n]+/).filter(w => w.startsWith("0x"));
+  if (!wallets.length) return { text: "请提供钱包地址" };
 
-  if (!profile) return { text: `未找到用户 ${wallet}` };
-
+  const results: string[] = [];
   const mask = shouldMaskData(user.role);
-  const addr = mask ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : wallet;
 
-  // Get vault positions
-  const { data: vaults } = await db
-    .from("vault_positions")
-    .select("principal, plan_type, daily_rate, status, start_date")
-    .eq("user_id", profile.id)
-    .eq("status", "ACTIVE");
+  for (const wallet of wallets) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("id, wallet_address, display_name, rank, node_type, referrer_id, total_deposited, referral_earnings, created_at")
+      .ilike("wallet_address", wallet.trim())
+      .single();
 
-  const totalVault = (vaults || []).reduce((s, v) => s + Number(v.principal), 0);
+    if (!profile) {
+      results.push(`❌ <code>${wallet.slice(0, 10)}...</code> — 数据库中不存在`);
+      continue;
+    }
 
-  // Get node memberships
-  const { data: nodes } = await db
-    .from("node_memberships")
-    .select("node_type, status, contribution_amount, tag, created_at")
-    .eq("user_id", profile.id);
+    const addr = mask ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : wallet;
 
-  const text = `<b>用户信息</b>
-钱包: <code>${addr}</code>
-等级: ${profile.rank || "无"}
-节点: ${profile.node_type || "无"}
-注册: ${new Date(profile.created_at).toLocaleDateString()}
+    // Vault positions
+    const { data: vaults } = await db
+      .from("vault_positions")
+      .select("principal, plan_type, daily_rate, status, start_date")
+      .eq("user_id", profile.id);
 
-<b>金库</b>
-活跃仓位: ${vaults?.length || 0} 个
-总存入: $${totalVault.toLocaleString()}
+    const activeVaults = (vaults || []).filter(v => v.status === "ACTIVE");
+    const totalVault = activeVaults.reduce((s, v) => s + Number(v.principal), 0);
+
+    // Node memberships
+    const { data: nodes } = await db
+      .from("node_memberships")
+      .select("node_type, status, contribution_amount, frozen_amount, tag, tx_hash, created_at")
+      .eq("user_id", profile.id);
+
+    // Recent transactions
+    const { data: txs } = await db
+      .from("transactions")
+      .select("type, amount, status, created_at")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const nodeLines = (nodes || []).map(n => {
+      const source = n.tx_hash ? "链上支付" : "手动创建";
+      return `  ${n.node_type} | $${n.contribution_amount}+$${n.frozen_amount}冻结 | ${n.status} | ${source}${n.tag ? ` | ${n.tag}` : ""}`;
+    });
+
+    const vaultLines = activeVaults.map(v =>
+      `  $${Number(v.principal).toLocaleString()} | ${v.plan_type} | ${(Number(v.daily_rate) * 100).toFixed(1)}%/天 | ${new Date(v.start_date).toLocaleDateString()}`
+    );
+
+    const txLines = (txs || []).map(t =>
+      `  ${t.type} | $${Number(t.amount).toLocaleString()} | ${t.status} | ${new Date(t.created_at).toLocaleDateString()}`
+    );
+
+    results.push(`<b>📋 ${addr}</b>
+等级: ${profile.rank || "无"} | 注册: ${new Date(profile.created_at).toLocaleDateString()}
+
+<b>💰 金库</b> (${activeVaults.length}个活跃, 总计$${totalVault.toLocaleString()})
+${vaultLines.length ? vaultLines.join("\n") : "  无活跃仓位"}
 累计存入: $${Number(profile.total_deposited || 0).toLocaleString()}
 
-<b>节点</b>
-${(nodes || []).map(n => `  ${n.node_type} | ${n.status} | $${n.contribution_amount} ${n.tag ? `| ${n.tag}` : ""}`).join("\n") || "  无"}
+<b>🖥 节点</b> (${nodes?.length || 0}个)
+${nodeLines.length ? nodeLines.join("\n") : "  无节点"}
 
-推荐收益: ${mask ? "***" : `$${Number(profile.referral_earnings || 0).toFixed(2)}`}`;
+<b>📝 最近交易</b>
+${txLines.length ? txLines.join("\n") : "  无"}${!mask ? `\n\n推荐收益: $${Number(profile.referral_earnings || 0).toFixed(2)}` : ""}`);
+  }
 
-  return { text, data: profile };
+  return { text: results.join("\n\n━━━━━━━━━━━━━━\n\n"), data: { count: wallets.length } };
 }
 
 export async function queryVault(env: Env, user: BotUser, params: Record<string, string>): Promise<ToolResult> {
