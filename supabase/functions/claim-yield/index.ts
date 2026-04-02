@@ -102,6 +102,15 @@ serve(async (req) => {
     const nodeMA = (nodeRows || []).reduce((s: number, n: any) => s + Number(n.available_balance || 0), 0);
     totalYieldMA += nodeMA;
 
+    // Subtract already claimed amount
+    const { data: claimedTxs } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", profile.id)
+      .eq("type", "YIELD_CLAIM");
+    const alreadyClaimed = (claimedTxs || []).reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    totalYieldMA = Math.max(0, totalYieldMA - alreadyClaimed);
+
     const maPrice = await getMAPrice();
 
     // Use requested amount or total available

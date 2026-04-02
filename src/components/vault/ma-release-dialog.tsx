@@ -148,7 +148,15 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
         nodeMA = Number(nodeOverview?.availableBalance || 0);
       } catch { /* no node = 0 */ }
 
-      return vaultMA + brokerMA + nodeMA;
+      // 4. Subtract already claimed
+      const { data: claimedTxs } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("user_id", profile.id)
+        .eq("type", "YIELD_CLAIM");
+      const alreadyClaimed = (claimedTxs || []).reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+
+      return Math.max(0, vaultMA + brokerMA + nodeMA - alreadyClaimed);
     },
     enabled: !!account?.address,
   });
@@ -203,6 +211,10 @@ export function MAReleaseDialog({ open, onOpenChange }: MAReleaseDialogProps) {
       queryClient.invalidateQueries({ queryKey: ["ma-balance"] });
       queryClient.invalidateQueries({ queryKey: ["vault-db-yield-usd"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["release-db-total-ma"] });
+      queryClient.invalidateQueries({ queryKey: ["vault-yield-settled"] });
+      queryClient.invalidateQueries({ queryKey: ["claimed-yield"] });
+      queryClient.invalidateQueries({ queryKey: ["node-overview"] });
       setAmount("");
     } catch (e: any) {
       console.error("createRelease failed:", e);
