@@ -144,9 +144,8 @@ export default function ProfileTransactionsPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map((tx) => {
-              const explorerUrl = tx.txHash && !tx.txHash.startsWith("trial") && !tx.txHash.startsWith("yield_") && !tx.txHash.startsWith("redeem_")
-                ? `https://bscscan.com/tx/${tx.txHash}`
-                : null;
+              const isRealHash = tx.txHash && /^0x[0-9a-fA-F]{64}$/.test(tx.txHash);
+              const explorerUrl = isRealHash ? `https://bscscan.com/tx/${tx.txHash}` : null;
               const typeCfg = TX_TYPE_LABEL_KEYS[tx.type];
               const typeLabel = typeCfg ? t(typeCfg.key, typeCfg.fallback) : tx.type;
               return (
