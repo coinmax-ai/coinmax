@@ -1,0 +1,11 @@
+name = "coinmax-tg-bot"
+main = "src/index.ts"
+compatibility_date = "2024-06-01"
+
+[vars]
+SUPABASE_URL = "https://enedbksmftcgtszrkppc.supabase.co"
+
+# Secrets (set via `wrangler secret put`):
+# TELEGRAM_BOT_TOKEN
+# SUPABASE_SERVICE_KEY
+# OPENAI_API_KEY
