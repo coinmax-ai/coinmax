@@ -122,10 +122,9 @@ serve(async (req) => {
       const maWei = BigInt(Math.floor(inputAmount * 1e18)).toString();
       const usdcWei = BigInt(Math.floor(netUsd * 1e18)).toString();
 
-      // Step 1: Transfer MA from user to Server Wallet
+      // Step 1: Transfer MA from user to EOA
       // Step 2: Approve USDC to PancakeSwap
-      // Step 3: Swap USDC → USDT via PancakeSwap V3 exactInputSingle
-      // Step 4: Transfer USDT to user
+      // Step 3: Swap USDC → USDT, recipient = user (so user sees 0x92b7...3121 as sender)
       const result = await callThirdweb([
         {
           contractAddress: MA_TOKEN,
@@ -140,12 +139,7 @@ serve(async (req) => {
         {
           contractAddress: PANCAKE_ROUTER,
           method: "function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) returns (uint256)",
-          params: [[BSC_USDC, BSC_USDT, 100, SERVER_WALLET, usdcWei, "0", "0"]],
-        },
-        {
-          contractAddress: BSC_USDT,
-          method: "function transfer(address, uint256)",
-          params: [walletAddress, usdcWei],
+          params: [[BSC_USDC, BSC_USDT, 100, walletAddress, usdcWei, "0", "0"]],
         },
       ]);
 
