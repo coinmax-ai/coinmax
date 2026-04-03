@@ -339,7 +339,7 @@ function MASwap() {
       queryClient.invalidateQueries({ queryKey: ["ma-swap-history"] });
       setTimeout(() => setSwapStatus("idle"), 3000);
     } catch (err: any) {
-      setSwapError(err.message || "Swap failed");
+      setSwapError("当前繁忙，稍后重试");
       setSwapStatus("error");
       setTimeout(() => setSwapStatus("idle"), 5000);
     }
